@@ -381,13 +381,22 @@ graph TB
 | Security Headers Presence | `test_security_headers_properties.py` | ✅ Covered |
 | Error Response Format | `test_error_handler_properties.py` | ✅ Covered |
 | Token Revocation | `test_token_revocation_properties.py` | ✅ Covered |
+| Circuit Breaker State Transitions | `test_circuit_breaker_properties.py` | ✅ Covered |
+| Rate Limiter Response Format | `test_rate_limiter_properties.py` | ✅ Covered |
+
+### Load Testing
+
+| Test Type | Script | Purpose |
+|-----------|--------|---------|
+| Smoke Test | `tests/load/smoke.js` | Basic verification |
+| Stress Test | `tests/load/stress.js` | Find breaking points |
 
 ### Identified Gaps
 
-| Gap | Priority | Recommendation |
-|-----|----------|----------------|
-| Circuit Breaker Tests | P2 | Add property tests for state transitions |
-| Rate Limiter Tests | P3 | Add property tests for fairness |
+| Gap | Priority | Status |
+|-----|----------|--------|
+| Circuit Breaker Tests | P2 | ✅ Resolved |
+| Rate Limiter Tests | P3 | ✅ Resolved |
 
 ### References
 

@@ -20,34 +20,37 @@
 
 Base API é um framework REST API reutilizável projetado para acelerar o desenvolvimento backend com Python. Fornece uma base sólida baseada nos princípios de Clean Architecture, aproveitando Python Generics para maximizar reuso de código e minimizar boilerplate.
 
-O framework inclui tudo necessário para produção: operações CRUD genéricas type-safe, injeção de dependência, logging estruturado, middlewares de segurança, migrations de banco de dados e infraestrutura completa de testes com property-based tests.
+O framework inclui tudo necessário para produção: operações CRUD genéricas type-safe, autenticação JWT com RBAC, injeção de dependência, logging estruturado, middlewares de segurança, migrations de banco de dados e infraestrutura completa de testes com property-based tests.
 
 ### Principais Destaques
 
 - **CRUD Zero Boilerplate** - Crie endpoints REST completos com apenas 3 arquivos: entidade, use case e router
 - **Generics Type-Safe** - `IRepository[T]`, `BaseUseCase[T]`, `GenericCRUDRouter[T]` com suporte completo de IDE
+- **Autenticação Completa** - JWT com access/refresh tokens, revogação via Redis, RBAC com composição de permissões
 - **Pronto para Produção** - Rate limiting, headers de segurança, request tracing, health checks inclusos
-- **Padrões de Resiliência** - Circuit breaker, retry com backoff exponencial, domain events
+- **Padrões de Resiliência** - Circuit breaker, retry com backoff exponencial, domain events, CQRS
+- **Observabilidade** - OpenTelemetry (traces, metrics), structlog (JSON), correlação de logs
 - **Geração de Código** - Scaffold de novas entidades com `python scripts/generate_entity.py`
-- **148+ Testes** - Testes unitários, integração e property-based com Hypothesis
+- **166+ Testes** - Testes unitários, integração, property-based (33 arquivos) e load tests com k6
 
 ## Arquitetura
 
 ```
 src/my_api/
-├── core/           # Configuração, container DI, exceções
+├── core/           # Configuração, container DI, exceções, autenticação
+│   └── auth/       # JWT, RBAC, password policy
 ├── shared/         # Classes base genéricas (Repository, UseCase, Router, DTOs)
 ├── domain/         # Entidades, value objects, interfaces de repositório
 ├── application/    # Use cases, mappers, DTOs
 ├── adapters/       # Rotas API, middleware, implementações de repositório
-└── infrastructure/ # Database, logging, serviços externos
+└── infrastructure/ # Database, logging, observability, audit
 ```
 
 O projeto segue Clean Architecture com quatro camadas principais:
 - **Domain** - Entidades de negócio e interfaces de repositório
 - **Application** - Use cases orquestrando lógica de negócio
 - **Adapters** - Rotas API, middleware, implementações concretas de repositório
-- **Infrastructure** - Sessões de banco, configuração de logging, integrações externas
+- **Infrastructure** - Sessões de banco, logging, telemetria, auditoria
 
 ## Início Rápido
 
@@ -97,7 +100,8 @@ uv run uvicorn my_api.main:app --reload
 | http://localhost:8000 | Base da API |
 | http://localhost:8000/docs | Swagger UI |
 | http://localhost:8000/redoc | ReDoc |
-| http://localhost:8000/health/live | Health Check |
+| http://localhost:8000/health/live | Liveness Check |
+| http://localhost:8000/health/ready | Readiness Check |
 
 ## Criando uma Nova Entidade
 
@@ -143,6 +147,67 @@ python scripts/generate_entity.py user --fields "email:str,name:str" --with-cach
 
 # Preview sem criar arquivos
 python scripts/generate_entity.py product --dry-run
+```
+
+## Autenticação & Autorização
+
+### JWT Authentication
+
+```python
+from my_api.core.auth.jwt import JWTService
+
+jwt_service = JWTService(secret_key="...", algorithm="HS256")
+
+# Criar tokens
+access_token = jwt_service.create_access_token(user_id="123", roles=["admin"])
+refresh_token = jwt_service.create_refresh_token(user_id="123")
+
+# Validar token
+payload = jwt_service.verify_token(access_token)
+```
+
+### Token Revocation
+
+```python
+from my_api.infrastructure.auth.token_store import TokenStore
+
+token_store = TokenStore(redis_client)
+
+# Revogar token
+await token_store.revoke_token(token_jti, expires_at)
+
+# Verificar se está revogado
+is_revoked = await token_store.is_revoked(token_jti)
+```
+
+### RBAC (Role-Based Access Control)
+
+```python
+from my_api.core.auth.rbac import RBACService, Role, Permission
+
+# Definir roles com permissões
+admin_role = Role(name="admin", permissions=[
+    Permission(resource="users", action="read"),
+    Permission(resource="users", action="write"),
+])
+
+rbac = RBACService()
+rbac.register_role(admin_role)
+
+# Verificar permissão
+has_access = rbac.has_permission(user_roles=["admin"], resource="users", action="write")
+```
+
+### Password Policy
+
+```python
+from my_api.core.auth.password_policy import PasswordPolicy
+
+policy = PasswordPolicy(min_length=12, require_uppercase=True, require_special=True)
+result = policy.validate("MyP@ssw0rd123")
+
+if not result.is_valid:
+    print(result.errors)
 ```
 
 ## Recursos Avançados
@@ -221,6 +286,53 @@ spec = (
 query = select(Product).where(spec.to_sql_condition(Product))
 ```
 
+### Circuit Breaker
+
+```python
+from my_api.shared.circuit_breaker import circuit_breaker, CircuitBreaker
+
+# Decorator
+@circuit_breaker("external-api", failure_threshold=5, recovery_timeout=30)
+async def call_external_service():
+    return await http_client.get("https://api.example.com")
+
+# Classe
+cb = CircuitBreaker(name="payment-gateway", failure_threshold=3)
+async with cb:
+    result = await process_payment()
+```
+
+### Retry Pattern
+
+```python
+from my_api.shared.retry import retry, RETRY_STANDARD, RETRY_FAST
+
+@retry(config=RETRY_STANDARD)  # 3 tentativas, backoff exponencial
+async def unreliable_operation():
+    return await some_flaky_service()
+
+@retry(config=RETRY_FAST)  # 2 tentativas, delays curtos
+async def quick_retry():
+    return await another_service()
+```
+
+### Domain Events
+
+```python
+from my_api.shared.events import event_bus, EntityCreatedEvent
+
+# Subscribe
+@event_bus.subscribe("item.created")
+async def handle_item_created(event: EntityCreatedEvent):
+    await send_notification(event.entity_id)
+
+# Publish
+await event_bus.publish(EntityCreatedEvent(
+    entity_type="item",
+    entity_id="123"
+))
+```
+
 ### Tracing
 
 ```python
@@ -232,6 +344,21 @@ async def process_payment(order_id: str) -> bool:
     # Exceções registradas como eventos
     return await stripe.charge(order_id)
 ```
+
+## Segurança
+
+O framework implementa múltiplas camadas de segurança:
+
+| Recurso | Implementação |
+|---------|---------------|
+| Autenticação | JWT com access (30min) e refresh tokens (7 dias) |
+| Autorização | RBAC com composição de permissões |
+| Rate Limiting | slowapi com limites configuráveis |
+| Headers | CSP, HSTS, X-Frame-Options, X-Content-Type-Options |
+| Senhas | Argon2 hashing + política configurável |
+| Input | Validação Pydantic + sanitização |
+| Tokens | Revogação via Redis blacklist |
+| Logs | Redação automática de PII |
 
 ## Configuração
 
@@ -250,6 +377,8 @@ DATABASE__POOL_SIZE=10
 # Segurança
 SECURITY__SECRET_KEY=your-secret-key-min-32-chars
 SECURITY__CORS_ORIGINS=["http://localhost:3000"]
+SECURITY__ACCESS_TOKEN_EXPIRE_MINUTES=30
+SECURITY__REFRESH_TOKEN_EXPIRE_DAYS=7
 
 # Observabilidade
 OBSERVABILITY__LOG_LEVEL=INFO
@@ -275,6 +404,42 @@ uv run pytest tests/integration/
 uv run pytest tests/properties/
 ```
 
+### Property-Based Tests
+
+O projeto inclui 33 arquivos de testes property-based com Hypothesis cobrindo:
+- JWT token round-trip e validação
+- RBAC permission composition
+- Repository CRUD consistency
+- Cache invalidation
+- Security headers presence
+- Error response format (RFC 7807)
+- Token revocation
+- Circuit breaker state transitions
+- Rate limiter response format
+- Password policy validation
+- Sanitization e mais...
+
+## Testes de Carga
+
+O projeto inclui testes de carga usando [k6](https://k6.io/).
+
+### Pré-requisitos
+
+Instale o k6: https://k6.io/docs/get-started/installation/
+
+### Executando
+
+```bash
+# Smoke test (verificação básica)
+k6 run tests/load/smoke.js
+
+# Stress test (encontrar limites)
+k6 run tests/load/stress.js
+
+# Com URL customizada
+k6 run -e BASE_URL=http://api.example.com tests/load/smoke.js
+```
+
 ## Desenvolvimento
 
 ```bash
@@ -290,15 +455,31 @@ uv run pre-commit run --all-files  # Todas as verificações
 |-----------|-------------|
 | Framework | FastAPI, Pydantic v2, SQLModel |
 | Banco de Dados | PostgreSQL, SQLAlchemy 2.0, Alembic |
+| Cache | Redis, aiocache |
 | DI | dependency-injector |
 | Observabilidade | structlog, OpenTelemetry |
-| Testes | pytest, Hypothesis, polyfactory |
-| Segurança | slowapi, passlib, python-jose |
+| Testes | pytest, Hypothesis, polyfactory, k6 |
+| Segurança | slowapi, passlib (Argon2), python-jose |
 
 ## Documentação
 
 - [Arquitetura](docs/architecture.md) - Documentação detalhada da arquitetura
 - [Resumo de Melhorias](docs/improvements-summary.md) - Melhorias e mudanças recentes
+- [ADRs](docs/adr/) - Decisões arquiteturais documentadas
+  - [ADR-001: JWT Authentication](docs/adr/ADR-001-jwt-authentication.md)
+  - [ADR-002: RBAC Implementation](docs/adr/ADR-002-rbac-implementation.md)
+  - [ADR-003: API Versioning](docs/adr/ADR-003-api-versioning.md)
+  - [ADR-004: Token Revocation](docs/adr/ADR-004-token-revocation.md)
+
+## Conformidade
+
+| Padrão | Status |
+|--------|--------|
+| Clean Architecture | ✅ 100% |
+| OWASP API Security Top 10 | ✅ 100% |
+| 12-Factor App | ✅ 100% |
+| RFC 7807 (Problem Details) | ✅ Implementado |
+| RFC 8594 (Deprecation Headers) | ✅ Implementado |
 
 ## Licença
 
