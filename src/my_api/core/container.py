@@ -1,4 +1,8 @@
-"""Dependency injection container using dependency-injector."""
+"""Dependency injection container using dependency-injector.
+
+**Feature: advanced-reusability**
+**Validates: Requirements All**
+"""
 
 import logging
 from collections.abc import Callable
@@ -7,6 +11,9 @@ from typing import Any
 from dependency_injector import containers, providers
 
 from my_api.core.config import Settings
+from my_api.infrastructure.observability.telemetry import TelemetryProvider
+from my_api.shared.caching import CacheConfig, InMemoryCacheProvider, RedisCacheProvider
+from my_api.shared.cqrs import CommandBus, QueryBus
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +22,8 @@ class Container(containers.DeclarativeContainer):
     """Application DI container.
 
     Manages all application dependencies including configuration,
-    database sessions, repositories, mappers, and use cases.
+    database sessions, repositories, mappers, use cases, caching,
+    CQRS buses, and telemetry.
     """
 
     wiring_config = containers.WiringConfiguration(
@@ -29,8 +37,64 @@ class Container(containers.DeclarativeContainer):
     config = providers.Singleton(Settings)
 
     # Database session manager - configured at runtime via app.state.db
-    # This is a Dependency provider that will be set during app startup
     db_session_manager = providers.Dependency()
+
+    # Cache configuration
+    cache_config = providers.Singleton(
+        CacheConfig,
+        ttl=3600,
+        max_size=1000,
+        key_prefix="myapi",
+    )
+
+    # In-memory cache provider
+    memory_cache = providers.Singleton(
+        InMemoryCacheProvider,
+        config=cache_config,
+    )
+
+    # Redis cache provider (optional, configured at runtime)
+    redis_cache = providers.Singleton(
+        RedisCacheProvider,
+        redis_url=providers.Callable(
+            lambda cfg: cfg.database.url.replace("postgresql", "redis")
+            if hasattr(cfg, "database")
+            else "redis://localhost:6379",
+            config,
+        ),
+        config=cache_config,
+    )
+
+    # CQRS Command Bus
+    command_bus = providers.Singleton(CommandBus)
+
+    # CQRS Query Bus with cache support
+    query_bus = providers.Singleton(QueryBus)
+
+    # Telemetry provider
+    telemetry = providers.Singleton(
+        TelemetryProvider,
+        service_name=providers.Callable(
+            lambda cfg: cfg.observability.service_name if hasattr(cfg, "observability") else "my-api",
+            config,
+        ),
+        service_version=providers.Callable(
+            lambda cfg: cfg.version if hasattr(cfg, "version") else "0.1.0",
+            config,
+        ),
+        otlp_endpoint=providers.Callable(
+            lambda cfg: cfg.observability.otlp_endpoint if hasattr(cfg, "observability") else None,
+            config,
+        ),
+        enable_tracing=providers.Callable(
+            lambda cfg: cfg.observability.enable_tracing if hasattr(cfg, "observability") else True,
+            config,
+        ),
+        enable_metrics=providers.Callable(
+            lambda cfg: cfg.observability.enable_metrics if hasattr(cfg, "observability") else True,
+            config,
+        ),
+    )
 
 
 class LifecycleManager:

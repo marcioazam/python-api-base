@@ -54,6 +54,44 @@ def add_request_id(
     return event_dict
 
 
+def add_trace_context(
+    logger: logging.Logger, method_name: str, event_dict: EventDict
+) -> EventDict:
+    """Add OpenTelemetry trace context to log event.
+    
+    Adds trace_id and span_id from the current trace context for
+    log correlation with distributed traces.
+    
+    **Feature: advanced-reusability**
+    **Validates: Requirements 4.7**
+    
+    Args:
+        logger: Logger instance.
+        method_name: Logging method name.
+        event_dict: Event dictionary.
+        
+    Returns:
+        Updated event dictionary with trace context.
+    """
+    try:
+        from my_api.infrastructure.observability.telemetry import (
+            get_current_span_id,
+            get_current_trace_id,
+        )
+        
+        trace_id = get_current_trace_id()
+        span_id = get_current_span_id()
+        
+        if trace_id:
+            event_dict["trace_id"] = trace_id
+        if span_id:
+            event_dict["span_id"] = span_id
+    except ImportError:
+        pass
+    
+    return event_dict
+
+
 # PII patterns to redact
 PII_PATTERNS = {
     "password",
@@ -120,6 +158,7 @@ def configure_logging(
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.StackInfoRenderer(),
         add_request_id,
+        add_trace_context,  # Add trace_id and span_id for OTel correlation
         redact_pii,
     ]
     

@@ -16,6 +16,8 @@ from my_api.core.config import get_settings
 from my_api.core.container import Container, lifecycle
 from my_api.infrastructure.database.session import init_database, close_database
 from my_api.infrastructure.logging import configure_logging, get_logger
+from my_api.infrastructure.observability.middleware import TracingMiddleware
+from my_api.infrastructure.observability.telemetry import init_telemetry
 
 
 @asynccontextmanager
@@ -35,6 +37,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         development=settings.debug,
     )
     logger = get_logger(__name__)
+
+    # Initialize OpenTelemetry
+    telemetry = init_telemetry(
+        service_name=settings.observability.service_name,
+        service_version=settings.version,
+        otlp_endpoint=settings.observability.otlp_endpoint,
+        enable_tracing=settings.observability.enable_tracing,
+        enable_metrics=settings.observability.enable_metrics,
+    )
+    app.state.telemetry = telemetry
+    logger.info("telemetry_initialized", service_name=settings.observability.service_name)
 
     # Initialize database
     logger.info("initializing_database", pool_size=settings.database.pool_size)
@@ -66,6 +79,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Run synchronous shutdown hooks
     lifecycle.run_shutdown()
+
+    # Gracefully shutdown telemetry
+    if hasattr(app.state, "telemetry") and app.state.telemetry:
+        logger.info("shutting_down_telemetry")
+        await app.state.telemetry.shutdown()
 
     # Close database connection
     logger.info("closing_database")
@@ -138,6 +156,13 @@ All endpoints are prefixed with `/api/v1`.
 
     # Add security headers middleware
     app.add_middleware(SecurityHeadersMiddleware)
+
+    # Add tracing middleware for OpenTelemetry
+    app.add_middleware(
+        TracingMiddleware,
+        service_name=settings.observability.service_name,
+        excluded_paths=["/health/live", "/health/ready", "/docs", "/redoc", "/openapi.json"],
+    )
 
     # Add request ID middleware for tracing
     app.add_middleware(RequestIDMiddleware)

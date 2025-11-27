@@ -157,3 +157,170 @@ Entity scaffolding with `scripts/generate_entity.py`:
 - Generates entity, mapper, use case, and routes
 - Follows project conventions automatically
 - Reduces boilerplate and ensures consistency
+- `--with-events` flag for domain event generation
+- `--with-cache` flag for cache decorator generation
+- Generates property-based tests alongside implementation
+
+### 9. Protocol-Based Interfaces
+Using Python Protocols for structural subtyping:
+- `Identifiable`, `Timestamped`, `SoftDeletable` protocols
+- `AsyncRepository` protocol for data access
+- `CacheProvider` protocol for cache backends
+- Runtime checkable with `@runtime_checkable`
+
+### 10. Advanced Specification Pattern
+Composable business rules with SQL generation:
+- `FieldSpecification` with comparison operators
+- `CompositeSpecification` for AND/OR logic
+- `NotSpecification` for negation
+- `SpecificationBuilder` for fluent API
+- `to_sql_condition()` for SQLAlchemy integration
+
+### 11. Multi-Level Caching
+Flexible caching with multiple backends:
+- `InMemoryCacheProvider` with LRU eviction
+- `RedisCacheProvider` with JSON serialization
+- `@cached` decorator for function results
+- Configurable TTL and key generation
+- Graceful degradation on failures
+
+### 12. OpenTelemetry Observability
+Comprehensive observability with OpenTelemetry:
+- `TelemetryProvider` for traces and metrics
+- `@traced` decorator for custom spans
+- `TracingMiddleware` for HTTP requests
+- Log correlation with trace_id and span_id
+- OTLP exporter support
+
+### 13. CQRS Pattern
+Command Query Responsibility Segregation:
+- `Command` and `Query` base classes
+- `CommandBus` with middleware support
+- `QueryBus` with caching support
+- Domain event emission after commands
+- Handler registration by type
+
+## Caching Architecture
+
+```mermaid
+graph TB
+    subgraph "Application Layer"
+        UC[Use Case]
+        DEC[@cached Decorator]
+    end
+    
+    subgraph "Cache Layer"
+        L1[L1: InMemoryCache]
+        L2[L2: RedisCache]
+    end
+    
+    subgraph "Data Layer"
+        DB[(Database)]
+    end
+    
+    UC --> DEC
+    DEC --> L1
+    L1 -->|Miss| L2
+    L2 -->|Miss| DB
+    DB -->|Result| L2
+    L2 -->|Result| L1
+    L1 -->|Result| DEC
+```
+
+### Cache Flow
+1. Request hits `@cached` decorator
+2. Check L1 (in-memory) cache
+3. On miss, check L2 (Redis) cache
+4. On miss, execute function and store result
+5. LRU eviction when L1 reaches max_size
+6. TTL-based expiration for both layers
+
+## Observability Architecture
+
+```mermaid
+graph TB
+    subgraph "Application"
+        REQ[HTTP Request]
+        MW[TracingMiddleware]
+        TRACED[@traced Functions]
+        LOG[Structured Logs]
+    end
+    
+    subgraph "OpenTelemetry SDK"
+        TP[TracerProvider]
+        MP[MeterProvider]
+        PROC[Processors]
+    end
+    
+    subgraph "Exporters"
+        OTLP[OTLP Exporter]
+    end
+    
+    subgraph "Backend"
+        JAEGER[Jaeger/Tempo]
+        PROM[Prometheus]
+    end
+    
+    REQ --> MW
+    MW --> TP
+    TRACED --> TP
+    LOG -->|trace_id, span_id| TP
+    TP --> PROC
+    MP --> PROC
+    PROC --> OTLP
+    OTLP --> JAEGER
+    OTLP --> PROM
+```
+
+### Trace Context Flow
+1. `TracingMiddleware` creates root span for HTTP requests
+2. `@traced` decorator creates child spans for functions
+3. `trace_id` and `span_id` injected into structured logs
+4. Context propagated via W3C Trace Context headers
+5. Metrics collected for request duration, status codes
+
+## CQRS Architecture
+
+```mermaid
+graph TB
+    subgraph "Presentation"
+        API[API Routes]
+    end
+    
+    subgraph "Command Side"
+        CMD[Command]
+        CB[CommandBus]
+        CH[CommandHandler]
+        EVT[Domain Events]
+    end
+    
+    subgraph "Query Side"
+        QRY[Query]
+        QB[QueryBus]
+        QH[QueryHandler]
+        CACHE[Cache]
+    end
+    
+    subgraph "Persistence"
+        DB[(Database)]
+    end
+    
+    API -->|Write| CMD
+    CMD --> CB
+    CB -->|Middleware| CH
+    CH --> DB
+    CH --> EVT
+    
+    API -->|Read| QRY
+    QRY --> QB
+    QB --> CACHE
+    CACHE -->|Miss| QH
+    QH --> DB
+```
+
+### CQRS Flow
+1. Commands for write operations, Queries for reads
+2. CommandBus dispatches to registered handlers
+3. Middleware chain for cross-cutting concerns
+4. Domain events emitted after successful commands
+5. QueryBus supports result caching

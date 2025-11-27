@@ -9,7 +9,6 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/example/my-api/actions/workflows/ci.yml"><img src="https://github.com/example/my-api/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python 3.12+"></a>
   <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-0.115+-green.svg" alt="FastAPI"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
@@ -128,7 +127,138 @@ router = GenericCRUDRouter(
 )
 ```
 
-Ou use o gerador: `python scripts/generate_entity.py Product name:str price:float`
+Ou use o gerador: `python scripts/generate_entity.py product --fields "name:str,price:float"`
+
+### Opções do Gerador
+
+```bash
+# Básico
+python scripts/generate_entity.py product --fields "name:str,price:float"
+
+# Com domain events
+python scripts/generate_entity.py order --fields "total:float,status:str" --with-events
+
+# Com caching
+python scripts/generate_entity.py user --fields "email:str,name:str" --with-cache
+
+# Preview sem criar arquivos
+python scripts/generate_entity.py product --dry-run
+```
+
+## Recursos Avançados
+
+### Caching
+
+```python
+from my_api.shared.caching import cached, InMemoryCacheProvider, CacheConfig
+
+# Decorator simples
+@cached(ttl=300)
+async def get_user(user_id: str) -> User:
+    return await db.fetch_user(user_id)
+
+# Com provider customizado
+cache = InMemoryCacheProvider(CacheConfig(max_size=1000, ttl=3600))
+
+@cached(ttl=60, cache_provider=cache)
+async def expensive_query() -> list:
+    return await db.complex_query()
+```
+
+### CQRS
+
+```python
+from my_api.shared.cqrs import Command, Query, CommandBus, QueryBus
+from my_api.shared.result import Ok, Result
+
+# Command
+@dataclass
+class CreateOrderCommand(Command[str, str]):
+    customer_id: str
+    items: list[str]
+    
+    async def execute(self) -> Result[str, str]:
+        return Ok("order-123")
+
+# Query
+@dataclass
+class GetOrderQuery(Query[dict]):
+    order_id: str
+    cacheable: bool = True
+    
+    async def execute(self) -> dict:
+        return {"id": self.order_id, "status": "pending"}
+
+# Uso
+bus = CommandBus()
+bus.register(CreateOrderCommand, handler)
+result = await bus.dispatch(CreateOrderCommand(customer_id="123", items=["item1"]))
+```
+
+### Specifications
+
+```python
+from my_api.shared.advanced_specification import (
+    FieldSpecification, ComparisonOperator, SpecificationBuilder
+)
+
+# Specification simples
+active_users = FieldSpecification("is_active", ComparisonOperator.EQ, True)
+premium = FieldSpecification("tier", ComparisonOperator.EQ, "premium")
+
+# Composição
+active_premium = active_users.and_(premium)
+
+# Builder fluente
+spec = (
+    SpecificationBuilder()
+    .where("status", ComparisonOperator.EQ, "active")
+    .and_where("price", ComparisonOperator.GT, 100)
+    .build()
+)
+
+# Uso com SQLAlchemy
+query = select(Product).where(spec.to_sql_condition(Product))
+```
+
+### Tracing
+
+```python
+from my_api.infrastructure.observability.telemetry import traced
+
+@traced(name="process_payment", attributes={"provider": "stripe"})
+async def process_payment(order_id: str) -> bool:
+    # Span criado automaticamente
+    # Exceções registradas como eventos
+    return await stripe.charge(order_id)
+```
+
+## Configuração
+
+### Variáveis de Ambiente
+
+```bash
+# Aplicação
+APP_NAME=My API
+DEBUG=false
+VERSION=1.0.0
+
+# Database
+DATABASE__URL=postgresql+asyncpg://user:pass@localhost/mydb
+DATABASE__POOL_SIZE=10
+
+# Segurança
+SECURITY__SECRET_KEY=your-secret-key-min-32-chars
+SECURITY__CORS_ORIGINS=["http://localhost:3000"]
+
+# Observabilidade
+OBSERVABILITY__LOG_LEVEL=INFO
+OBSERVABILITY__LOG_FORMAT=json
+OBSERVABILITY__OTLP_ENDPOINT=http://localhost:4317
+OBSERVABILITY__SERVICE_NAME=my-api
+```
+
+Gere documentação completa: `python scripts/generate_config_docs.py --output docs/configuration.md`
 
 ## Testes
 
