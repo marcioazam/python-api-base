@@ -1,5 +1,8 @@
 """Rate limiting middleware using slowapi."""
 
+import ipaddress
+import logging
+
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -9,11 +12,30 @@ from starlette.responses import JSONResponse
 from my_api.core.config import get_settings
 from my_api.shared.dto import ProblemDetail
 
+logger = logging.getLogger(__name__)
+
+
+def _is_valid_ip(ip: str) -> bool:
+    """Validate IP address format to prevent header spoofing.
+
+    Args:
+        ip: IP address string to validate.
+
+    Returns:
+        bool: True if valid IPv4 or IPv6 address.
+    """
+    try:
+        ipaddress.ip_address(ip)
+        return True
+    except ValueError:
+        return False
+
 
 def get_client_ip(request: Request) -> str:
     """Get client IP address from request.
 
-    Handles X-Forwarded-For header for proxied requests.
+    Handles X-Forwarded-For header for proxied requests with validation
+    to prevent IP spoofing attacks.
 
     Args:
         request: Starlette request object.
@@ -23,7 +45,14 @@ def get_client_ip(request: Request) -> str:
     """
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
-        return forwarded.split(",")[0].strip()
+        # Take first IP (original client) and validate format
+        ip = forwarded.split(",")[0].strip()
+        if _is_valid_ip(ip):
+            return ip
+        logger.warning(
+            "Invalid IP in X-Forwarded-For header",
+            extra={"invalid_ip": ip[:50]},  # Truncate for safety
+        )
     return get_remote_address(request)
 
 

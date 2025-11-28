@@ -1,4 +1,9 @@
-"""Item domain entity."""
+"""Item domain entity.
+
+Note: SQLModel entities use SQLField for validation constraints.
+For pure Pydantic models (non-database), use Annotated types from
+my_api.shared.types for cleaner inline validation.
+"""
 
 from datetime import datetime
 

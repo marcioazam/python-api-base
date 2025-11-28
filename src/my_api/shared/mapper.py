@@ -1,12 +1,12 @@
-"""Generic mapper interface and base implementation for object conversion."""
+"""Generic mapper interface and base implementation for object conversion.
+
+Uses PEP 695 type parameter syntax (Python 3.12+) for cleaner generic definitions.
+"""
 
 from abc import ABC, abstractmethod
-from typing import Any, Generic, Sequence, TypeVar, get_type_hints
+from typing import Any, Sequence
 
 from pydantic import BaseModel
-
-Source = TypeVar("Source", bound=BaseModel)
-Target = TypeVar("Target", bound=BaseModel)
 
 
 class MapperError(Exception):
@@ -25,7 +25,7 @@ class MapperError(Exception):
         super().__init__(message)
 
 
-class IMapper(ABC, Generic[Source, Target]):
+class IMapper[Source: BaseModel, Target: BaseModel](ABC):
     """Generic mapper interface for object conversion.
 
     Defines the contract for converting between entity and DTO types.
@@ -85,7 +85,7 @@ class IMapper(ABC, Generic[Source, Target]):
         return [self.to_entity(d) for d in dtos]
 
 
-class BaseMapper(IMapper[Source, Target]):
+class BaseMapper[Source: BaseModel, Target: BaseModel](IMapper[Source, Target]):
     """Base mapper with automatic field mapping.
 
     Provides default implementation that maps fields with matching names
@@ -220,7 +220,7 @@ class BaseMapper(IMapper[Source, Target]):
         return value
 
 
-class AutoMapper(IMapper[Source, Target]):
+class AutoMapper[Source: BaseModel, Target: BaseModel](IMapper[Source, Target]):
     """Auto mapper that infers mapping from type hints.
 
     Automatically maps between types based on field names without

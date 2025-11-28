@@ -7,6 +7,8 @@ This module provides a flexible caching infrastructure with:
 - Thread-safe async operations
 - Graceful degradation on failures
 
+Uses PEP 695 type parameter syntax (Python 3.12+) for cleaner generic definitions.
+
 **Feature: advanced-reusability**
 **Validates: Requirements 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7**
 """
@@ -19,12 +21,11 @@ import logging
 import time
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from typing import Any, Callable, ParamSpec, TypeVar
+from typing import Any, Callable, ParamSpec
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar("T")
-P = ParamSpec("P")
+P = ParamSpec("P")  # ParamSpec doesn't support PEP 695 syntax yet
 
 
 @dataclass
@@ -449,7 +450,7 @@ def get_default_cache() -> InMemoryCacheProvider:
     return _default_cache
 
 
-def cached(
+def cached[T](
     ttl: int | None = 3600,
     key_fn: Callable[..., str] | None = None,
     cache_provider: Any | None = None,

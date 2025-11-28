@@ -1,15 +1,14 @@
-"""Result pattern for explicit error handling."""
+"""Result pattern for explicit error handling.
+
+Uses PEP 695 type parameter syntax (Python 3.12+) for cleaner generic definitions.
+"""
 
 from dataclasses import dataclass
-from typing import Callable, Generic, TypeVar, Union
-
-T = TypeVar("T")  # Success type
-E = TypeVar("E")  # Error type
-U = TypeVar("U")  # Mapped type
+from typing import Callable, Union
 
 
 @dataclass(frozen=True, slots=True)
-class Ok(Generic[T]):
+class Ok[T]:
     """Represents a successful result."""
 
     value: T
@@ -30,7 +29,7 @@ class Ok(Generic[T]):
         """Get the value or return default."""
         return self.value
 
-    def map(self, fn: Callable[[T], U]) -> "Ok[U]":
+    def map[U](self, fn: Callable[[T], U]) -> "Ok[U]":
         """Apply function to value."""
         return Ok(fn(self.value))
 
@@ -40,7 +39,7 @@ class Ok(Generic[T]):
 
 
 @dataclass(frozen=True, slots=True)
-class Err(Generic[E]):
+class Err[E]:
     """Represents a failed result."""
 
     error: E
@@ -57,7 +56,7 @@ class Err(Generic[E]):
         """Raises the error."""
         raise ValueError(f"Called unwrap on Err: {self.error}")
 
-    def unwrap_or(self, default: T) -> T:
+    def unwrap_or[T](self, default: T) -> T:
         """Return the default value."""
         return default
 
@@ -65,20 +64,20 @@ class Err(Generic[E]):
         """No-op for Err."""
         return self
 
-    def map_err(self, fn: Callable[[E], U]) -> "Err[U]":
+    def map_err[U](self, fn: Callable[[E], U]) -> "Err[U]":
         """Apply function to error."""
         return Err(fn(self.error))
 
 
-# Type alias for Result
-Result = Union[Ok[T], Err[E]]
+# Type alias for Result using PEP 695
+type Result[T, E] = Ok[T] | Err[E]
 
 
-def ok(value: T) -> Ok[T]:
+def ok[T](value: T) -> Ok[T]:
     """Create an Ok result."""
     return Ok(value)
 
 
-def err(error: E) -> Err[E]:
+def err[E](error: E) -> Err[E]:
     """Create an Err result."""
     return Err(error)

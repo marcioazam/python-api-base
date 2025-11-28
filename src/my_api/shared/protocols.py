@@ -4,22 +4,17 @@ This module defines Protocol classes that enable duck typing with static type
 checking. Classes implementing these protocols don't need explicit inheritance;
 they just need to implement the required methods and attributes.
 
+Uses PEP 695 type parameter syntax (Python 3.12+) for cleaner generic definitions.
+
 **Feature: advanced-reusability**
 **Validates: Requirements 1.1, 1.2, 1.3**
 """
 
 from abc import abstractmethod
 from datetime import datetime
-from typing import Any, Generic, Protocol, Sequence, TypeVar, runtime_checkable
+from typing import Any, Protocol, Sequence, runtime_checkable
 
 from pydantic import BaseModel
-
-T = TypeVar("T", bound=BaseModel)
-T_co = TypeVar("T_co", covariant=True)
-CreateDTO = TypeVar("CreateDTO", bound=BaseModel)
-UpdateDTO = TypeVar("UpdateDTO", bound=BaseModel)
-ResultT = TypeVar("ResultT")
-ErrorT = TypeVar("ErrorT")
 
 
 @runtime_checkable
@@ -54,7 +49,7 @@ class SoftDeletable(Protocol):
 
 
 @runtime_checkable
-class AsyncRepository(Protocol[T, CreateDTO, UpdateDTO]):
+class AsyncRepository[T: BaseModel, CreateDTO: BaseModel, UpdateDTO: BaseModel](Protocol):
     """Protocol for async repository implementations.
 
     Defines the contract for data access operations. Implementations can use
@@ -172,7 +167,7 @@ class CacheProvider(Protocol):
 
 
 @runtime_checkable
-class EventHandler(Protocol[T]):
+class EventHandler[T](Protocol):
     """Protocol for domain event handlers.
 
     Defines the contract for handling domain events.
@@ -190,7 +185,7 @@ class EventHandler(Protocol[T]):
         ...
 
 
-class Command(Protocol[ResultT]):
+class Command[ResultT](Protocol):
     """Protocol for CQRS commands.
 
     Commands represent intentions to change the system state.
@@ -210,7 +205,7 @@ class Command(Protocol[ResultT]):
         ...
 
 
-class Query(Protocol[ResultT]):
+class Query[ResultT](Protocol):
     """Protocol for CQRS queries.
 
     Queries represent requests for data without side effects.
@@ -231,7 +226,7 @@ class Query(Protocol[ResultT]):
 
 
 @runtime_checkable
-class CommandHandler(Protocol[T, ResultT]):
+class CommandHandler[T, ResultT](Protocol):
     """Protocol for command handlers.
 
     Command handlers process commands and return results.
@@ -254,7 +249,7 @@ class CommandHandler(Protocol[T, ResultT]):
 
 
 @runtime_checkable
-class QueryHandler(Protocol[T, ResultT]):
+class QueryHandler[T, ResultT](Protocol):
     """Protocol for query handlers.
 
     Query handlers process queries and return data.
@@ -277,7 +272,7 @@ class QueryHandler(Protocol[T, ResultT]):
 
 
 @runtime_checkable
-class Mapper(Protocol[T, ResultT]):
+class Mapper[T, ResultT](Protocol):
     """Protocol for entity mappers.
 
     Mappers transform entities to DTOs and vice versa.
@@ -337,3 +332,121 @@ class UnitOfWork(Protocol):
     async def rollback(self) -> None:
         """Rollback the current transaction."""
         ...
+
+
+# =============================================================================
+# Combined Protocol Types (Intersection Constraints)
+# =============================================================================
+# Python doesn't support Protocol intersection with `&` operator directly.
+# Instead, we create combined protocols that inherit from multiple protocols.
+# These provide stronger type constraints for entities.
+
+
+@runtime_checkable
+class Entity(Identifiable, Protocol):
+    """Protocol for basic entities with an identifier.
+
+    Combines: Identifiable
+    Use this as a bound for TypeVars when you need entities with IDs.
+
+    Example:
+        T = TypeVar("T", bound=Entity)
+    """
+
+    pass
+
+
+@runtime_checkable
+class TrackedEntity(Identifiable, Timestamped, Protocol):
+    """Protocol for entities with ID and timestamp tracking.
+
+    Combines: Identifiable + Timestamped
+    Use this as a bound for TypeVars when you need entities with
+    both ID and timestamp fields.
+
+    Example:
+        T = TypeVar("T", bound=TrackedEntity)
+
+        class MyRepository(Generic[T]):
+            async def get_recent(self, since: datetime) -> list[T]:
+                # T is guaranteed to have id, created_at, updated_at
+                ...
+    """
+
+    pass
+
+
+@runtime_checkable
+class DeletableEntity(Identifiable, SoftDeletable, Protocol):
+    """Protocol for entities with ID and soft delete support.
+
+    Combines: Identifiable + SoftDeletable
+    Use this as a bound for TypeVars when you need entities that
+    support soft deletion.
+
+    Example:
+        T = TypeVar("T", bound=DeletableEntity)
+    """
+
+    pass
+
+
+@runtime_checkable
+class FullEntity(Identifiable, Timestamped, SoftDeletable, Protocol):
+    """Protocol for entities with all common fields.
+
+    Combines: Identifiable + Timestamped + SoftDeletable
+    Use this as a bound for TypeVars when you need entities with
+    ID, timestamps, and soft delete support.
+
+    Example:
+        T = TypeVar("T", bound=FullEntity)
+
+        class BaseRepository(Generic[T]):
+            async def get_active(self) -> list[T]:
+                # T is guaranteed to have id, created_at, updated_at, is_deleted
+                return [e for e in self._storage if not e.is_deleted]
+    """
+
+    pass
+
+
+@runtime_checkable
+class Auditable(Identifiable, Timestamped, Protocol):
+    """Protocol for auditable entities.
+
+    Combines: Identifiable + Timestamped
+    Alias for TrackedEntity, semantically indicates audit trail support.
+    """
+
+    pass
+
+
+@runtime_checkable
+class Versionable(Protocol):
+    """Protocol for entities with optimistic locking.
+
+    Entities implementing this protocol support version-based
+    concurrency control.
+    """
+
+    version: int
+
+
+@runtime_checkable
+class VersionedEntity(Identifiable, Timestamped, Versionable, Protocol):
+    """Protocol for entities with versioning support.
+
+    Combines: Identifiable + Timestamped + Versionable
+    Use this for entities that need optimistic locking.
+
+    Example:
+        T = TypeVar("T", bound=VersionedEntity)
+
+        async def update_with_lock(entity: T, new_version: int) -> T:
+            if entity.version != new_version - 1:
+                raise ConcurrencyError("Version mismatch")
+            ...
+    """
+
+    pass

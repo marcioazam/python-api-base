@@ -210,6 +210,10 @@ app = create_app()
 
 
 if __name__ == "__main__":
+    import os
+
     import uvicorn
 
-    uvicorn.run("my_api.main:app", host="0.0.0.0", port=8000, reload=True)
+    host = os.getenv("API_HOST", "127.0.0.1")
+    port = int(os.getenv("API_PORT", "8000"))
+    uvicorn.run("my_api.main:app", host=host, port=port, reload=True)

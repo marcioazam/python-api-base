@@ -1,12 +1,13 @@
-"""Specification pattern implementation for composable business rules."""
+"""Specification pattern implementation for composable business rules.
+
+Uses PEP 695 type parameter syntax (Python 3.12+) for cleaner generic definitions.
+"""
 
 from abc import ABC, abstractmethod
-from typing import Callable, Generic, TypeVar
-
-T = TypeVar("T")
+from typing import Callable
 
 
-class Specification(ABC, Generic[T]):
+class Specification[T](ABC):
     """Abstract base class for specifications.
 
     A specification encapsulates a business rule that can be evaluated
@@ -69,7 +70,7 @@ class Specification(ABC, Generic[T]):
         return self.not_spec()
 
 
-class AndSpecification(Specification[T]):
+class AndSpecification[T](Specification[T]):
     """Specification that combines two specifications with AND logic."""
 
     def __init__(self, left: Specification[T], right: Specification[T]) -> None:
@@ -96,7 +97,7 @@ class AndSpecification(Specification[T]):
         )
 
 
-class OrSpecification(Specification[T]):
+class OrSpecification[T](Specification[T]):
     """Specification that combines two specifications with OR logic."""
 
     def __init__(self, left: Specification[T], right: Specification[T]) -> None:
@@ -123,7 +124,7 @@ class OrSpecification(Specification[T]):
         )
 
 
-class NotSpecification(Specification[T]):
+class NotSpecification[T](Specification[T]):
     """Specification that negates another specification."""
 
     def __init__(self, spec: Specification[T]) -> None:
@@ -146,7 +147,7 @@ class NotSpecification(Specification[T]):
         return not self._spec.is_satisfied_by(candidate)
 
 
-class PredicateSpecification(Specification[T]):
+class PredicateSpecification[T](Specification[T]):
     """Specification based on a predicate function.
 
     This is a convenience class for creating specifications from
@@ -179,7 +180,7 @@ class PredicateSpecification(Specification[T]):
         return f"PredicateSpecification({self._name})"
 
 
-def spec(predicate: Callable[[T], bool], name: str = "") -> Specification[T]:
+def spec[T](predicate: Callable[[T], bool], name: str = "") -> Specification[T]:
     """Create a specification from a predicate function.
 
     Args:

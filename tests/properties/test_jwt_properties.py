@@ -565,3 +565,141 @@ class TestValidTokenAuthentication:
 
         assert payload1.sub == user_id
         assert payload2.sub == user_id + "_other"
+
+
+# =============================================================================
+# JWT Security Property Tests (Post-Refactoring)
+# =============================================================================
+
+
+class TestJWTAlgorithmRestrictionProperties:
+    """Property tests for JWT algorithm restriction.
+
+    **Feature: code-review-refactoring, Property 4: JWT Algorithm Restriction**
+    **Validates: Requirements 6.1, 6.2**
+    """
+
+    @given(st.sampled_from(["none", "None", "NONE", "nOnE"]))
+    @settings(max_examples=10)
+    def test_none_algorithm_rejected(self, alg: str) -> None:
+        """Property: 'none' algorithm is always rejected.
+
+        **Feature: code-review-refactoring, Property 4: JWT Algorithm Restriction**
+        **Validates: Requirements 6.1, 6.2**
+        """
+        from my_api.core.auth.jwt_validator import InvalidTokenError, JWTValidator
+
+        with pytest.raises(InvalidTokenError) as exc_info:
+            JWTValidator(secret_or_key="test-secret-key-32-chars-long!!", algorithm=alg)
+
+        assert "none" in str(exc_info.value).lower() or "not allowed" in str(
+            exc_info.value
+        ).lower()
+
+    @given(st.sampled_from(["RS256", "ES256", "HS256"]))
+    @settings(max_examples=10)
+    def test_allowed_algorithms_accepted(self, alg: str) -> None:
+        """Property: Allowed algorithms are accepted.
+
+        **Feature: code-review-refactoring, Property 4: JWT Algorithm Restriction**
+        **Validates: Requirements 6.1, 6.2**
+        """
+        from my_api.core.auth.jwt_validator import JWTValidator
+
+        # Should not raise
+        validator = JWTValidator(
+            secret_or_key="test-secret-key-32-chars-long!!", algorithm=alg
+        )
+        assert validator._algorithm == alg
+
+    @given(st.text(min_size=1, max_size=20).filter(lambda x: x not in ["RS256", "ES256", "HS256", "none", "None"]))
+    @settings(max_examples=50)
+    def test_unknown_algorithms_rejected(self, alg: str) -> None:
+        """Property: Unknown algorithms are rejected.
+
+        **Feature: code-review-refactoring, Property 4: JWT Algorithm Restriction**
+        **Validates: Requirements 6.1, 6.2**
+        """
+        from my_api.core.auth.jwt_validator import InvalidTokenError, JWTValidator
+
+        with pytest.raises(InvalidTokenError):
+            JWTValidator(secret_or_key="test-secret-key-32-chars-long!!", algorithm=alg)
+
+
+class TestJWTTamperingDetectionProperties:
+    """Property tests for JWT tampering detection.
+
+    **Feature: code-review-refactoring, Property 5: Token Tampering Detection**
+    **Validates: Requirements 6.1, 12.5**
+    """
+
+    @given(st.text(min_size=1, max_size=50))
+    @settings(max_examples=50)
+    def test_tampered_token_rejected(self, user_id: str) -> None:
+        """Property: Tampered tokens are rejected.
+
+        **Feature: code-review-refactoring, Property 5: Token Tampering Detection**
+        **Validates: Requirements 6.1, 12.5**
+        """
+        from my_api.core.auth.jwt import JWTService
+        from my_api.core.auth.jwt_validator import InvalidTokenError, JWTValidator
+
+        # Create valid token
+        service = JWTService(
+            secret_key="test-secret-key-32-chars-long!!",
+            algorithm="HS256",
+        )
+        token, _ = service.create_access_token(user_id)
+
+        # Tamper with token (modify payload)
+        parts = token.split(".")
+        if len(parts) == 3:
+            # Modify the payload part
+            import base64
+
+            tampered_payload = base64.urlsafe_b64encode(b'{"sub":"hacker"}').decode()
+            tampered_token = f"{parts[0]}.{tampered_payload}.{parts[2]}"
+
+            validator = JWTValidator(
+                secret_or_key="test-secret-key-32-chars-long!!",
+                algorithm="HS256",
+            )
+
+            with pytest.raises(InvalidTokenError):
+                validator.validate(tampered_token)
+
+
+class TestJWTValidatorBackwardCompatibility:
+    """Property tests for JWT validator backward compatibility.
+
+    **Feature: code-review-refactoring, Property 1: Backward Compatibility**
+    **Validates: Requirements 1.2, 1.4**
+    """
+
+    @given(st.text(min_size=1, max_size=50))
+    @settings(max_examples=50)
+    def test_valid_token_validates(self, user_id: str) -> None:
+        """Property: Valid tokens pass validation.
+
+        **Feature: code-review-refactoring, Property 1: Backward Compatibility**
+        **Validates: Requirements 1.2, 1.4**
+        """
+        from my_api.core.auth.jwt import JWTService
+        from my_api.core.auth.jwt_validator import JWTValidator
+
+        service = JWTService(
+            secret_key="test-secret-key-32-chars-long!!",
+            algorithm="HS256",
+        )
+        token, payload = service.create_access_token(user_id)
+
+        validator = JWTValidator(
+            secret_or_key="test-secret-key-32-chars-long!!",
+            algorithm="HS256",
+        )
+
+        validated = validator.validate(token)
+
+        assert validated.sub == user_id
+        assert validated.jti == payload.jti
+        assert validated.token_type == "access"

@@ -1,16 +1,15 @@
-"""Generic repository interface for CRUD operations."""
+"""Generic repository interface for CRUD operations.
+
+Uses PEP 695 type parameter syntax (Python 3.12+) for cleaner generic definitions.
+"""
 
 from abc import ABC, abstractmethod
-from typing import Any, Generic, Sequence, TypeVar
+from typing import Any, Sequence
 
 from pydantic import BaseModel
 
-T = TypeVar("T", bound=BaseModel)
-CreateT = TypeVar("CreateT", bound=BaseModel)
-UpdateT = TypeVar("UpdateT", bound=BaseModel)
 
-
-class IRepository(ABC, Generic[T, CreateT, UpdateT]):
+class IRepository[T: BaseModel, CreateT: BaseModel, UpdateT: BaseModel](ABC):
     """Generic repository interface for CRUD operations.
 
     Provides an abstraction layer for data access with async support.
@@ -122,7 +121,9 @@ class IRepository(ABC, Generic[T, CreateT, UpdateT]):
 
 
 
-class InMemoryRepository(IRepository[T, CreateT, UpdateT]):
+class InMemoryRepository[T: BaseModel, CreateT: BaseModel, UpdateT: BaseModel](
+    IRepository[T, CreateT, UpdateT]
+):
     """In-memory repository implementation for testing.
 
     Stores entities in a dictionary for fast isolated tests.

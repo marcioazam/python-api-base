@@ -1,14 +1,14 @@
-"""Generic DTOs for API responses."""
+"""Generic DTOs for API responses.
+
+Uses PEP 695 type parameter syntax (Python 3.12+) for cleaner generic definitions.
+"""
 
 from datetime import datetime, timezone
-from typing import Generic, TypeVar
 
 from pydantic import BaseModel, Field, computed_field
 
-T = TypeVar("T")
 
-
-class ApiResponse(BaseModel, Generic[T]):
+class ApiResponse[T](BaseModel):
     """Generic API response wrapper.
 
     Wraps any data type with standard response metadata including
@@ -29,7 +29,7 @@ class ApiResponse(BaseModel, Generic[T]):
     model_config = {"from_attributes": True}
 
 
-class PaginatedResponse(BaseModel, Generic[T]):
+class PaginatedResponse[T](BaseModel):
     """Generic paginated response.
 
     Contains a list of items along with pagination metadata

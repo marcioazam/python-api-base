@@ -1,11 +1,29 @@
 """Mock repository factories for testing.
 
-**Validates: Requirements 14.4**
+Provides type-safe mock implementations for testing repository-dependent code.
+
+**Feature: api-architecture-analysis, Task 4.3: Type-safe Mocks**
+**Validates: Requirements 8.1**
+
+Usage:
+    from tests.factories.mock_repository import (
+        MockRepository,
+        MockRepositoryFactory,
+        TypedMock,
+        create_typed_mock,
+    )
+
+    # Create a type-safe mock repository
+    mock_repo = MockRepository[Item, ItemCreate, ItemUpdate](Item)
+
+    # Create a typed mock for any interface
+    mock_service = create_typed_mock(IUserService)
 """
 
-from collections.abc import Sequence
-from typing import Any, Generic, TypeVar
-from unittest.mock import AsyncMock, MagicMock
+from collections.abc import Awaitable, Callable, Sequence
+from dataclasses import dataclass, field
+from typing import Any, Generic, ParamSpec, Protocol, TypeVar, cast, overload
+from unittest.mock import AsyncMock, MagicMock, Mock
 
 from pydantic import BaseModel
 
@@ -14,6 +32,8 @@ from my_api.shared.repository import IRepository
 T = TypeVar("T", bound=BaseModel)
 CreateT = TypeVar("CreateT", bound=BaseModel)
 UpdateT = TypeVar("UpdateT", bound=BaseModel)
+P = ParamSpec("P")
+R = TypeVar("R")
 
 
 class MockRepository(IRepository[T, CreateT, UpdateT], Generic[T, CreateT, UpdateT]):
@@ -204,3 +224,239 @@ class MockRepositoryFactory:
             raise_on_update=exception,
             raise_on_delete=exception,
         )
+
+
+# =============================================================================
+# Type-Safe Mock Wrapper
+# =============================================================================
+
+
+@dataclass
+class CallRecord(Generic[P, R]):
+    """Record of a single method call with typed arguments and return value."""
+
+    args: tuple[Any, ...]
+    kwargs: dict[str, Any]
+    return_value: R | None = None
+    exception: Exception | None = None
+
+
+@dataclass
+class MethodCallTracker(Generic[P, R]):
+    """Tracks calls to a specific method with type information."""
+
+    calls: list[CallRecord[P, R]] = field(default_factory=list)
+
+    @property
+    def call_count(self) -> int:
+        """Number of times the method was called."""
+        return len(self.calls)
+
+    @property
+    def called(self) -> bool:
+        """Whether the method was called at least once."""
+        return len(self.calls) > 0
+
+    @property
+    def last_call(self) -> CallRecord[P, R] | None:
+        """The most recent call, or None if never called."""
+        return self.calls[-1] if self.calls else None
+
+    def assert_called(self) -> None:
+        """Assert that the method was called at least once."""
+        if not self.called:
+            raise AssertionError("Method was not called")
+
+    def assert_called_once(self) -> None:
+        """Assert that the method was called exactly once."""
+        if self.call_count != 1:
+            raise AssertionError(f"Method was called {self.call_count} times, expected 1")
+
+    def assert_called_with(self, *args: Any, **kwargs: Any) -> None:
+        """Assert that the last call had the specified arguments."""
+        if not self.called:
+            raise AssertionError("Method was not called")
+        last = self.last_call
+        if last is None:
+            raise AssertionError("No calls recorded")
+        if last.args != args or last.kwargs != kwargs:
+            raise AssertionError(
+                f"Expected call with args={args}, kwargs={kwargs}, "
+                f"got args={last.args}, kwargs={last.kwargs}"
+            )
+
+    def reset(self) -> None:
+        """Clear all recorded calls."""
+        self.calls.clear()
+
+
+class TypedMock(Generic[T]):
+    """Type-safe mock wrapper that preserves interface type information.
+
+    Wraps a MagicMock or AsyncMock while providing type hints for the
+    mocked interface. This enables IDE autocompletion and type checking
+    while still allowing mock configuration.
+
+    Type Parameters:
+        T: The interface type being mocked.
+
+    Example:
+        >>> mock = TypedMock[IUserService]()
+        >>> mock.configure_method("get_user", return_value=user)
+        >>> result = await mock.instance.get_user("123")
+    """
+
+    def __init__(
+        self,
+        interface_type: type[T] | None = None,
+        *,
+        spec: type[T] | None = None,
+        use_async: bool = True,
+    ) -> None:
+        """Initialize typed mock.
+
+        Args:
+            interface_type: The interface type being mocked (for documentation).
+            spec: Optional spec to use for the mock (enables attribute checking).
+            use_async: Whether to use AsyncMock (True) or MagicMock (False).
+        """
+        self._interface_type = interface_type or spec
+        mock_class = AsyncMock if use_async else MagicMock
+        self._mock = mock_class(spec=spec) if spec else mock_class()
+        self._method_trackers: dict[str, MethodCallTracker[Any, Any]] = {}
+        self._configured_returns: dict[str, Any] = {}
+        self._configured_side_effects: dict[str, Any] = {}
+
+    @property
+    def instance(self) -> T:
+        """Get the mock instance typed as the interface.
+
+        Returns:
+            The mock cast to the interface type for type-safe usage.
+        """
+        return cast(T, self._mock)
+
+    @property
+    def mock(self) -> MagicMock | AsyncMock:
+        """Get the underlying mock for advanced configuration."""
+        return self._mock
+
+    def configure_method(
+        self,
+        method_name: str,
+        *,
+        return_value: Any = None,
+        side_effect: Any = None,
+    ) -> "TypedMock[T]":
+        """Configure a method's return value or side effect.
+
+        Args:
+            method_name: Name of the method to configure.
+            return_value: Value to return when the method is called.
+            side_effect: Side effect (exception or callable) for the method.
+
+        Returns:
+            Self for method chaining.
+        """
+        method_mock = getattr(self._mock, method_name)
+        if return_value is not None:
+            method_mock.return_value = return_value
+            self._configured_returns[method_name] = return_value
+        if side_effect is not None:
+            method_mock.side_effect = side_effect
+            self._configured_side_effects[method_name] = side_effect
+        return self
+
+    def configure_async_method(
+        self,
+        method_name: str,
+        *,
+        return_value: Any = None,
+        side_effect: Any = None,
+    ) -> "TypedMock[T]":
+        """Configure an async method's return value or side effect.
+
+        For async methods, the return_value is automatically wrapped
+        in an awaitable.
+
+        Args:
+            method_name: Name of the async method to configure.
+            return_value: Value to return when awaited.
+            side_effect: Side effect (exception or callable) for the method.
+
+        Returns:
+            Self for method chaining.
+        """
+        method_mock = getattr(self._mock, method_name)
+        if return_value is not None:
+            method_mock.return_value = return_value
+            self._configured_returns[method_name] = return_value
+        if side_effect is not None:
+            method_mock.side_effect = side_effect
+            self._configured_side_effects[method_name] = side_effect
+        return self
+
+    def get_tracker(self, method_name: str) -> MethodCallTracker[Any, Any]:
+        """Get the call tracker for a specific method.
+
+        Args:
+            method_name: Name of the method to track.
+
+        Returns:
+            MethodCallTracker for the specified method.
+        """
+        if method_name not in self._method_trackers:
+            self._method_trackers[method_name] = MethodCallTracker()
+        return self._method_trackers[method_name]
+
+    def assert_method_called(self, method_name: str) -> None:
+        """Assert that a method was called."""
+        method_mock = getattr(self._mock, method_name)
+        method_mock.assert_called()
+
+    def assert_method_called_once(self, method_name: str) -> None:
+        """Assert that a method was called exactly once."""
+        method_mock = getattr(self._mock, method_name)
+        method_mock.assert_called_once()
+
+    def assert_method_called_with(
+        self, method_name: str, *args: Any, **kwargs: Any
+    ) -> None:
+        """Assert that a method was called with specific arguments."""
+        method_mock = getattr(self._mock, method_name)
+        method_mock.assert_called_with(*args, **kwargs)
+
+    def reset_mock(self) -> None:
+        """Reset the mock and all trackers."""
+        self._mock.reset_mock()
+        for tracker in self._method_trackers.values():
+            tracker.reset()
+
+
+def create_typed_mock(
+    interface_type: type[T],
+    *,
+    use_async: bool = True,
+    **method_returns: Any,
+) -> TypedMock[T]:
+    """Create a typed mock for an interface with optional method configurations.
+
+    Args:
+        interface_type: The interface type to mock.
+        use_async: Whether to use AsyncMock (True) or MagicMock (False).
+        **method_returns: Method name to return value mappings.
+
+    Returns:
+        A TypedMock configured with the specified return values.
+
+    Example:
+        >>> mock = create_typed_mock(
+        ...     IUserService,
+        ...     get_user=user,
+        ...     list_users=[user1, user2],
+        ... )
+    """
+    typed_mock = TypedMock[T](interface_type, use_async=use_async)
+    for method_name, return_value in method_returns.items():
+        typed_mock.configure_method(method_name, return_value=return_value)
+    return typed_mock

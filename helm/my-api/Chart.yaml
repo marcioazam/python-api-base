@@ -1,0 +1,25 @@
+apiVersion: v2
+name: my-api
+description: A Helm chart for my-api Python FastAPI application
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - fastapi
+  - python
+  - api
+  - rest
+maintainers:
+  - name: API Team
+    email: api-team@example.com
+sources:
+  - https://github.com/example/my-api
+dependencies:
+  - name: postgresql
+    version: "12.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: redis
+    version: "17.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled

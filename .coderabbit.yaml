@@ -1,0 +1,43 @@
+language: "pt-BR"
+
+reviews:
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+      - develop
+  
+  path_filters:
+    - "!.venv/**"
+    - "!**/__pycache__/**"
+    - "!*.lock"
+  
+  path_instructions:
+    - path: "src/**/*.py"
+      instructions: |
+        Verifique:
+        - Complexidade ciclomática < 10
+        - Funções com no máximo 50 linhas
+        - Arquivos com no máximo 400 linhas
+        - Uso de type hints
+        - Tratamento adequado de erros
+        - Princípios SOLID
+    
+    - path: "tests/**/*.py"
+      instructions: |
+        Verifique:
+        - Cobertura de edge cases
+        - Nomenclatura descritiva
+        - Arrange-Act-Assert pattern
+    
+    - path: "alembic/**/*.py"
+      instructions: |
+        Verifique:
+        - Migrations reversíveis
+        - Sem dados sensíveis
+
+chat:
+  auto_reply: true
+
+early_access: true

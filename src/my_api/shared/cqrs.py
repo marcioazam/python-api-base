@@ -6,24 +6,22 @@ This module provides:
 - Handler registration and middleware support
 - Domain event emission after command execution
 
+Uses PEP 695 type parameter syntax (Python 3.12+) for cleaner generic definitions.
+
 **Feature: advanced-reusability**
 **Validates: Requirements 5.1, 5.2, 5.3, 5.4, 5.5**
 """
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Generic, TypeVar
+from typing import Any, Callable
 
 from my_api.shared.result import Err, Ok, Result
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar("T")
-E = TypeVar("E")
-ResultT = TypeVar("ResultT")
 
-
-class Command(ABC, Generic[T, E]):
+class Command[T, E](ABC):
     """Base class for CQRS commands.
 
     Commands represent intentions to change the system state.
@@ -47,7 +45,7 @@ class Command(ABC, Generic[T, E]):
         ...
 
 
-class Query(ABC, Generic[T]):
+class Query[T](ABC):
     """Base class for CQRS queries.
 
     Queries represent requests for data without side effects.
@@ -154,7 +152,7 @@ class CommandBus:
         """
         self._event_handlers.append(handler)
 
-    async def dispatch(
+    async def dispatch[T, E](
         self,
         command: Command[T, E],
     ) -> Result[T, E]:
@@ -276,7 +274,7 @@ class QueryBus:
         """
         self._cache = cache
 
-    async def dispatch(self, query: Query[T]) -> T:
+    async def dispatch[T](self, query: Query[T]) -> T:
         """Dispatch a query to its registered handler.
 
         Args:

@@ -1,16 +1,16 @@
-"""Base entity with generic ID type and common fields."""
+"""Base entity with generic ID type and common fields.
+
+Uses PEP 695 type parameter syntax (Python 3.12+) for cleaner generic definitions.
+"""
 
 from datetime import datetime, timezone
-from typing import Generic, TypeVar
 
 from pydantic import BaseModel, Field
 
 from my_api.shared.utils.ids import generate_ulid
 
-IdType = TypeVar("IdType", bound=str | int)
 
-
-class BaseEntity(BaseModel, Generic[IdType]):
+class BaseEntity[IdType: (str, int)](BaseModel):
     """Base entity with common fields for all domain entities.
 
     Provides standard fields for identity, timestamps, and soft delete

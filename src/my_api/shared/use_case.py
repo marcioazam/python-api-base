@@ -1,8 +1,12 @@
-"""Generic use case base class for business logic."""
+"""Generic use case base class for business logic.
+
+Uses PEP 695 type parameter syntax (Python 3.12+) for cleaner generic definitions.
+Uses @overload for type narrowing on methods with conditional return types.
+"""
 
 from collections.abc import Sequence
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator, Generic, TypeVar
+from typing import Any, AsyncGenerator, Literal, overload
 
 from pydantic import BaseModel
 
@@ -12,13 +16,10 @@ from my_api.shared.mapper import IMapper
 from my_api.shared.repository import IRepository
 from my_api.shared.unit_of_work import IUnitOfWork
 
-T = TypeVar("T", bound=BaseModel)
-CreateDTO = TypeVar("CreateDTO", bound=BaseModel)
-UpdateDTO = TypeVar("UpdateDTO", bound=BaseModel)
-ResponseDTO = TypeVar("ResponseDTO", bound=BaseModel)
 
-
-class BaseUseCase(Generic[T, CreateDTO, UpdateDTO, ResponseDTO]):
+class BaseUseCase[
+    T: BaseModel, CreateDTO: BaseModel, UpdateDTO: BaseModel, ResponseDTO: BaseModel
+]:
     """Generic use case with CRUD operations.
 
     Encapsulates business logic and delegates data operations to repository.
@@ -79,25 +80,57 @@ class BaseUseCase(Generic[T, CreateDTO, UpdateDTO, ResponseDTO]):
                 await self._uow.rollback()
                 raise
 
-    async def get(self, id: str) -> ResponseDTO:
-        """Get entity by ID.
+    @overload
+    async def get(
+        self, id: str, *, raise_on_missing: Literal[True] = True
+    ) -> ResponseDTO: ...
+
+    @overload
+    async def get(
+        self, id: str, *, raise_on_missing: Literal[False]
+    ) -> ResponseDTO | None: ...
+
+    async def get(
+        self, id: str, *, raise_on_missing: bool = True
+    ) -> ResponseDTO | None:
+        """Get entity by ID with type-narrowed return type.
+
+        Uses @overload for precise type inference:
+        - get(id) or get(id, raise_on_missing=True) -> ResponseDTO (never None)
+        - get(id, raise_on_missing=False) -> ResponseDTO | None
 
         Args:
             id: Entity identifier.
+            raise_on_missing: If True (default), raises EntityNotFoundError when
+                entity is not found. If False, returns None instead.
 
         Returns:
             ResponseDTO: Entity as response DTO.
+            None: Only when raise_on_missing=False and entity not found.
 
         Raises:
-            EntityNotFoundError: If entity not found.
+            EntityNotFoundError: If entity not found and raise_on_missing=True.
+
+        Examples:
+            # Type is ResponseDTO (guaranteed non-None)
+            item = await use_case.get("123")
+
+            # Type is ResponseDTO | None
+            item = await use_case.get("123", raise_on_missing=False)
+            if item is not None:
+                print(item.name)
         """
         entity = await self._repository.get_by_id(id)
         if entity is None:
-            raise EntityNotFoundError(self._entity_name, id)
+            if raise_on_missing:
+                raise EntityNotFoundError(self._entity_name, id)
+            return None
         return self._mapper.to_dto(entity)
 
     async def get_or_none(self, id: str) -> ResponseDTO | None:
         """Get entity by ID or None if not found.
+
+        Convenience method equivalent to get(id, raise_on_missing=False).
 
         Args:
             id: Entity identifier.
@@ -105,8 +138,7 @@ class BaseUseCase(Generic[T, CreateDTO, UpdateDTO, ResponseDTO]):
         Returns:
             ResponseDTO or None if not found.
         """
-        entity = await self._repository.get_by_id(id)
-        return self._mapper.to_dto(entity) if entity else None
+        return await self.get(id, raise_on_missing=False)
 
     async def list(
         self,

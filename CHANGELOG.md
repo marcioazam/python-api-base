@@ -11,9 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Property-based tests for Circuit Breaker state transitions
 - Property-based tests for Rate Limiter response format
 - Load testing configuration with k6
+- ADR-005: Large file refactoring documentation
 
 ### Changed
 - Updated architecture documentation with conformance status
+- Refactored `query_builder.py` (562 lines) into `query_builder/` package
+- Refactored `batch.py` (581 lines) into `batch/` package
+
+### Fixed
+- **Security**: Added IP validation in rate limiter to prevent X-Forwarded-For header spoofing
+- Backward compatibility maintained via re-exports in refactored modules
 
 ## [0.1.0] - 2024-11-27
 

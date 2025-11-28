@@ -1,10 +1,13 @@
-"""Domain events system for decoupled communication."""
+"""Domain events system for decoupled communication.
+
+Uses PEP 695 type parameter syntax (Python 3.12+) for cleaner generic definitions.
+"""
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Generic, TypeVar
+from typing import Any
 from uuid import uuid4
 
 from my_api.shared.utils.datetime import utc_now
@@ -65,8 +68,7 @@ class EntityDeletedEvent(DomainEvent):
         return f"{self.entity_type}.deleted"
 
 
-EventT = TypeVar("EventT", bound=DomainEvent)
-EventHandler = Callable[[DomainEvent], Any]
+type EventHandler = Callable[[DomainEvent], Any]
 
 
 class EventBus:

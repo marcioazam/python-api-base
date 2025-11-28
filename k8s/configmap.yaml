@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-api-config
+  labels:
+    app: my-api
+data:
+  environment: "production"
+  log_level: "INFO"
+  cors_origins: "https://app.example.com,https://admin.example.com"
+  rate_limit_requests: "100"
+  rate_limit_period: "60"
+  cache_ttl: "300"
+  pagination_default_size: "20"
+  pagination_max_size: "100"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-api-secrets
+  labels:
+    app: my-api
+type: Opaque
+stringData:
+  database-url: "postgresql://user:password@postgres:5432/myapi"
+  jwt-secret: "your-jwt-secret-here"
+  redis-url: "redis://redis:6379/0"

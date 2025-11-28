@@ -22,6 +22,8 @@ dependencies = [
     # Web Framework
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
+    # CLI
+    "typer[all]>=0.12.0",
     # Validation & Serialization
     "pydantic>=2.9.0",
     "pydantic-settings>=2.6.0",
@@ -50,6 +52,9 @@ dependencies = [
     "aiocache>=0.12.3",
     "python-dotenv>=1.0.1",
     "httpx>=0.28.0",
+    # GraphQL
+    "strawberry-graphql[fastapi]>=0.252.0",
+    "uuid6>=2025.0.1",
 ]
 
 [project.optional-dependencies]
@@ -65,11 +70,16 @@ dev = [
     "ruff>=0.8.0",
     "mypy>=1.13.0",
     "pre-commit>=4.0.0",
+    # Security
+    "bandit>=1.7.0",
     # Documentation
     "mkdocs>=1.6.0",
     "mkdocs-material>=9.5.0",
     "mkdocstrings[python]>=0.27.0",
 ]
+
+[project.scripts]
+api-cli = "my_api.cli.main:main"
 
 [project.urls]
 Homepage = "https://github.com/example/my-api"
