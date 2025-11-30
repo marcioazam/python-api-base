@@ -3,7 +3,7 @@
 Uses PEP 695 type parameter syntax (Python 3.12+) for cleaner generic definitions.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 from pydantic import BaseModel, Field
 
@@ -22,11 +22,11 @@ class BaseEntity[IdType: (str, int)](BaseModel):
 
     id: IdType | None = Field(default=None, description="Unique entity identifier")
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc),
+        default_factory=lambda: datetime.now(tz=UTC),
         description="Timestamp when entity was created",
     )
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc),
+        default_factory=lambda: datetime.now(tz=UTC),
         description="Timestamp when entity was last updated",
     )
     is_deleted: bool = Field(
@@ -38,7 +38,7 @@ class BaseEntity[IdType: (str, int)](BaseModel):
 
     def mark_updated(self) -> None:
         """Update the updated_at timestamp to current time."""
-        object.__setattr__(self, "updated_at", datetime.now(tz=timezone.utc))
+        object.__setattr__(self, "updated_at", datetime.now(tz=UTC))
 
     def mark_deleted(self) -> None:
         """Mark entity as soft deleted."""

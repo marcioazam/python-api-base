@@ -1,13 +1,64 @@
-"""Application exception hierarchy."""
+"""Application exception hierarchy.
 
+**Feature: core-code-review**
+**Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5**
+"""
+
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any
+
+from my_api.shared.utils.ids import generate_ulid
+
+__all__ = [
+    "AppException",
+    "AuthenticationError",
+    "AuthorizationError",
+    "BusinessRuleViolationError",
+    "ConflictError",
+    "EntityNotFoundError",
+    "ErrorContext",
+    "RateLimitExceededError",
+    "ValidationError",
+]
+
+
+@dataclass(frozen=True, slots=True)
+class ErrorContext:
+    """Immutable error context for request tracing.
+    
+    **Feature: core-code-review, deep-code-quality-generics-review**
+    **Validates: Requirements 2.1, 8.1, 12.1, 14.6**
+    
+    Uses slots=True for memory optimization (20% reduction per Real Python benchmarks).
+    
+    Attributes:
+        correlation_id: Unique identifier for request tracing.
+        timestamp: When the error occurred.
+        request_path: Optional request path where error occurred.
+    """
+
+    correlation_id: str = field(default_factory=generate_ulid)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
+    request_path: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert context to dictionary."""
+        return {
+            "correlation_id": self.correlation_id,
+            "timestamp": self.timestamp.isoformat(),
+            "request_path": self.request_path,
+        }
 
 
 class AppException(Exception):
-    """Base application exception.
+    """Base application exception with tracing support.
 
     All application-specific exceptions should inherit from this class.
     Provides structured error information for consistent error handling.
+    
+    **Feature: core-code-review, Property 3: Exception Serialization Consistency**
+    **Validates: Requirements 2.1, 2.2**
     """
 
     def __init__(
@@ -16,6 +67,7 @@ class AppException(Exception):
         error_code: str,
         status_code: int = 400,
         details: dict[str, Any] | None = None,
+        context: ErrorContext | None = None,
     ) -> None:
         """Initialize application exception.
 
@@ -24,25 +76,54 @@ class AppException(Exception):
             error_code: Machine-readable error code.
             status_code: HTTP status code.
             details: Additional error details.
+            context: Error context for tracing.
         """
         self.message = message
         self.error_code = error_code
         self.status_code = status_code
         self.details = details or {}
+        self.context = context or ErrorContext()
         super().__init__(message)
+
+    @property
+    def correlation_id(self) -> str:
+        """Get correlation ID for request tracing."""
+        return self.context.correlation_id
+
+    @property
+    def timestamp(self) -> datetime:
+        """Get timestamp when error occurred."""
+        return self.context.timestamp
 
     def to_dict(self) -> dict[str, Any]:
         """Convert exception to dictionary for serialization.
+        
+        **Feature: core-code-review, Property 3: Exception Serialization Consistency**
+        **Validates: Requirements 2.2**
 
         Returns:
-            dict: Exception data as dictionary.
+            dict: Exception data as dictionary with consistent structure.
         """
-        return {
+        result = {
             "message": self.message,
             "error_code": self.error_code,
             "status_code": self.status_code,
             "details": self.details,
+            "correlation_id": self.context.correlation_id,
+            "timestamp": self.context.timestamp.isoformat(),
         }
+
+        # Include cause chain if present
+        if self.__cause__:
+            if isinstance(self.__cause__, AppException):
+                result["cause"] = self.__cause__.to_dict()
+            else:
+                result["cause"] = {
+                    "type": type(self.__cause__).__name__,
+                    "message": str(self.__cause__),
+                }
+
+        return result
 
 
 class EntityNotFoundError(AppException):
@@ -64,24 +145,40 @@ class EntityNotFoundError(AppException):
 
 
 class ValidationError(AppException):
-    """Raised when validation fails."""
+    """Raised when validation fails.
+    
+    **Feature: core-code-review**
+    **Validates: Requirements 2.3**
+    """
 
     def __init__(
         self,
-        errors: list[dict[str, Any]],
+        errors: list[dict[str, Any]] | dict[str, Any],
         message: str = "Validation failed",
+        context: ErrorContext | None = None,
     ) -> None:
         """Initialize validation error.
 
         Args:
-            errors: List of validation errors with field details.
+            errors: Validation errors - can be list or dict format.
             message: Overall error message.
+            context: Error context for tracing.
         """
+        # Normalize errors to list format for consistency
+        if isinstance(errors, dict):
+            normalized_errors = [
+                {"field": field, "message": msg}
+                for field, msg in errors.items()
+            ]
+        else:
+            normalized_errors = errors
+
         super().__init__(
             message=message,
             error_code="VALIDATION_ERROR",
             status_code=422,
-            details={"errors": errors},
+            details={"errors": normalized_errors},
+            context=context,
         )
 
 

@@ -2,15 +2,13 @@
 
 import re
 from dataclasses import dataclass
-from typing import Any, TypeVar
+from typing import Any
 
 from .base import BaseSpecification
 from .enums import ComparisonOperator
 
-T = TypeVar("T")
 
-
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class FilterCriteria:
     """Immutable filter criteria for specifications."""
 
@@ -19,7 +17,7 @@ class FilterCriteria:
     value: Any
 
 
-class FieldSpecification(BaseSpecification[T]):
+class FieldSpecification[T](BaseSpecification[T]):
     """Specification based on a field comparison."""
 
     def __init__(

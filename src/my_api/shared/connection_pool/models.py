@@ -1,7 +1,7 @@
 """connection_pool models."""
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 from .enums import ConnectionState
 
@@ -21,7 +21,7 @@ class ConnectionInfo:
 
     id: str
     state: ConnectionState = ConnectionState.IDLE
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    last_used_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    last_used_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     use_count: int = 0
     health_check_failures: int = 0

@@ -21,7 +21,7 @@ class InfrastructureError(Exception):
         message: Human-readable error message.
         details: Additional error context as key-value pairs.
     """
-    
+
     def __init__(
         self,
         message: str,
@@ -36,7 +36,7 @@ class InfrastructureError(Exception):
         super().__init__(message)
         self.message = message
         self.details = details or {}
-    
+
     def __str__(self) -> str:
         """Return string representation with details."""
         if self.details:
@@ -116,7 +116,7 @@ class ExternalServiceError(InfrastructureError):
         service_name: Name of the external service.
         retry_after: Suggested retry delay in seconds, if applicable.
     """
-    
+
     def __init__(
         self,
         message: str,

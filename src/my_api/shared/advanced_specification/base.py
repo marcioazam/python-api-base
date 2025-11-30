@@ -1,12 +1,10 @@
 """Base specification classes."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Generic, TypeVar
-
-T = TypeVar("T")
+from typing import Any
 
 
-class BaseSpecification(ABC, Generic[T]):
+class BaseSpecification[T](ABC):
     """Abstract base specification with SQL generation support.
 
     Extends the basic Specification pattern with the ability to
@@ -51,7 +49,7 @@ class BaseSpecification(ABC, Generic[T]):
         return self.not_()
 
 
-class TrueSpecification(BaseSpecification[T]):
+class TrueSpecification[T](BaseSpecification[T]):
     """Specification that always returns True."""
 
     def is_satisfied_by(self, candidate: T) -> bool:
@@ -62,7 +60,7 @@ class TrueSpecification(BaseSpecification[T]):
         return true()
 
 
-class FalseSpecification(BaseSpecification[T]):
+class FalseSpecification[T](BaseSpecification[T]):
     """Specification that always returns False."""
 
     def is_satisfied_by(self, candidate: T) -> bool:

@@ -15,19 +15,39 @@ from my_api.shared.dto import ProblemDetail
 logger = logging.getLogger(__name__)
 
 
+MAX_IP_LENGTH = 45  # Maximum length for IPv6 address
+
+
 def _is_valid_ip(ip: str) -> bool:
     """Validate IP address format to prevent header spoofing.
+
+    Performs strict validation including:
+    - Empty string check
+    - Maximum length check (45 chars for IPv6)
+    - Format validation via ipaddress module
 
     Args:
         ip: IP address string to validate.
 
     Returns:
-        bool: True if valid IPv4 or IPv6 address.
+        bool: True if valid IPv4 or IPv6 address, False otherwise.
     """
+    if not ip or not ip.strip():
+        logger.debug("Empty IP address rejected")
+        return False
+
+    if len(ip) > MAX_IP_LENGTH:
+        logger.warning(
+            "IP address exceeds maximum length",
+            extra={"ip_length": len(ip), "max_length": MAX_IP_LENGTH},
+        )
+        return False
+
     try:
-        ipaddress.ip_address(ip)
+        ipaddress.ip_address(ip.strip())
         return True
     except ValueError:
+        logger.debug("Invalid IP address format", extra={"ip": ip[:20]})
         return False
 
 

@@ -9,7 +9,7 @@ Provides timezone conversion and user timezone management.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, UTC
 from enum import Enum
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -95,12 +95,12 @@ def to_utc(dt: datetime, source_tz: str | ZoneInfo | None = None) -> datetime:
     """Convert datetime to UTC."""
     if dt.tzinfo is None:
         if source_tz is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
         else:
             if isinstance(source_tz, str):
                 source_tz = ZoneInfo(source_tz)
             dt = dt.replace(tzinfo=source_tz)
-    return dt.astimezone(timezone.utc)
+    return dt.astimezone(UTC)
 
 
 def from_utc(dt: datetime, target_tz: str | ZoneInfo) -> datetime:
@@ -109,7 +109,7 @@ def from_utc(dt: datetime, target_tz: str | ZoneInfo) -> datetime:
         target_tz = ZoneInfo(target_tz)
 
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
 
     return dt.astimezone(target_tz)
 

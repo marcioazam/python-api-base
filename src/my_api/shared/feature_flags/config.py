@@ -1,11 +1,10 @@
 """feature_flags configuration."""
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Any
 
-from .enums import FlagStatus, RolloutStrategy
-from .models import EvaluationContext
+from .enums import FlagStatus
 
 
 @dataclass
@@ -35,5 +34,5 @@ class FlagConfig:
     percentage: float = 0.0
     user_ids: list[str] = field(default_factory=list)
     groups: list[str] = field(default_factory=list)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))

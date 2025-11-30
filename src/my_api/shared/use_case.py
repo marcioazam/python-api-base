@@ -6,7 +6,8 @@ Uses @overload for type narrowing on methods with conditional return types.
 
 from collections.abc import Sequence
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator, Literal, overload
+from typing import Any, Literal, overload
+from collections.abc import AsyncGenerator
 
 from pydantic import BaseModel
 

@@ -4,13 +4,13 @@ import asyncio
 import logging
 import traceback
 import uuid
-from datetime import datetime, timedelta, timezone
-from typing import Any, Awaitable, Callable
+from datetime import datetime, timedelta, UTC
+from typing import Any
+from collections.abc import Awaitable, Callable
 
 from pydantic import BaseModel
 
 from .config import TaskConfig
-from .constants import T
 from .enums import TaskStatus
 from .models import Task, TaskResult
 
@@ -99,7 +99,7 @@ class BackgroundTaskQueue:
 
         self._workers.clear()
 
-    async def submit(
+    async def submit[T](
         self,
         func: Callable[..., Awaitable[T]],
         *args: Any,
@@ -136,7 +136,7 @@ class BackgroundTaskQueue:
         await self._queue.put(task)
         return task_id
 
-    async def schedule(
+    async def schedule[T](
         self,
         func: Callable[..., Awaitable[T]],
         delay_ms: int,
@@ -156,7 +156,7 @@ class BackgroundTaskQueue:
         Returns:
             Task ID.
         """
-        scheduled_at = datetime.now(timezone.utc) + timedelta(milliseconds=delay_ms)
+        scheduled_at = datetime.now(UTC) + timedelta(milliseconds=delay_ms)
         return await self.submit(
             func, *args, config=config, scheduled_at=scheduled_at, **kwargs
         )
@@ -245,7 +245,7 @@ class BackgroundTaskQueue:
                 continue
 
             # Check scheduled time
-            if task.scheduled_at and datetime.now(timezone.utc) < task.scheduled_at:
+            if task.scheduled_at and datetime.now(UTC) < task.scheduled_at:
                 await self._queue.put(task)
                 await asyncio.sleep(0.1)
                 continue
@@ -262,7 +262,7 @@ class BackgroundTaskQueue:
         self._stats.pending_tasks -= 1
         self._stats.running_tasks += 1
 
-        started_at = datetime.now(timezone.utc)
+        started_at = datetime.now(UTC)
         task.attempts += 1
 
         try:
@@ -273,7 +273,7 @@ class BackgroundTaskQueue:
                 timeout=timeout_seconds,
             )
 
-            completed_at = datetime.now(timezone.utc)
+            completed_at = datetime.now(UTC)
             duration_ms = (completed_at - started_at).total_seconds() * 1000
 
             task.status = TaskStatus.COMPLETED
@@ -303,7 +303,7 @@ class BackgroundTaskQueue:
 
         except asyncio.TimeoutError as e:
             # Handle timeout separately
-            completed_at = datetime.now(timezone.utc)
+            completed_at = datetime.now(UTC)
             duration_ms = (completed_at - started_at).total_seconds() * 1000
 
             logger.warning(
@@ -322,7 +322,7 @@ class BackgroundTaskQueue:
 
         except Exception as e:
             # Handle unexpected exceptions
-            completed_at = datetime.now(timezone.utc)
+            completed_at = datetime.now(UTC)
             duration_ms = (completed_at - started_at).total_seconds() * 1000
             stack_trace = traceback.format_exc()
 

@@ -5,19 +5,15 @@
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 from .aggregate import Aggregate
 from .events import EventStream, SourcedEvent
 from .exceptions import ConcurrencyError
 from .snapshots import Snapshot
 
-# Type variables
-EventT = TypeVar("EventT", bound=SourcedEvent)
-AggregateT = TypeVar("AggregateT", bound=Aggregate[Any])
 
-
-class EventStore(ABC, Generic[AggregateT, EventT]):
+class EventStore[AggregateT: Aggregate[Any], EventT: SourcedEvent](ABC):
     """Abstract event store interface.
 
     Event stores persist and retrieve event streams for aggregates.
@@ -100,7 +96,7 @@ class EventStore(ABC, Generic[AggregateT, EventT]):
         ...
 
 
-class InMemoryEventStore(EventStore[AggregateT, EventT]):
+class InMemoryEventStore[AggregateT: Aggregate[Any], EventT: SourcedEvent](EventStore[AggregateT, EventT]):
     """In-memory event store implementation.
 
     Useful for testing and development. Not suitable for production

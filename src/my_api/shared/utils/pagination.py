@@ -2,12 +2,10 @@
 
 import base64
 from dataclasses import dataclass
-from typing import Generic, Sequence, TypeVar
-
-T = TypeVar("T")
+from collections.abc import Sequence
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class OffsetPaginationParams:
     """Parameters for offset-based pagination."""
 
@@ -34,8 +32,8 @@ class OffsetPaginationParams:
         return self.size
 
 
-@dataclass(frozen=True)
-class OffsetPaginationResult(Generic[T]):
+@dataclass(frozen=True, slots=True)
+class OffsetPaginationResult[T]:
     """Result of offset-based pagination."""
 
     items: Sequence[T]
@@ -61,7 +59,7 @@ class OffsetPaginationResult(Generic[T]):
         return self.page > 1
 
 
-def paginate_offset(
+def paginate_offset[T](
     items: Sequence[T],
     total: int,
     params: OffsetPaginationParams,
@@ -84,7 +82,7 @@ def paginate_offset(
     )
 
 
-def paginate_list(
+def paginate_list[T](
     items: Sequence[T],
     params: OffsetPaginationParams,
 ) -> OffsetPaginationResult[T]:
@@ -143,7 +141,7 @@ def decode_cursor(cursor: str) -> str:
         raise ValueError(f"Invalid cursor: {cursor}") from e
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class CursorPaginationParams:
     """Parameters for cursor-based pagination."""
 
@@ -158,8 +156,8 @@ class CursorPaginationParams:
             object.__setattr__(self, "limit", 100)
 
 
-@dataclass(frozen=True)
-class CursorPaginationResult(Generic[T]):
+@dataclass(frozen=True, slots=True)
+class CursorPaginationResult[T]:
     """Result of cursor-based pagination."""
 
     items: Sequence[T]

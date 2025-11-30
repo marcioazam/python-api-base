@@ -14,4 +14,4 @@ from .config import *
 from .constants import *
 from .service import *
 
-__all__ = ['BackgroundTaskQueue', 'QueueStats', 'T', 'Task', 'TaskConfig', 'TaskPriority', 'TaskResult', 'TaskStatus']
+__all__ = ['BackgroundTaskQueue', 'QueueStats', 'Task', 'TaskConfig', 'TaskPriority', 'TaskResult', 'TaskStatus']

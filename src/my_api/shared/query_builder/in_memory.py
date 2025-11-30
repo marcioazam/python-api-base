@@ -86,13 +86,13 @@ class InMemoryQueryBuilder[T: BaseModel](QueryBuilder[T]):
         # Use placeholders for SQL wildcards before escaping
         placeholder_percent = "\x00PERCENT\x00"
         placeholder_underscore = "\x00UNDERSCORE\x00"
-        
+
         # Replace SQL wildcards with placeholders
         temp = pattern.replace("%", placeholder_percent).replace("_", placeholder_underscore)
-        
+
         # Escape all special regex characters
         escaped = re.escape(temp)
-        
+
         # Convert placeholders back to regex patterns
         regex = escaped.replace(placeholder_percent, ".*").replace(placeholder_underscore, ".")
         return bool(re.match(f"^{regex}$", value))

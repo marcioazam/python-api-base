@@ -5,12 +5,12 @@
 """
 
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Any
 
 from .enums import SecretType
 from .exceptions import SecretNotFoundError
-from .models import RotationConfig, SecretMetadata, SecretValue
+from .models import SecretMetadata, SecretValue
 
 
 class BaseSecretsProvider(ABC):
@@ -151,7 +151,7 @@ class LocalSecretsProvider(BaseSecretsProvider):
         Returns:
             SecretMetadata with creation details.
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         metadata = SecretMetadata(
             name=name,
             version="1",
@@ -187,7 +187,7 @@ class LocalSecretsProvider(BaseSecretsProvider):
             raise SecretNotFoundError(name)
 
         existing = self._secrets[name]
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         old_metadata = self._metadata[name]
 
         new_version = str(int(old_metadata.version) + 1)
@@ -238,7 +238,7 @@ class LocalSecretsProvider(BaseSecretsProvider):
             raise SecretNotFoundError(name)
 
         existing = self._secrets[name]
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         old_metadata = self._metadata[name]
 
         new_version = str(int(old_metadata.version) + 1)

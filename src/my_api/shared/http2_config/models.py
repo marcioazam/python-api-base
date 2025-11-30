@@ -1,9 +1,6 @@
 """http2_config models."""
 
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any
-from .enums import HTTPProtocol, PushPriority
+from dataclasses import dataclass
 
 
 @dataclass

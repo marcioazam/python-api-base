@@ -9,7 +9,7 @@ import logging
 import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from enum import Enum
 from typing import Any
 
@@ -53,7 +53,7 @@ class AuditResult(str, Enum):
     ERROR = "error"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class AuditEntry:
     """Audit log entry.
 
@@ -118,14 +118,14 @@ class AuditEntry:
         missing = [f for f in required_fields if f not in data]
         if missing:
             raise KeyError(f"Missing required fields: {', '.join(missing)}")
-        
+
         timestamp = data["timestamp"]
         if isinstance(timestamp, str):
             timestamp = datetime.fromisoformat(timestamp)
-        
+
         # Ensure timestamp is timezone-aware (assume UTC if naive)
         if timestamp.tzinfo is None:
-            timestamp = timestamp.replace(tzinfo=timezone.utc)
+            timestamp = timestamp.replace(tzinfo=UTC)
 
         return cls(
             id=data["id"],
@@ -233,7 +233,7 @@ class AuditLogger(ABC):
 
         entry = AuditEntry(
             id=generate_ulid(),
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             user_id=user_id,
             action=action_str,
             resource_type=resource_type,

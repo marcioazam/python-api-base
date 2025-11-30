@@ -11,11 +11,8 @@ import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Awaitable, Callable, Generic, TypeVar
-
-
-RequestT = TypeVar("RequestT")
-ResponseT = TypeVar("ResponseT")
+from typing import Any
+from collections.abc import Awaitable, Callable
 
 
 class HttpMethod(Enum):
@@ -172,14 +169,14 @@ class NeverCondition(Condition):
 
 
 # Type alias for middleware function
-MiddlewareFunc = Callable[[RequestT, Callable[[RequestT], Awaitable[ResponseT]]], Awaitable[ResponseT]]
+type MiddlewareFunc[RequestT, ResponseT] = Callable[[RequestT, Callable[[RequestT], Awaitable[ResponseT]]], Awaitable[ResponseT]]
 
 
 @dataclass
-class ConditionalMiddleware(Generic[RequestT, ResponseT]):
+class ConditionalMiddleware[RequestT, ResponseT]:
     """Middleware that executes conditionally based on route info."""
 
-    middleware: MiddlewareFunc[RequestT, ResponseT]
+    middleware: "MiddlewareFunc[RequestT, ResponseT]"
     condition: Condition
     name: str = ""
     enabled: bool = True
@@ -199,7 +196,7 @@ class ConditionalMiddleware(Generic[RequestT, ResponseT]):
         return await next_handler(request)
 
 
-class ConditionalMiddlewareRegistry(Generic[RequestT, ResponseT]):
+class ConditionalMiddlewareRegistry[RequestT, ResponseT]:
     """Registry for conditional middlewares."""
 
     def __init__(self) -> None:

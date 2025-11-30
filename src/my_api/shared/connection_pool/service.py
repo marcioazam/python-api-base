@@ -2,15 +2,12 @@
 
 import asyncio
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from enum import Enum
-from typing import Any, Generic, Protocol, TypeVar, runtime_checkable
+from datetime import datetime, UTC
+from typing import Any, Protocol, runtime_checkable
 from pydantic import BaseModel
 from .enums import ConnectionState
 from .models import ConnectionInfo
 from .config import PoolConfig
-from .constants import T
 
 
 class PoolStats(BaseModel):
@@ -76,7 +73,7 @@ class ConnectionError(PoolError):
         super().__init__(message, "CONNECTION_ERROR")
 
 @runtime_checkable
-class ConnectionFactory(Protocol[T]):
+class ConnectionFactory[T](Protocol):
     """Protocol for connection factories."""
 
     async def create(self) -> T:
@@ -91,7 +88,7 @@ class ConnectionFactory(Protocol[T]):
         """Validate connection health."""
         ...
 
-class BaseConnectionFactory(ABC, Generic[T]):
+class BaseConnectionFactory[T](ABC):
     """Base class for connection factories."""
 
     @abstractmethod
@@ -109,7 +106,7 @@ class BaseConnectionFactory(ABC, Generic[T]):
         """Validate connection health."""
         ...
 
-class ConnectionPool(Generic[T]):
+class ConnectionPool[T]:
     """Generic connection pool with health checking.
 
     Provides connection pooling with:
@@ -195,7 +192,7 @@ class ConnectionPool(Generic[T]):
 
             connection, info = self._connections[conn_id]
             info.state = ConnectionState.IN_USE
-            info.last_used_at = datetime.now(timezone.utc)
+            info.last_used_at = datetime.now(UTC)
             info.use_count += 1
 
             self._stats.idle_connections -= 1
@@ -254,13 +251,13 @@ class ConnectionPool(Generic[T]):
         connection, info = self._connections[conn_id]
 
         # Check if connection should be retired
-        age = (datetime.now(timezone.utc) - info.created_at).total_seconds()
+        age = (datetime.now(UTC) - info.created_at).total_seconds()
         if age > self._config.max_lifetime:
             await self._remove_connection(conn_id)
             return
 
         info.state = ConnectionState.IDLE
-        info.last_used_at = datetime.now(timezone.utc)
+        info.last_used_at = datetime.now(UTC)
 
         self._stats.in_use_connections -= 1
         self._stats.idle_connections += 1
@@ -427,7 +424,7 @@ class ConnectionPool(Generic[T]):
         """Get current pool size."""
         return self._stats.total_connections
 
-class ConnectionPoolContext(Generic[T]):
+class ConnectionPoolContext[T]:
     """Context manager for connection pool."""
 
     def __init__(self, pool: ConnectionPool[T]) -> None:

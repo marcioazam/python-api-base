@@ -4,13 +4,13 @@
 **Validates: Requirements 1.3, 5.1, 5.2, 5.3**
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from dataclasses import dataclass
+from datetime import datetime, timedelta, UTC
 
 from .enums import BanStatus, ViolationType
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Violation:
     """Record of a single violation."""
 
@@ -43,11 +43,10 @@ class BanRecord:
             return False
         if self.expires_at is None:
             return True
-        from datetime import timezone
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expires = self.expires_at
         if expires.tzinfo is None:
-            expires = expires.replace(tzinfo=timezone.utc)
+            expires = expires.replace(tzinfo=UTC)
         return now < expires
 
     @property

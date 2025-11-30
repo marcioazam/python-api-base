@@ -4,7 +4,7 @@
 **Validates: Requirements 5.7**
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from typing import Protocol
 
 from .models import SecretValue
@@ -38,7 +38,7 @@ class InMemorySecretCache:
             return None
 
         value, expires_at = self._cache[key]
-        if datetime.now(timezone.utc) > expires_at:
+        if datetime.now(UTC) > expires_at:
             del self._cache[key]
             return None
 
@@ -46,7 +46,7 @@ class InMemorySecretCache:
 
     async def set(self, key: str, value: SecretValue, ttl: int) -> None:
         """Cache secret with TTL in seconds."""
-        expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl)
+        expires_at = datetime.now(UTC) + timedelta(seconds=ttl)
         self._cache[key] = (value, expires_at)
 
     async def delete(self, key: str) -> None:

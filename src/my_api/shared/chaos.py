@@ -9,9 +9,8 @@ Provides fault injection for testing system resilience.
 import asyncio
 import random
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from enum import Enum
-from typing import Any, Callable
 
 from pydantic import BaseModel
 
@@ -268,7 +267,7 @@ class ChaosExperimentRunner:
             await self.stop_experiment()
 
         self._current_experiment = experiment
-        experiment.started_at = datetime.now(timezone.utc)
+        experiment.started_at = datetime.now(UTC)
 
         # Add faults to engine
         for fault in experiment.faults:
@@ -300,7 +299,7 @@ class ChaosExperimentRunner:
             return None
 
         experiment = self._current_experiment
-        experiment.ended_at = datetime.now(timezone.utc)
+        experiment.ended_at = datetime.now(UTC)
 
         # Remove faults
         for fault in experiment.faults:

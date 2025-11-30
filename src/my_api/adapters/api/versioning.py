@@ -162,19 +162,28 @@ class DeprecationHeaderMiddleware(BaseHTTPMiddleware):
         return response
 
     def _extract_version(self, path: str) -> str | None:
-        """Extract API version from request path.
+        """Extract API version from request path with strict validation.
+
+        Only accepts versions in format 'v' followed by one or more digits.
+        Rejects any potentially dangerous or malformed version strings.
 
         Args:
             path: Request URL path.
 
         Returns:
-            Version string (e.g., 'v1') or None.
+            Version string (e.g., 'v1') or None if not found or invalid.
         """
+        import re
+
+        # Strict version pattern: v followed by 1-3 digits only
+        version_pattern = re.compile(r"^v\d{1,3}$")
+
         parts = path.split("/")
         for i, part in enumerate(parts):
             if part == "api" and i + 1 < len(parts):
                 version = parts[i + 1]
-                if version.startswith("v") and version[1:].isdigit():
+                # Strict validation to prevent path traversal
+                if version_pattern.match(version):
                     return version
         return None
 

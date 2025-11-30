@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
 from typing import Any, TYPE_CHECKING
 from .constants import (
     DEFAULT_INITIAL_WINDOW_SIZE,
@@ -15,10 +14,9 @@ from .constants import (
     MIN_FRAME_SIZE,
 )
 from .enums import HTTPProtocol, PushPriority
-from .models import ConnectionStats
 
 if TYPE_CHECKING:
-    from .service import PushResource
+    pass
 
 
 @dataclass

@@ -1,6 +1,3 @@
 """telemetry constants."""
 
-from typing import ParamSpec, TypeVar
-
-P = ParamSpec("P")
-T = TypeVar("T")
+# Type parameters are now defined inline using PEP 695 syntax

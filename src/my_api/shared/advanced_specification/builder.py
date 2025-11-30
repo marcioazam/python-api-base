@@ -1,15 +1,13 @@
 """Fluent builder for creating complex specifications."""
 
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 from .base import BaseSpecification
 from .enums import ComparisonOperator
 from .field import FieldSpecification
 
-T = TypeVar("T")
 
-
-class SpecificationBuilder(Generic[T]):
+class SpecificationBuilder[T]:
     """Fluent builder for creating complex specifications.
 
     Example:

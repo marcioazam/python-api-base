@@ -58,3 +58,34 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+
+{{/*
+Create the image reference
+*/}}
+{{- define "my-api.image" -}}
+{{- $tag := .Values.image.tag | default .Chart.AppVersion -}}
+{{- printf "%s:%s" .Values.image.repository $tag -}}
+{{- end }}
+
+{{/*
+Create checksum annotations for config/secret changes
+*/}}
+{{- define "my-api.checksumAnnotations" -}}
+checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+{{- if not .Values.externalSecrets.enabled }}
+checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+{{- end }}
+{{- end }}
+
+{{/*
+Return the proper image pull secrets
+*/}}
+{{- define "my-api.imagePullSecrets" -}}
+{{- if .Values.imagePullSecrets }}
+imagePullSecrets:
+{{- range .Values.imagePullSecrets }}
+  - name: {{ . }}
+{{- end }}
+{{- end }}
+{{- end }}

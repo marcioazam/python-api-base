@@ -4,13 +4,11 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, TypeVar
+from typing import Any
+from collections.abc import Callable
 import json
 import statistics
 import time
-
-
-T = TypeVar("T")
 
 
 class RegressionSeverity(Enum):
@@ -22,7 +20,7 @@ class RegressionSeverity(Enum):
     CRITICAL = "critical"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class BenchmarkResult:
     """Result of a single benchmark run."""
     name: str
@@ -264,7 +262,7 @@ class Benchmark:
     def stats(self) -> BenchmarkStats:
         return self._stats
 
-    def run(self, func: Callable[[], T]) -> BenchmarkStats:
+    def run[T](self, func: Callable[[], T]) -> BenchmarkStats:
         for _ in range(self._warmup):
             func()
         self._stats = BenchmarkStats(name=self._name)
@@ -373,7 +371,7 @@ class PerformanceTracker:
         return self._store.list_all()
 
 
-def benchmark(name: str, warmup: int = 3, iterations: int = 10) -> Callable[[Callable[[], T]], Callable[[], BenchmarkStats]]:
+def benchmark[T](name: str, warmup: int = 3, iterations: int = 10) -> Callable[[Callable[[], T]], Callable[[], BenchmarkStats]]:
     """Decorator to benchmark a function."""
     def decorator(func: Callable[[], T]) -> Callable[[], BenchmarkStats]:
         def wrapper() -> BenchmarkStats:

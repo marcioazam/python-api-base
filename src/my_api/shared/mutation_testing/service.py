@@ -1,18 +1,16 @@
 """mutation_testing service."""
 
-from dataclasses import dataclass, field
-from datetime import datetime
-from enum import Enum
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 import json
 import hashlib
 from .enums import MutantStatus, MutationOperator
-from .models import MutationScore, MutationReport, MutantLocation
+from .models import MutationReport, MutantLocation
 from .config import MutationConfig
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Mutant:
     """Represents a single mutation."""
 

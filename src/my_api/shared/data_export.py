@@ -1,16 +1,12 @@
 """Generic Data Export/Import Service."""
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
-from typing import Protocol, TypeVar, Generic, Any, Iterator
-from collections.abc import Callable, AsyncIterator
+from typing import Protocol, Any
 import json
 import csv
 import io
-
-
-T = TypeVar("T")
 
 
 class ExportFormat(Enum):
@@ -54,14 +50,14 @@ class ImportResult:
     duration_ms: float = 0.0
 
 
-class DataSerializer(Protocol[T]):
+class DataSerializer[T](Protocol):
     """Protocol for data serialization."""
 
     def to_dict(self, obj: T) -> dict[str, Any]: ...
     def from_dict(self, data: dict[str, Any]) -> T: ...
 
 
-class DataExporter(Generic[T]):
+class DataExporter[T]:
     """Generic data exporter."""
 
     def __init__(self, serializer: DataSerializer[T]) -> None:
@@ -99,7 +95,7 @@ class DataExporter(Generic[T]):
         if config.include_metadata:
             output = {
                 "metadata": {
-                    "exported_at": datetime.now(timezone.utc).isoformat(),
+                    "exported_at": datetime.now(UTC).isoformat(),
                     "record_count": len(data),
                     "format": "json"
                 },
@@ -201,7 +197,7 @@ class DataExporter(Generic[T]):
             raise ValueError(f"Unsupported format: {config.format}")
 
 
-class DataImporter(Generic[T]):
+class DataImporter[T]:
     """Generic data importer."""
 
     def __init__(self, serializer: DataSerializer[T]) -> None:

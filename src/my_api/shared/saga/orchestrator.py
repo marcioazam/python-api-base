@@ -6,16 +6,13 @@
 
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Generic, TypeVar
+from datetime import datetime, UTC
+from typing import Any
 from uuid import uuid4
 
 from .context import SagaContext
 from .enums import SagaStatus, StepStatus
 from .steps import SagaStep, StepResult
-
-StepT = TypeVar("StepT")
-CompensationT = TypeVar("CompensationT")
 
 
 @dataclass
@@ -28,7 +25,7 @@ class SagaResult:
     context: SagaContext
     step_results: list[StepResult] = field(default_factory=list)
     error: Exception | None = None
-    started_at: datetime = field(default_factory=lambda: datetime.now(tz=timezone.utc))
+    started_at: datetime = field(default_factory=lambda: datetime.now(tz=UTC))
     completed_at: datetime | None = None
 
     @property
@@ -50,7 +47,7 @@ class SagaResult:
         return delta.total_seconds() * 1000
 
 
-class Saga(Generic[StepT, CompensationT]):
+class Saga[StepT, CompensationT]:
     """Orchestration-based saga for distributed transactions.
 
     Executes a sequence of steps, and if any step fails,
@@ -118,7 +115,7 @@ class Saga(Generic[StepT, CompensationT]):
                     break
             else:
                 result.status = SagaStatus.COMPLETED
-                result.completed_at = datetime.now(tz=timezone.utc)
+                result.completed_at = datetime.now(tz=UTC)
 
                 if self._on_complete:
                     await self._on_complete(result)
@@ -126,7 +123,7 @@ class Saga(Generic[StepT, CompensationT]):
         except Exception as e:
             result.status = SagaStatus.FAILED
             result.error = e
-            result.completed_at = datetime.now(tz=timezone.utc)
+            result.completed_at = datetime.now(tz=UTC)
 
             if self._on_failure:
                 await self._on_failure(result)
@@ -136,12 +133,12 @@ class Saga(Generic[StepT, CompensationT]):
     async def _execute_step(self, step: SagaStep, context: SagaContext) -> StepResult:
         """Execute a single saga step."""
         step.status = StepStatus.RUNNING
-        step.started_at = datetime.now(tz=timezone.utc)
+        step.started_at = datetime.now(tz=UTC)
 
         try:
             await step.action(context)
             step.status = StepStatus.COMPLETED
-            step.completed_at = datetime.now(tz=timezone.utc)
+            step.completed_at = datetime.now(tz=UTC)
 
             duration = (step.completed_at - step.started_at).total_seconds() * 1000
 
@@ -154,7 +151,7 @@ class Saga(Generic[StepT, CompensationT]):
         except Exception as e:
             step.status = StepStatus.FAILED
             step.error = e
-            step.completed_at = datetime.now(tz=timezone.utc)
+            step.completed_at = datetime.now(tz=UTC)
 
             duration = (step.completed_at - step.started_at).total_seconds() * 1000
 
@@ -205,7 +202,7 @@ class Saga(Generic[StepT, CompensationT]):
                     )
                 )
 
-        result.completed_at = datetime.now(tz=timezone.utc)
+        result.completed_at = datetime.now(tz=UTC)
 
         if compensation_failed:
             result.status = SagaStatus.FAILED

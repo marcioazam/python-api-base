@@ -3,7 +3,7 @@
 Feature: file-size-compliance-phase2
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -19,7 +19,7 @@ class WebSocketMessage(BaseModel):
 
     type: str = Field(default="message", description="Message type identifier")
     timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc),
+        default_factory=lambda: datetime.now(tz=UTC),
         description="Message timestamp",
     )
 

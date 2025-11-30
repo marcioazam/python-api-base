@@ -7,8 +7,9 @@
 import json
 import random
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Callable
+from datetime import datetime, UTC
+from typing import Any
+from collections.abc import Callable
 
 from .config import FuzzingConfig
 from .corpus import CorpusManager, CrashManager
@@ -93,7 +94,7 @@ class Fuzzer:
             self._status = FuzzingStatus.COMPLETED
         except Exception:
             self._status = FuzzingStatus.CRASHED
-        self._stats.end_time = datetime.now(timezone.utc)
+        self._stats.end_time = datetime.now(UTC)
         self._stats.update_exec_speed()
         return FuzzingResult(
             status=self._status,

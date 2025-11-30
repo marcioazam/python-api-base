@@ -7,7 +7,7 @@ Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 3.1, 5.1, 5.2, 5.3
 import json
 import logging
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Any
 
 from .models import StoredToken
@@ -46,19 +46,19 @@ class InMemoryTokenStore(RefreshTokenStore):
 
     async def store(self, jti: str, user_id: str, expires_at: datetime) -> None:
         _validate_token_input(jti, user_id, expires_at)
-        
+
         token = StoredToken(
             jti=jti, user_id=user_id,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             expires_at=expires_at, revoked=False,
         )
-        
+
         with self._lock:
             self._tokens[jti] = token
             if user_id not in self._user_tokens:
                 self._user_tokens[user_id] = set()
             self._user_tokens[user_id].add(jti)
-            
+
             # Evict oldest tokens if over limit
             if len(self._tokens) > self._max_entries:
                 sorted_tokens = sorted(
@@ -135,13 +135,13 @@ class RedisTokenStore(RefreshTokenStore):
 
     async def store(self, jti: str, user_id: str, expires_at: datetime) -> None:
         _validate_token_input(jti, user_id, expires_at)
-        
+
         token = StoredToken(
             jti=jti, user_id=user_id,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             expires_at=expires_at, revoked=False,
         )
-        ttl_seconds = (expires_at - datetime.now(timezone.utc)).total_seconds()
+        ttl_seconds = (expires_at - datetime.now(UTC)).total_seconds()
         ttl = max(int(ttl_seconds), 1) if ttl_seconds > 0 else self._default_ttl
         await self._redis.setex(self._token_key(jti), ttl, json.dumps(token.to_dict()))
         await self._redis.sadd(self._user_key(user_id), jti)

@@ -20,11 +20,8 @@ Usage:
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Generic, TypeVar
 
 import strawberry
-
-T = TypeVar("T")
 
 
 @strawberry.type
@@ -52,7 +49,7 @@ class PageInfo:
 
 
 @strawberry.type
-class Edge(Generic[T]):
+class Edge[T]:
     """Generic edge type for Relay-style connections.
 
     An edge represents a single item in a connection along with
@@ -69,7 +66,7 @@ class Edge(Generic[T]):
 
 
 @strawberry.type
-class Connection(Generic[T]):
+class Connection[T]:
     """Generic connection type for Relay-style pagination.
 
     A connection represents a paginated list of items with
@@ -107,12 +104,24 @@ class ConnectionArgs:
 def encode_cursor(value: str | int, prefix: str = "cursor") -> str:
     """Encode a value as an opaque cursor string.
 
+    Creates a base64-encoded cursor that can be used for pagination.
+    The cursor format is "{prefix}:{value}" encoded in base64.
+
     Args:
         value: The value to encode (typically an ID or offset).
-        prefix: Optional prefix for the cursor.
+        prefix: Optional prefix for the cursor (default: "cursor").
 
     Returns:
         Base64-encoded cursor string.
+
+    Raises:
+        TypeError: If value cannot be converted to string.
+
+    Example:
+        >>> encode_cursor(5)
+        'Y3Vyc29yOjU='
+        >>> encode_cursor("abc", prefix="item")
+        'aXRlbTphYmM='
     """
     import base64
 
@@ -121,7 +130,7 @@ def encode_cursor(value: str | int, prefix: str = "cursor") -> str:
 
 
 def decode_cursor(cursor: str, prefix: str = "cursor") -> str:
-    """Decode an opaque cursor string.
+    """Decode an opaque cursor string with safe error handling.
 
     Args:
         cursor: The cursor string to decode.
@@ -131,18 +140,27 @@ def decode_cursor(cursor: str, prefix: str = "cursor") -> str:
         The decoded value.
 
     Raises:
-        ValueError: If the cursor is invalid or has wrong prefix.
+        ValueError: If the cursor is invalid (generic message, no internal details).
     """
     import base64
+
+    # Handle empty cursor input
+    if not cursor or not cursor.strip():
+        raise ValueError("Invalid cursor")
 
     try:
         decoded = base64.b64decode(cursor.encode()).decode()
         parts = decoded.split(":", 1)
         if len(parts) != 2 or parts[0] != prefix:
-            raise ValueError(f"Invalid cursor format: {cursor}")
+            raise ValueError("Invalid cursor")
         return parts[1]
-    except Exception as e:
-        raise ValueError(f"Failed to decode cursor: {cursor}") from e
+    except ValueError:
+        # Re-raise ValueError as-is (already has generic message)
+        raise
+    except Exception:
+        # Catch all other exceptions and raise generic error
+        # Do not expose internal details like base64 decode errors
+        raise ValueError("Invalid cursor")
 
 
 def connection_from_list(

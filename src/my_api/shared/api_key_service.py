@@ -14,7 +14,7 @@ import hashlib
 import hmac
 import secrets
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from enum import Enum
 from typing import Any
 
@@ -49,7 +49,7 @@ class APIKey:
     name: str
     scopes: list[KeyScope] = field(default_factory=list)
     status: KeyStatus = KeyStatus.ACTIVE
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     expires_at: datetime | None = None
     last_used_at: datetime | None = None
     rate_limit: int = 1000  # requests per hour
@@ -60,7 +60,7 @@ class APIKey:
         """Check if key is expired."""
         if self.expires_at is None:
             return False
-        return datetime.now(timezone.utc) > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
     @property
     def is_active(self) -> bool:
@@ -203,7 +203,7 @@ class APIKeyService:
         expiry_days = expires_in_days or self._default_expiry_days
         expires_at = None
         if expiry_days > 0:
-            expires_at = datetime.now(timezone.utc) + timedelta(days=expiry_days)
+            expires_at = datetime.now(UTC) + timedelta(days=expiry_days)
 
         api_key = APIKey(
             key_id=key_id,
@@ -271,7 +271,7 @@ class APIKeyService:
             )
 
         # Update last used
-        api_key.last_used_at = datetime.now(timezone.utc)
+        api_key.last_used_at = datetime.now(UTC)
         self._record_usage(key_id)
 
         return KeyValidationResult(
@@ -282,7 +282,7 @@ class APIKeyService:
 
     def _check_rate_limit(self, key_id: str, limit: int) -> int:
         """Check rate limit and return remaining requests."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         hour_ago = now - timedelta(hours=1)
 
         # Clean old entries
@@ -296,7 +296,7 @@ class APIKeyService:
         """Record API key usage."""
         if key_id not in self._usage:
             self._usage[key_id] = []
-        self._usage[key_id].append(datetime.now(timezone.utc))
+        self._usage[key_id].append(datetime.now(UTC))
 
     def revoke_key(self, key_id: str) -> bool:
         """Revoke an API key."""
@@ -370,7 +370,7 @@ class APIKeyService:
             return False
 
         if api_key.expires_at is None:
-            api_key.expires_at = datetime.now(timezone.utc) + timedelta(days=days)
+            api_key.expires_at = datetime.now(UTC) + timedelta(days=days)
         else:
             api_key.expires_at = api_key.expires_at + timedelta(days=days)
         return True
@@ -381,7 +381,7 @@ class APIKeyService:
         if api_key is None:
             return {}
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         hour_ago = now - timedelta(hours=1)
         day_ago = now - timedelta(days=1)
 

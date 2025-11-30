@@ -10,13 +10,8 @@ composable and configurable request/response processing.
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Awaitable, Callable, Generic, TypeVar
-
-
-# Type variables
-RequestT = TypeVar("RequestT")
-ResponseT = TypeVar("ResponseT")
-ContextT = TypeVar("ContextT")
+from typing import Any
+from collections.abc import Awaitable, Callable
 
 
 class MiddlewarePriority(Enum):
@@ -30,7 +25,7 @@ class MiddlewarePriority(Enum):
 
 
 @dataclass
-class MiddlewareContext(Generic[ContextT]):
+class MiddlewareContext[ContextT]:
     """Context passed through middleware chain."""
 
     data: ContextT
@@ -52,7 +47,7 @@ class MiddlewareContext(Generic[ContextT]):
 NextHandler = Callable[[MiddlewareContext[Any]], Awaitable[MiddlewareContext[Any]]]
 
 
-class Middleware(ABC, Generic[ContextT]):
+class Middleware[ContextT](ABC):
     """Abstract base class for middleware."""
 
     def __init__(
@@ -85,7 +80,7 @@ class Middleware(ABC, Generic[ContextT]):
         return await self.process(context, next_handler)
 
 
-class FunctionMiddleware(Middleware[ContextT]):
+class FunctionMiddleware[ContextT](Middleware[ContextT]):
     """Middleware created from a function."""
 
     def __init__(
@@ -109,7 +104,7 @@ class FunctionMiddleware(Middleware[ContextT]):
         return await self._func(context, next_handler)
 
 
-class MiddlewareChain(Generic[ContextT]):
+class MiddlewareChain[ContextT]:
     """Composable middleware chain."""
 
     def __init__(self) -> None:
@@ -207,7 +202,7 @@ class MiddlewareChain(Generic[ContextT]):
         return len(self._middlewares)
 
 
-class MiddlewareChainBuilder(Generic[ContextT]):
+class MiddlewareChainBuilder[ContextT]:
     """Fluent builder for MiddlewareChain."""
 
     def __init__(self) -> None:

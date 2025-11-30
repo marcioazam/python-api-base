@@ -1,20 +1,14 @@
 """multitenancy service."""
 
-from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from contextvars import ContextVar
-from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Generic, TypeVar
+from datetime import datetime, UTC
+from typing import Any
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from my_api.shared.repository import IRepository
 from .models import TenantContext
-from .constants import T
-
-CreateT = TypeVar("CreateT", bound=BaseModel)
-UpdateT = TypeVar("UpdateT", bound=BaseModel)
 
 # Context variable for current tenant
 _current_tenant: ContextVar[str | None] = ContextVar("current_tenant", default=None)
@@ -29,7 +23,7 @@ class TenantAware(BaseModel):
 
     tenant_id: str = Field(description="Tenant identifier")
 
-class TenantRepository(IRepository[T, CreateT, UpdateT], Generic[T, CreateT, UpdateT]):
+class TenantRepository[T, CreateT: BaseModel, UpdateT: BaseModel](IRepository[T, CreateT, UpdateT]):
     """Repository with automatic tenant filtering.
 
     All queries are automatically filtered by tenant_id.
@@ -207,7 +201,7 @@ class TenantRepository(IRepository[T, CreateT, UpdateT], Generic[T, CreateT, Upd
 
         # Update timestamp if exists
         if hasattr(entity, "updated_at"):
-            setattr(entity, "updated_at", datetime.now(tz=timezone.utc))
+            setattr(entity, "updated_at", datetime.now(tz=UTC))
 
         await self._session.flush()
         await self._session.refresh(entity)
@@ -231,7 +225,7 @@ class TenantRepository(IRepository[T, CreateT, UpdateT], Generic[T, CreateT, Upd
         if soft and hasattr(entity, "is_deleted"):
             setattr(entity, "is_deleted", True)
             if hasattr(entity, "updated_at"):
-                setattr(entity, "updated_at", datetime.now(tz=timezone.utc))
+                setattr(entity, "updated_at", datetime.now(tz=UTC))
             await self._session.flush()
         else:
             await self._session.delete(entity)

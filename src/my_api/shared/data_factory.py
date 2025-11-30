@@ -7,13 +7,11 @@ for realistic test data generation.
 from dataclasses import dataclass, field
 from datetime import datetime, date, timedelta
 from enum import Enum
-from typing import Any, Callable, Generic, TypeVar, get_type_hints
+from typing import Any
+from collections.abc import Callable
 from uuid import UUID, uuid4
 import random
 import string
-
-
-T = TypeVar("T")
 
 
 class FieldType(Enum):
@@ -139,7 +137,7 @@ class DataGenerator:
             return config.custom_generator()
         if config.choices:
             return self.choice(config.choices)
-        
+
         generators = {
             FieldType.STRING: lambda: self.string(config.min_length or 5, config.max_length or 20),
             FieldType.INTEGER: lambda: self.integer(int(config.min_value or 0), int(config.max_value or 1000)),
@@ -170,7 +168,7 @@ class FactoryConfig:
         return self
 
 
-class DataFactory(Generic[T]):
+class DataFactory[T]:
     """Generic data factory for creating test instances."""
     def __init__(self, model_class: type[T], config: FactoryConfig | None = None, seed: int | None = None) -> None:
         self._model_class = model_class
@@ -250,7 +248,7 @@ def create_factory_config() -> FactoryConfig:
     return FactoryConfig()
 
 
-def quick_factory(model_class: type[T], **field_types: FieldType) -> DataFactory[T]:
+def quick_factory[T](model_class: type[T], **field_types: FieldType) -> DataFactory[T]:
     """Create a quick factory with field types."""
     config = FactoryConfig()
     for name, ftype in field_types.items():

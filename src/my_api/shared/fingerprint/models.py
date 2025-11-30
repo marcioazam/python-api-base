@@ -10,7 +10,7 @@ from datetime import datetime
 from .enums import FingerprintComponent, SuspicionLevel
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class RequestData:
     """Data extracted from a request for fingerprinting."""
 

@@ -5,7 +5,7 @@
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from .enums import OAuthProvider
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class OAuthConfig:
     """OAuth2 provider configuration.
 
@@ -68,14 +68,14 @@ class OAuthTokenResponse(BaseModel):
     id_token: str | None = None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class OAuthState:
     """OAuth state for CSRF protection."""
 
     state: str
     nonce: str | None = None
     redirect_to: str | None = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def is_expired(self, max_age_seconds: int = 600) -> bool:
         """Check if state has expired.
@@ -86,5 +86,5 @@ class OAuthState:
         Returns:
             True if state is expired.
         """
-        age = (datetime.now(timezone.utc) - self.created_at).total_seconds()
+        age = (datetime.now(UTC) - self.created_at).total_seconds()
         return age > max_age_seconds

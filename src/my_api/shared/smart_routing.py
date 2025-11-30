@@ -10,12 +10,9 @@ routing based on metrics.
 import random
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from enum import Enum
-from typing import Any, Generic, TypeVar
-
-
-T = TypeVar("T")
+from typing import Any
 
 
 class LoadBalancingStrategy(Enum):
@@ -46,7 +43,7 @@ class EndpointMetrics:
     error_count: int = 0
     total_response_time_ms: float = 0.0
     active_connections: int = 0
-    last_check: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    last_check: datetime = field(default_factory=lambda: datetime.now(UTC))
     last_error: datetime | None = None
 
     @property
@@ -69,7 +66,7 @@ class EndpointMetrics:
         self.total_response_time_ms += response_time_ms
         if is_error:
             self.error_count += 1
-            self.last_error = datetime.now(timezone.utc)
+            self.last_error = datetime.now(UTC)
 
     def increment_connections(self) -> None:
         """Increment active connections."""
@@ -192,7 +189,7 @@ class IPHashBalancer(LoadBalancer):
 
 
 
-class SmartRouter(Generic[T]):
+class SmartRouter[T]:
     """Smart router with load balancing and health checking."""
 
     def __init__(

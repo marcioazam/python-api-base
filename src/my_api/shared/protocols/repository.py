@@ -7,8 +7,8 @@ Feature: file-size-compliance-phase2
 """
 
 from abc import abstractmethod
-from datetime import datetime
-from typing import Any, Protocol, Sequence, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
+from collections.abc import Sequence
 from pydantic import BaseModel
 
 

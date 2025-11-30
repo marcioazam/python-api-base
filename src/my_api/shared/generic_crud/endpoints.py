@@ -1,7 +1,7 @@
 """Generic API Endpoints with auto-generation and OpenAPI schema."""
 
 import json
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import BaseModel, Field
@@ -9,11 +9,6 @@ from sqlmodel import SQLModel
 
 from .repository import FilterCondition, FilterOperator, SortCondition
 from .service import GenericService, ServiceResult
-
-T = TypeVar("T", bound=SQLModel)
-CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
-UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
-ResponseSchemaType = TypeVar("ResponseSchemaType", bound=BaseModel)
 
 
 class EndpointConfig:
@@ -59,7 +54,7 @@ class SortParams(BaseModel):
     sort: str | None = Field(None, description="Sort fields: field1:asc,field2:desc")
 
 
-class GenericEndpoints(Generic[T, CreateSchemaType, UpdateSchemaType, ResponseSchemaType]):
+class GenericEndpoints[T: SQLModel, CreateSchemaType: BaseModel, UpdateSchemaType: BaseModel, ResponseSchemaType: BaseModel]:
     """Generic CRUD endpoints generator."""
 
     def __init__(

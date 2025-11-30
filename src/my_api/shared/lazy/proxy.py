@@ -7,15 +7,12 @@
 import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Generic, TypeVar
 
 from .enums import LoadState
 
-T = TypeVar("T")
-
 
 @dataclass
-class LazyProxy(Generic[T]):
+class LazyProxy[T]:
     """Generic lazy loading proxy for deferred value loading."""
 
     loader: Callable[[], T | Awaitable[T]]
@@ -126,7 +123,7 @@ class LazyProxy(Generic[T]):
 
 
 @dataclass
-class LazyCollection(Generic[T]):
+class LazyCollection[T]:
     """Lazy loading collection for deferred batch loading."""
 
     loader: Callable[[], list[T] | Awaitable[list[T]]]
@@ -179,7 +176,7 @@ class LazyCollection(Generic[T]):
 
 
 @dataclass
-class LazyRef(Generic[T]):
+class LazyRef[T]:
     """Lazy reference to a related entity by ID."""
 
     id: str

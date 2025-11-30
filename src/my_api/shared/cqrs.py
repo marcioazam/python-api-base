@@ -14,9 +14,10 @@ Uses PEP 695 type parameter syntax (Python 3.12+) for cleaner generic definition
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 
-from my_api.shared.result import Err, Ok, Result
+from my_api.shared.result import Ok, Result
 
 logger = logging.getLogger(__name__)
 

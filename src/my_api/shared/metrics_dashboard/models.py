@@ -6,13 +6,13 @@
 
 import json
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Any
 
 from .enums import ChartType, MetricType, TimeRange
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class MetricPoint:
     """A single metric data point."""
 
@@ -34,7 +34,7 @@ class MetricSeries:
     def add_point(self, value: float, labels: dict[str, str] | None = None) -> None:
         """Add a new data point."""
         point = MetricPoint(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             value=value,
             labels=labels or {},
         )
@@ -46,7 +46,7 @@ class MetricSeries:
 
     def get_range(self, time_range: TimeRange) -> list[MetricPoint]:
         """Get points within time range."""
-        cutoff = datetime.now(timezone.utc) - time_range.to_timedelta()
+        cutoff = datetime.now(UTC) - time_range.to_timedelta()
         return [p for p in self.points if p.timestamp >= cutoff]
 
     def calculate_rate(self, time_range: TimeRange) -> float:
@@ -87,7 +87,7 @@ class Dashboard:
     widgets: list[Widget] = field(default_factory=list)
     auto_refresh: bool = True
     refresh_interval: int = 30
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def add_widget(self, widget: Widget) -> None:
         """Add a widget to the dashboard."""
@@ -110,7 +110,7 @@ class DashboardData:
 
     dashboard: Dashboard
     widget_data: dict[str, dict[str, Any]] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_json(self) -> str:
         """Convert to JSON for frontend."""

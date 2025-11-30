@@ -1,6 +1,6 @@
 """Specification combinators (AND, OR, NOT)."""
 
-from typing import Any, TypeVar
+from typing import Any
 
 from sqlalchemy import and_ as sql_and
 from sqlalchemy import not_ as sql_not
@@ -8,10 +8,8 @@ from sqlalchemy import or_ as sql_or
 
 from .base import BaseSpecification
 
-T = TypeVar("T")
 
-
-class CompositeSpecification(BaseSpecification[T]):
+class CompositeSpecification[T](BaseSpecification[T]):
     """Specification combining two specifications with AND/OR logic."""
 
     def __init__(
@@ -50,7 +48,7 @@ class CompositeSpecification(BaseSpecification[T]):
         return sql_or(left_cond, right_cond)
 
 
-class NotSpecification(BaseSpecification[T]):
+class NotSpecification[T](BaseSpecification[T]):
     """Specification that negates another specification."""
 
     def __init__(self, spec: BaseSpecification[T]) -> None:

@@ -1,6 +1,3 @@
 """multitenancy constants."""
 
-from typing import TypeVar
-from pydantic import BaseModel
-
-T = TypeVar("T", bound=BaseModel)
+# Type parameters are now defined inline using PEP 695 syntax

@@ -10,13 +10,13 @@ Provides:
 - Stateful mock data management
 """
 
-import json
 import random
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 from pydantic import BaseModel
 
@@ -55,7 +55,7 @@ class RecordedRequest:
     headers: dict[str, str]
     query_params: dict[str, str]
     body: Any
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 class MockResponse(BaseModel):
@@ -116,7 +116,7 @@ class MockDataGenerator:
         if "enum" in schema:
             return random.choice(schema["enum"])
         if schema.get("format") == "date-time":
-            return datetime.now(timezone.utc).isoformat()
+            return datetime.now(UTC).isoformat()
         if schema.get("format") == "email":
             return f"user{random.randint(1, 999)}@example.com"
         if schema.get("format") == "uuid":

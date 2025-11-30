@@ -5,17 +5,15 @@
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Generic, TypeVar
+from datetime import datetime, UTC
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .aggregate import Aggregate
 
-AggregateT = TypeVar("AggregateT", bound="Aggregate[Any]")
-
 
 @dataclass
-class Snapshot(Generic[AggregateT]):
+class Snapshot[AggregateT: "Aggregate[Any]"]:
     """Snapshot of aggregate state for performance optimization.
 
     Snapshots allow faster aggregate reconstruction by storing
@@ -31,7 +29,7 @@ class Snapshot(Generic[AggregateT]):
     state: dict[str, Any]
     state_hash: str = ""  # SHA-256 hash of serialized state
     created_at: datetime = field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
+        default_factory=lambda: datetime.now(tz=UTC)
     )
 
     @staticmethod

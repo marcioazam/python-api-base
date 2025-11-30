@@ -6,7 +6,7 @@
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network, ip_address, ip_network
 from typing import Protocol, Self, Union
 
@@ -121,7 +121,7 @@ class InMemoryCloudRangeProvider:
                     continue
             self._ipv6_ranges[provider] = networks_v6
 
-        self._last_update = datetime.now(timezone.utc)
+        self._last_update = datetime.now(UTC)
         self._initialized = True
 
     def add_range(self, provider: CloudProvider, cidr: str) -> Self:
@@ -144,7 +144,7 @@ class InMemoryCloudRangeProvider:
             if network not in self._ipv6_ranges[provider]:
                 self._ipv6_ranges[provider].append(network)
 
-        self._last_update = datetime.now(timezone.utc)
+        self._last_update = datetime.now(UTC)
         return self
 
     def merge_ranges(self, provider: CloudProvider, cidrs: list[str]) -> Self:
@@ -212,7 +212,7 @@ class InMemoryCloudRangeProvider:
         """Check if the ranges are stale (older than max_age)."""
         if self._last_update is None:
             return True
-        age = datetime.now(timezone.utc) - self._last_update
+        age = datetime.now(UTC) - self._last_update
         return age > max_age
 
     def check_staleness_warning(self) -> None:
@@ -264,7 +264,7 @@ class UpdatableCloudRangeProvider:
                 # Fall back to cached ranges - continue with other sources
 
         if success:
-            self._last_fetch = datetime.now(timezone.utc)
+            self._last_fetch = datetime.now(UTC)
 
         return success
 

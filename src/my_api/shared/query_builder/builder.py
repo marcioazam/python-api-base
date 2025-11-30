@@ -6,7 +6,7 @@ sorting, pagination, and specification integration.
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Self
 
 from pydantic import BaseModel

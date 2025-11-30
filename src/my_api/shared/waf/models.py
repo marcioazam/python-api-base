@@ -10,7 +10,7 @@
 import logging
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 from .enums import RuleAction, RuleSeverity, ThreatType
 
@@ -59,7 +59,7 @@ class ThreatDetection:
     rule: WAFRule | None = None
     matched_value: str | None = None
     target: str | None = None
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @property
     def threat_type(self) -> ThreatType | None:

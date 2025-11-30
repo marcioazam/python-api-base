@@ -28,7 +28,7 @@ class ChangeSeverity(Enum):
     UNKNOWN = "unknown"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class SchemaChange:
     """Represents a change in API schema."""
     path: str
@@ -146,23 +146,23 @@ class SchemaComparator:
         changes: list[SchemaChange] = []
         old_keys = set(old.keys()) if isinstance(old, dict) else set()
         new_keys = set(new.keys()) if isinstance(new, dict) else set()
-        
+
         for key in old_keys - new_keys:
             full_path = f"{path}.{key}" if path else key
             changes.append(SchemaChange(path=full_path, change_type=ChangeType.REMOVED,
                 severity=ChangeSeverity.BREAKING if self._breaking_removals else ChangeSeverity.COMPATIBLE,
                 old_value=old[key], message=f"Field '{key}' was removed"))
-        
+
         for key in new_keys - old_keys:
             full_path = f"{path}.{key}" if path else key
             changes.append(SchemaChange(path=full_path, change_type=ChangeType.ADDED,
                 severity=ChangeSeverity.COMPATIBLE, new_value=new[key],
                 message=f"Field '{key}' was added"))
-        
+
         for key in old_keys & new_keys:
             full_path = f"{path}.{key}" if path else key
             old_val, new_val = old[key], new[key]
-            
+
             if type(old_val) != type(new_val):
                 changes.append(SchemaChange(path=full_path, change_type=ChangeType.TYPE_CHANGED,
                     severity=ChangeSeverity.BREAKING if self._breaking_type_changes else ChangeSeverity.COMPATIBLE,

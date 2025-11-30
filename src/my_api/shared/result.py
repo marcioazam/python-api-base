@@ -3,8 +3,8 @@
 Uses PEP 695 type parameter syntax (Python 3.12+) for cleaner generic definitions.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Union
 
 
 @dataclass(frozen=True, slots=True)

@@ -5,11 +5,11 @@ Validates: Requirements 3.1, 5.1, 5.2, 5.3
 """
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Any
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class StoredToken:
     """Stored refresh token data."""
 
@@ -21,7 +21,7 @@ class StoredToken:
 
     def is_expired(self) -> bool:
         """Check if token has expired."""
-        return datetime.now(timezone.utc) > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
     def is_valid(self) -> bool:
         """Check if token is valid (not expired and not revoked)."""

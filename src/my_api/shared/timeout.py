@@ -11,11 +11,8 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import timedelta
 from enum import Enum
-from typing import Any, Awaitable, Callable, Generic, TypeVar
-
-
-RequestT = TypeVar("RequestT")
-ResponseT = TypeVar("ResponseT")
+from typing import Any
+from collections.abc import Awaitable, Callable
 
 
 class TimeoutAction(Enum):
@@ -52,7 +49,7 @@ class TimeoutConfig:
 
 
 @dataclass
-class TimeoutResult(Generic[ResponseT]):
+class TimeoutResult[ResponseT]:
     """Result of a timeout-protected operation."""
 
     success: bool
@@ -77,7 +74,7 @@ class TimeoutResult(Generic[ResponseT]):
         return cls(success=False, error=error, elapsed=elapsed)
 
 
-class TimeoutMiddleware(Generic[RequestT, ResponseT]):
+class TimeoutMiddleware[RequestT, ResponseT]:
     """Middleware that enforces request timeouts."""
 
     def __init__(self, config: TimeoutConfig | None = None) -> None:
@@ -196,7 +193,7 @@ class TimeoutConfigBuilder:
         )
 
 
-def timeout_decorator(
+def timeout_decorator[ResponseT](
     timeout_seconds: float,
     action: TimeoutAction = TimeoutAction.RAISE,
 ) -> Callable[[Callable[..., Awaitable[ResponseT]]], Callable[..., Awaitable[ResponseT]]]:

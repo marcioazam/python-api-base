@@ -8,9 +8,10 @@ Implements JSON-RPC 2.0 specification for remote procedure calls.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import IntEnum
-from typing import Any, Callable, Awaitable
+from typing import Any
+from collections.abc import Callable, Awaitable
 import json
 
 

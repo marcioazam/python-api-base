@@ -3,7 +3,6 @@
 from dataclasses import dataclass
 from datetime import datetime, date, time, timedelta
 from enum import Enum
-from typing import Protocol
 from zoneinfo import ZoneInfo
 
 

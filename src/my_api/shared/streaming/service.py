@@ -2,16 +2,13 @@
 
 import asyncio
 import json
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Any, AsyncIterator, Callable, Generic, TypeVar
+from datetime import datetime, UTC
+from typing import Any
+from collections.abc import AsyncIterator, Callable
 from pydantic import BaseModel
 from .enums import StreamFormat
 from .models import SSEEvent
 from .config import StreamConfig
-from .constants import T
 
 
 class StreamStats(BaseModel):
@@ -31,7 +28,7 @@ class StreamStats(BaseModel):
     start_time: datetime | None = None
     duration_ms: float = 0.0
 
-class StreamingResponse(Generic[T]):
+class StreamingResponse[T]:
     """Generic streaming response.
 
     Provides streaming of data with configurable format and chunking.
@@ -62,7 +59,7 @@ class StreamingResponse(Generic[T]):
         Yields:
             Encoded chunks.
         """
-        self._stats.start_time = datetime.now(timezone.utc)
+        self._stats.start_time = datetime.now(UTC)
 
         try:
             async for item in self._source:
@@ -78,7 +75,7 @@ class StreamingResponse(Generic[T]):
                 yield encoded
 
         finally:
-            end_time = datetime.now(timezone.utc)
+            end_time = datetime.now(UTC)
             if self._stats.start_time:
                 self._stats.duration_ms = (
                     end_time - self._stats.start_time
@@ -188,7 +185,7 @@ class SSEStream:
         Yields:
             Encoded SSE events.
         """
-        self._stats.start_time = datetime.now(timezone.utc)
+        self._stats.start_time = datetime.now(UTC)
 
         while not self._closed:
             try:
@@ -213,7 +210,7 @@ class SSEStream:
                 self._stats.bytes_sent += len(heartbeat)
                 yield heartbeat
 
-        end_time = datetime.now(timezone.utc)
+        end_time = datetime.now(UTC)
         if self._stats.start_time:
             self._stats.duration_ms = (
                 end_time - self._stats.start_time
@@ -237,7 +234,7 @@ class SSEStream:
         """Check if stream is closed."""
         return self._closed
 
-class ChunkedStream(Generic[T]):
+class ChunkedStream[T]:
     """Chunked transfer encoding stream.
 
     Streams large data in chunks with progress tracking.
@@ -268,7 +265,7 @@ class ChunkedStream(Generic[T]):
         Yields:
             Data chunks.
         """
-        self._stats.start_time = datetime.now(timezone.utc)
+        self._stats.start_time = datetime.now(UTC)
 
         async for item in self._source:
             # Convert item to bytes
@@ -297,7 +294,7 @@ class ChunkedStream(Generic[T]):
             self._stats.chunks_sent += 1
             yield self._buffer
 
-        end_time = datetime.now(timezone.utc)
+        end_time = datetime.now(UTC)
         if self._stats.start_time:
             self._stats.duration_ms = (
                 end_time - self._stats.start_time

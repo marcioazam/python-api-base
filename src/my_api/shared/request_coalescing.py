@@ -10,14 +10,11 @@ import asyncio
 import hashlib
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Awaitable, Callable, Generic, TypeVar
+from typing import Any
+from collections.abc import Awaitable, Callable
 
 from pydantic import BaseModel
-
-
-T = TypeVar("T")
 
 
 class CoalescingStrategy(str, Enum):
@@ -48,7 +45,7 @@ class CoalescingConfig:
 
 
 @dataclass
-class PendingRequest(Generic[T]):
+class PendingRequest[T]:
     """Pending coalesced request.
 
     Attributes:
@@ -82,7 +79,7 @@ class CoalescingStats(BaseModel):
     avg_coalesced_per_request: float = 0.0
 
 
-class RequestCoalescer(Generic[T]):
+class RequestCoalescer[T]:
     """Request coalescer for deduplicating concurrent requests.
 
     Coalesces identical concurrent requests so only one actual
@@ -254,7 +251,7 @@ class RequestCoalescer(Generic[T]):
         return len(self._cache)
 
 
-def coalesce(
+def coalesce[T](
     key_func: Callable[..., str] | None = None,
     config: CoalescingConfig | None = None,
 ) -> Callable[[Callable[..., Awaitable[T]]], Callable[..., Awaitable[T]]]:
@@ -284,7 +281,7 @@ def coalesce(
     return decorator
 
 
-class BatchCoalescer(Generic[T]):
+class BatchCoalescer[T]:
     """Batch request coalescer.
 
     Collects multiple requests and executes them in a single batch.

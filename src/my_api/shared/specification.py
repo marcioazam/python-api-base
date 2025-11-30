@@ -4,7 +4,7 @@ Uses PEP 695 type parameter syntax (Python 3.12+) for cleaner generic definition
 """
 
 from abc import ABC, abstractmethod
-from typing import Callable
+from collections.abc import Callable
 
 
 class Specification[T](ABC):

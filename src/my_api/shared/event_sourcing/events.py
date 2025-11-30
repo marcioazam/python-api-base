@@ -5,13 +5,9 @@
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, TypeVar
+from datetime import datetime, UTC
+from typing import Any
 from uuid import uuid4
-
-
-# Type variable for events
-EventT = TypeVar("EventT", bound="SourcedEvent")
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,7 +22,7 @@ class SourcedEvent:
     aggregate_id: str = ""
     version: int = 0
     timestamp: datetime = field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
+        default_factory=lambda: datetime.now(tz=UTC)
     )
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -49,14 +45,14 @@ class EventStream:
     events: list[SourcedEvent] = field(default_factory=list)
     version: int = 0
     created_at: datetime = field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
+        default_factory=lambda: datetime.now(tz=UTC)
     )
     updated_at: datetime = field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
+        default_factory=lambda: datetime.now(tz=UTC)
     )
 
     def append(self, event: SourcedEvent) -> None:
         """Append an event to the stream."""
         self.events.append(event)
         self.version = len(self.events)
-        self.updated_at = datetime.now(tz=timezone.utc)
+        self.updated_at = datetime.now(tz=UTC)

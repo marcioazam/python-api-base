@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import TYPE_CHECKING, Any
 
 from fastapi import WebSocket
@@ -19,7 +19,7 @@ class WebSocketConnection:
     websocket: WebSocket
     client_id: str
     connected_at: datetime = field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
+        default_factory=lambda: datetime.now(tz=UTC)
     )
     metadata: dict[str, Any] = field(default_factory=dict)
 

@@ -1,18 +1,17 @@
 """bff service."""
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Awaitable, Callable, Generic, Protocol, TypeVar, runtime_checkable
+from dataclasses import dataclass
+from typing import Any, Protocol, runtime_checkable
+from collections.abc import Awaitable, Callable
 from .enums import ClientType
-from .models import BFFRoute, RequestT, ResponseT
-from .config import FieldConfig, ClientConfig, BFFConfig, BFFConfigBuilder
+from .models import BFFRoute
+from .config import BFFConfig, BFFConfigBuilder
 
-DataT = TypeVar("DataT")
-HandlerFunc = Callable[[RequestT, "ClientInfo"], Awaitable[ResponseT]]
+type HandlerFunc[RequestT, ResponseT] = Callable[[RequestT, "ClientInfo"], Awaitable[ResponseT]]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ClientInfo:
     """Information about the client making the request."""
 
@@ -83,12 +82,12 @@ class ClientInfo:
         return "unknown"
 
 @runtime_checkable
-class ResponseTransformer(Protocol[DataT]):
+class ResponseTransformer[DataT](Protocol):
     """Protocol for transforming responses based on client type."""
 
     def transform(self, data: DataT, client_info: ClientInfo) -> Any: ...
 
-class BaseTransformer(ABC, Generic[DataT]):
+class BaseTransformer[DataT](ABC):
     """Base class for response transformers."""
 
     @abstractmethod
@@ -96,7 +95,7 @@ class BaseTransformer(ABC, Generic[DataT]):
         """Transform data for the client."""
         ...
 
-class IdentityTransformer(BaseTransformer[DataT]):
+class IdentityTransformer[DataT](BaseTransformer[DataT]):
     """Transformer that returns data unchanged."""
 
     def transform(self, data: DataT, client_info: ClientInfo) -> DataT:
@@ -131,7 +130,7 @@ class ListTransformer(BaseTransformer[list[dict[str, Any]]]):
         # Apply field config to each item
         return [config.fields.apply(item) for item in limited_data]
 
-class BFFRouter(Generic[RequestT, ResponseT]):
+class BFFRouter[RequestT, ResponseT]:
     """Router for BFF pattern with client-specific routing."""
 
     def __init__(self, config: BFFConfig | None = None) -> None:

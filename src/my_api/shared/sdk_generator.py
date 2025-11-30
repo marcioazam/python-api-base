@@ -1,6 +1,6 @@
 """SDK Generation from OpenAPI specification."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 from enum import Enum
 import json

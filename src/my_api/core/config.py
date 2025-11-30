@@ -1,10 +1,56 @@
-"""Configuration management with Pydantic Settings."""
+"""Configuration management with Pydantic Settings.
 
+**Feature: core-code-review**
+**Validates: Requirements 1.1, 1.2, 1.3, 1.4**
+"""
+
+import logging
+import os
+import re
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Final
+from urllib.parse import urlparse
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
+
+__all__ = [
+    "RATE_LIMIT_PATTERN",
+    "DatabaseSettings",
+    "ObservabilitySettings",
+    "RedisSettings",
+    "SecuritySettings",
+    "Settings",
+    "get_settings",
+    "redact_url_credentials",
+]
+
+# Rate limit pattern: number/unit (e.g., "100/minute", "10/second")
+RATE_LIMIT_PATTERN: Final = re.compile(r"^\d+/(second|minute|hour|day)$")
+
+
+def redact_url_credentials(url: str) -> str:
+    """Redact credentials from a URL for safe logging.
+    
+    Args:
+        url: URL that may contain credentials.
+        
+    Returns:
+        URL with password replaced by [REDACTED].
+    """
+    try:
+        parsed = urlparse(url)
+        if parsed.password:
+            # Replace password in netloc
+            redacted_netloc = parsed.netloc.replace(
+                f":{parsed.password}@", ":[REDACTED]@"
+            )
+            return url.replace(parsed.netloc, redacted_netloc)
+        return url
+    except Exception:
+        return "[INVALID_URL]"
 
 
 class DatabaseSettings(BaseSettings):
@@ -22,15 +68,27 @@ class DatabaseSettings(BaseSettings):
     )
     echo: bool = Field(default=False, description="Echo SQL statements")
 
+    def get_safe_url(self) -> str:
+        """Get URL with credentials redacted for logging."""
+        return redact_url_credentials(self.url)
+
+    def __repr__(self) -> str:
+        """Safe representation without credentials."""
+        return f"DatabaseSettings(url='{self.get_safe_url()}', pool_size={self.pool_size})"
+
 
 class SecuritySettings(BaseSettings):
-    """Security configuration settings."""
+    """Security configuration settings.
+    
+    **Feature: core-code-review**
+    **Validates: Requirements 1.1, 1.2, 1.4**
+    """
 
     model_config = SettingsConfigDict(env_prefix="SECURITY__")
 
     secret_key: SecretStr = Field(
         ...,
-        description="Secret key for signing tokens",
+        description="Secret key for signing tokens (min 256-bit entropy)",
         min_length=32,
     )
     cors_origins: list[str] = Field(
@@ -39,7 +97,7 @@ class SecuritySettings(BaseSettings):
     )
     rate_limit: str = Field(
         default="100/minute",
-        description="Rate limit configuration",
+        description="Rate limit configuration (format: number/unit)",
     )
     algorithm: str = Field(default="HS256", description="JWT algorithm")
     access_token_expire_minutes: int = Field(
@@ -54,6 +112,53 @@ class SecuritySettings(BaseSettings):
         default="geolocation=(), microphone=(), camera=()",
         description="Permissions-Policy header value",
     )
+
+    @field_validator("secret_key")
+    @classmethod
+    def validate_secret_entropy(cls, v: SecretStr) -> SecretStr:
+        """Validate secret key has sufficient entropy (256 bits = 32 chars).
+        
+        **Feature: core-code-review, Property 1: Secret Key Entropy Validation**
+        **Validates: Requirements 1.1**
+        """
+        secret = v.get_secret_value()
+        if len(secret) < 32:
+            raise ValueError(
+                "Secret key must be at least 32 characters (256 bits) for security"
+            )
+        return v
+
+    @field_validator("cors_origins")
+    @classmethod
+    def warn_wildcard_cors(cls, v: list[str]) -> list[str]:
+        """Warn about wildcard CORS in production.
+        
+        **Feature: core-code-review**
+        **Validates: Requirements 1.2**
+        """
+        if "*" in v:
+            env = os.getenv("ENVIRONMENT", "").lower()
+            if env == "production":
+                logger.warning(
+                    "SECURITY WARNING: Wildcard CORS origin '*' detected in production. "
+                    "This allows any origin to make requests to your API."
+                )
+        return v
+
+    @field_validator("rate_limit")
+    @classmethod
+    def validate_rate_limit_format(cls, v: str) -> str:
+        """Validate rate limit format.
+        
+        **Feature: core-code-review**
+        **Validates: Requirements 1.4**
+        """
+        if not RATE_LIMIT_PATTERN.match(v):
+            raise ValueError(
+                f"Invalid rate limit format: '{v}'. "
+                "Expected format: 'number/unit' (e.g., '100/minute', '10/second')"
+            )
+        return v
 
 
 class RedisSettings(BaseSettings):

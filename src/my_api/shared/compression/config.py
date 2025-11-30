@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from .enums import CompressionAlgorithm
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class CompressionConfig:
     """Configuration for compression middleware."""
 

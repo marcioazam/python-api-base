@@ -1,14 +1,11 @@
 """Retry Queue Pattern with dead letter queue handling."""
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from enum import Enum
-from typing import Protocol, TypeVar, Generic, Any
+from typing import Protocol, Any
 from collections.abc import Callable, Awaitable
 import asyncio
-
-
-T = TypeVar("T")
 
 
 class MessageStatus(Enum):
@@ -31,7 +28,7 @@ class RetryConfig:
 
 
 @dataclass
-class QueueMessage(Generic[T]):
+class QueueMessage[T]:
     """Message in retry queue."""
     id: str
     payload: T
@@ -51,13 +48,13 @@ class ProcessingResult:
     should_retry: bool = True
 
 
-class MessageHandler(Protocol[T]):
+class MessageHandler[T](Protocol):
     """Protocol for message handlers."""
 
     async def handle(self, message: QueueMessage[T]) -> ProcessingResult: ...
 
 
-class QueueBackend(Protocol[T]):
+class QueueBackend[T](Protocol):
     """Protocol for queue storage backend."""
 
     async def enqueue(self, message: QueueMessage[T]) -> None: ...
@@ -68,7 +65,7 @@ class QueueBackend(Protocol[T]):
     async def requeue_from_dlq(self, message_id: str) -> bool: ...
 
 
-class RetryQueue(Generic[T]):
+class RetryQueue[T]:
     """Retry queue with exponential backoff and DLQ."""
 
     def __init__(
@@ -123,7 +120,7 @@ class RetryQueue(Generic[T]):
         message = QueueMessage(
             id=str(uuid.uuid4()),
             payload=payload,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             metadata=metadata or {}
         )
         await self._backend.enqueue(message)
@@ -156,7 +153,7 @@ class RetryQueue(Generic[T]):
                 message.last_error = result.error
                 message.status = MessageStatus.PENDING
                 delay = self._calculate_delay(message.retry_count)
-                message.next_retry_at = datetime.now(timezone.utc) + timedelta(milliseconds=delay)
+                message.next_retry_at = datetime.now(UTC) + timedelta(milliseconds=delay)
                 await self._backend.update(message)
             else:
                 message.status = MessageStatus.DEAD_LETTER
@@ -170,7 +167,7 @@ class RetryQueue(Generic[T]):
                 message.retry_count += 1
                 message.status = MessageStatus.PENDING
                 delay = self._calculate_delay(message.retry_count)
-                message.next_retry_at = datetime.now(timezone.utc) + timedelta(milliseconds=delay)
+                message.next_retry_at = datetime.now(UTC) + timedelta(milliseconds=delay)
                 await self._backend.update(message)
             else:
                 message.status = MessageStatus.DEAD_LETTER
@@ -216,7 +213,7 @@ class RetryQueue(Generic[T]):
         return count
 
 
-class InMemoryQueueBackend(Generic[T]):
+class InMemoryQueueBackend[T]:
     """In-memory queue backend for testing."""
 
     def __init__(self) -> None:
@@ -227,7 +224,7 @@ class InMemoryQueueBackend(Generic[T]):
         self._queue.append(message)
 
     async def dequeue(self, limit: int) -> list[QueueMessage[T]]:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         ready = [
             m for m in self._queue
             if m.status == MessageStatus.PENDING and

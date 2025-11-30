@@ -6,18 +6,14 @@ import random
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import ParamSpec, TypeVar
 
 logger = logging.getLogger(__name__)
-
-P = ParamSpec("P")
-T = TypeVar("T")
 
 
 @dataclass
 class RetryConfig:
     """Configuration for retry behavior."""
-    
+
     max_attempts: int = 3
     base_delay: float = 1.0  # seconds
     max_delay: float = 60.0  # seconds
@@ -45,16 +41,16 @@ def calculate_delay(
     """
     delay = config.base_delay * (config.exponential_base ** attempt)
     delay = min(delay, config.max_delay)
-    
+
     if config.jitter:
         # Add random jitter (±25%)
         jitter_range = delay * 0.25
         delay += random.uniform(-jitter_range, jitter_range)
-    
+
     return max(0, delay)
 
 
-async def retry_async(
+async def retry_async[T, **P](
     func: Callable[P, T],
     *args: P.args,
     config: RetryConfig | None = None,
@@ -76,7 +72,7 @@ async def retry_async(
     """
     config = config or RetryConfig()
     last_exception: Exception | None = None
-    
+
     for attempt in range(config.max_attempts):
         try:
             result = func(*args, **kwargs)
@@ -85,7 +81,7 @@ async def retry_async(
             return result
         except config.retryable_exceptions as e:
             last_exception = e
-            
+
             if attempt < config.max_attempts - 1:
                 delay = calculate_delay(attempt, config)
                 logger.warning(
@@ -107,13 +103,13 @@ async def retry_async(
                         "error": str(e),
                     },
                 )
-    
+
     if last_exception:
         raise last_exception
     raise RuntimeError("Unexpected retry state")
 
 
-def retry(
+def retry[T, **P](
     config: RetryConfig | None = None,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Decorator to add retry logic to a function.
@@ -125,24 +121,24 @@ def retry(
         Decorated function.
     """
     config = config or RetryConfig()
-    
+
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @wraps(func)
         async def async_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             return await retry_async(func, *args, config=config, **kwargs)
-        
+
         @wraps(func)
         def sync_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             import time
-            
+
             last_exception: Exception | None = None
-            
+
             for attempt in range(config.max_attempts):
                 try:
                     return func(*args, **kwargs)
                 except config.retryable_exceptions as e:
                     last_exception = e
-                    
+
                     if attempt < config.max_attempts - 1:
                         delay = calculate_delay(attempt, config)
                         logger.warning(
@@ -150,15 +146,15 @@ def retry(
                             f"failed, retrying in {delay:.2f}s"
                         )
                         time.sleep(delay)
-            
+
             if last_exception:
                 raise last_exception
             raise RuntimeError("Unexpected retry state")
-        
+
         if asyncio.iscoroutinefunction(func):
             return async_wrapper  # type: ignore
         return sync_wrapper  # type: ignore
-    
+
     return decorator
 
 

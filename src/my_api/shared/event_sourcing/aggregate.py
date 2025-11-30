@@ -1,21 +1,24 @@
 """Event Sourcing aggregate base class.
 
-**Feature: code-review-refactoring, Task 1.5: Extract aggregate module**
-**Validates: Requirements 2.1**
+Uses PEP 695 type parameter syntax (Python 3.12+) for cleaner generic definitions.
+
+**Feature: code-review-refactoring, deep-code-quality-generics-review**
+**Validates: Requirements 1.1, 2.1**
 """
 
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 from .events import SourcedEvent
 from .snapshots import Snapshot
 
-# Type variable for aggregate identifiers
-AggregateId = TypeVar("AggregateId", str, int)
+
+# Type alias for backward compatibility
+type AggregateId = str | int
 
 
-class Aggregate(ABC, Generic[AggregateId]):
+class Aggregate[AggregateIdT: (str, int)](ABC):
     """Base class for event-sourced aggregates.
 
     Aggregates are the consistency boundaries in event sourcing.
@@ -23,10 +26,10 @@ class Aggregate(ABC, Generic[AggregateId]):
     are recorded as events.
 
     Type Parameters:
-        AggregateId: The type of the aggregate identifier.
+        AggregateIdT: The type of the aggregate identifier.
     """
 
-    def __init__(self, id: AggregateId) -> None:
+    def __init__(self, id: AggregateIdT) -> None:
         """Initialize aggregate.
 
         Args:
@@ -37,7 +40,7 @@ class Aggregate(ABC, Generic[AggregateId]):
         self._uncommitted_events: list[SourcedEvent] = []
 
     @property
-    def id(self) -> AggregateId:
+    def id(self) -> AggregateIdT:
         """Get the aggregate identifier."""
         return self._id
 

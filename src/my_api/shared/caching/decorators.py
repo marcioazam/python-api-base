@@ -9,13 +9,11 @@ import asyncio
 import functools
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Callable, ParamSpec, TypeVar
+from typing import Any
+from collections.abc import Callable
 
 from .providers import InMemoryCacheProvider
 from .utils import generate_cache_key
-
-P = ParamSpec("P")
-T = TypeVar("T")
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +57,7 @@ def _run_async_in_thread(coro: Any) -> Any:
     return future.result(timeout=CACHE_OPERATION_TIMEOUT)
 
 
-def cached(
+def cached[T, **P](
     ttl: int | None = 3600,
     key_fn: Callable[..., str] | None = None,
     cache_provider: Any | None = None,

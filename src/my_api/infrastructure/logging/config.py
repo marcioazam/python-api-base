@@ -78,17 +78,17 @@ def add_trace_context(
             get_current_span_id,
             get_current_trace_id,
         )
-        
+
         trace_id = get_current_trace_id()
         span_id = get_current_span_id()
-        
+
         if trace_id:
             event_dict["trace_id"] = trace_id
         if span_id:
             event_dict["span_id"] = span_id
     except ImportError:
         pass
-    
+
     return event_dict
 
 
@@ -129,12 +129,12 @@ def redact_pii(
         # Handle None and non-string keys
         if value is None:
             return value
-        
+
         key_lower = str(key).lower()
         for pattern in PII_PATTERNS:
             if pattern in key_lower:
                 return "[REDACTED]"
-        
+
         if isinstance(value, dict):
             return {k: _redact_value(k, v) for k, v in value.items()}
         elif isinstance(value, list):
@@ -142,9 +142,9 @@ def redact_pii(
         elif isinstance(value, bytes):
             # Don't log raw bytes, could contain sensitive data
             return "[BINARY DATA]"
-        
+
         return value
-    
+
     return {k: _redact_value(k, v) for k, v in event_dict.items()}
 
 
@@ -172,7 +172,7 @@ def configure_logging(
             f"Invalid log_level: {log_level}. "
             f"Must be one of: {', '.join(sorted(valid_levels))}"
         )
-    
+
     # Add additional PII patterns if provided
     if additional_pii_patterns:
         PII_PATTERNS.update(additional_pii_patterns)
@@ -187,7 +187,7 @@ def configure_logging(
         add_trace_context,  # Add trace_id and span_id for OTel correlation
         redact_pii,
     ]
-    
+
     if development or log_format == "console":
         # Pretty console output for development
         processors: list[Processor] = [
@@ -214,7 +214,7 @@ def configure_logging(
                 structlog.processors.JSONRenderer(),
             ],
         )
-    
+
     # Configure structlog
     structlog.configure(
         processors=processors,
@@ -223,16 +223,16 @@ def configure_logging(
         logger_factory=structlog.stdlib.LoggerFactory(),
         cache_logger_on_first_use=True,
     )
-    
+
     # Configure standard logging
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(formatter)
-    
+
     root_logger = logging.getLogger()
     root_logger.handlers.clear()
     root_logger.addHandler(handler)
     root_logger.setLevel(getattr(logging, log_level.upper()))
-    
+
     # Reduce noise from third-party libraries
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)

@@ -4,7 +4,7 @@
 **Validates: Requirements 5.9**
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Any
 
 from .enums import ChartType, MetricType, TimeRange
@@ -88,7 +88,7 @@ class MetricsDashboard:
             metric_type=metric_type,
             points=[
                 MetricPoint(
-                    timestamp=datetime.now(timezone.utc),
+                    timestamp=datetime.now(UTC),
                     value=value,
                     labels=labels or {},
                 )

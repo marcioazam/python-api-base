@@ -10,9 +10,10 @@ for distributed tracing and log correlation.
 import contextvars
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 
 # Context variable for correlation ID
@@ -48,7 +49,7 @@ def generate_id(format: IdFormat = IdFormat.UUID4_HEX) -> str:
     elif format == IdFormat.SHORT:
         return uuid.uuid4().hex[:16]
     elif format == IdFormat.TIMESTAMP:
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
         return f"{timestamp}-{uuid.uuid4().hex[:12]}"
     return uuid.uuid4().hex
 
@@ -168,7 +169,7 @@ class CorrelationContext:
             span_id=headers.get("X-Span-ID"),
             parent_span_id=headers.get("X-Parent-Span-ID"),
             trace_id=headers.get("X-Trace-ID"),
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
 
     @classmethod
@@ -183,7 +184,7 @@ class CorrelationContext:
             request_id=generate_id(id_format),
             span_id=generate_id(IdFormat.SHORT),
             service_name=service_name,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
 
 

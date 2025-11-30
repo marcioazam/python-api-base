@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "my-api.fullname" . }}-test-connection"
+  labels:
+    {{- include "my-api.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  containers:
+    - name: wget
+      image: busybox:1.36
+      command: ['wget']
+      args: ['{{ include "my-api.fullname" . }}:{{ .Values.service.port }}/health/ready', '-O', '-', '-q', '--timeout=10']
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        readOnlyRootFilesystem: true
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+  restartPolicy: Never
+  securityContext:
+    fsGroup: 1000

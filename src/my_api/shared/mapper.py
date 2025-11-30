@@ -4,7 +4,8 @@ Uses PEP 695 type parameter syntax (Python 3.12+) for cleaner generic definition
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Sequence
+from typing import Any
+from collections.abc import Sequence
 
 from pydantic import BaseModel
 

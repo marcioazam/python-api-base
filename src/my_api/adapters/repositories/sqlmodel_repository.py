@@ -1,20 +1,26 @@
-"""SQLModel repository implementation."""
+"""SQLModel repository implementation.
 
-from typing import Any, Generic, Sequence, TypeVar
+Uses PEP 695 type parameter syntax (Python 3.12+) for cleaner generic definitions.
 
-from pydantic import BaseModel
-from sqlalchemy import func, select
+**Feature: deep-code-quality-generics-review**
+**Validates: Requirements 1.1, 14.2**
+"""
+
+from typing import Any
+from collections.abc import Sequence
+
+from pydantic import BaseModel, ValidationError
+from sqlalchemy import false, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import SQLModel
 
+from my_api.core.exceptions import ValidationError as AppValidationError
 from my_api.shared.repository import IRepository
 
-T = TypeVar("T", bound=SQLModel)
-CreateT = TypeVar("CreateT", bound=BaseModel)
-UpdateT = TypeVar("UpdateT", bound=BaseModel)
 
-
-class SQLModelRepository(IRepository[T, CreateT, UpdateT], Generic[T, CreateT, UpdateT]):
+class SQLModelRepository[T: SQLModel, CreateT: BaseModel, UpdateT: BaseModel](
+    IRepository[T, CreateT, UpdateT]
+):
     """SQLModel repository implementation.
 
     Provides CRUD operations using SQLModel and async SQLAlchemy.
@@ -35,11 +41,17 @@ class SQLModelRepository(IRepository[T, CreateT, UpdateT], Generic[T, CreateT, U
         self._model_class = model_class
 
     async def get_by_id(self, id: str) -> T | None:
-        """Get entity by ID."""
-        statement = select(self._model_class).where(
-            self._model_class.id == id,
-            getattr(self._model_class, "is_deleted", False) == False,  # noqa: E712
-        )
+        """Get entity by ID.
+
+        Args:
+            id: Entity identifier.
+
+        Returns:
+            Entity if found and not soft-deleted, None otherwise.
+        """
+        statement = select(self._model_class).where(self._model_class.id == id)
+        if hasattr(self._model_class, "is_deleted"):
+            statement = statement.where(self._model_class.is_deleted.is_(false()))
         result = await self._session.execute(statement)
         return result.scalar_one_or_none()
 
@@ -52,11 +64,22 @@ class SQLModelRepository(IRepository[T, CreateT, UpdateT], Generic[T, CreateT, U
         sort_by: str | None = None,
         sort_order: str = "asc",
     ) -> tuple[Sequence[T], int]:
-        """Get paginated list of entities."""
+        """Get paginated list of entities.
+
+        Args:
+            skip: Number of records to skip.
+            limit: Maximum number of records to return.
+            filters: Optional field filters.
+            sort_by: Field to sort by.
+            sort_order: Sort direction ('asc' or 'desc').
+
+        Returns:
+            Tuple of (entities list, total count).
+        """
         # Base query excluding soft-deleted
         base_query = select(self._model_class)
         if hasattr(self._model_class, "is_deleted"):
-            base_query = base_query.where(self._model_class.is_deleted == False)  # noqa: E712
+            base_query = base_query.where(self._model_class.is_deleted.is_(false()))
 
         # Apply filters
         if filters:
@@ -88,9 +111,26 @@ class SQLModelRepository(IRepository[T, CreateT, UpdateT], Generic[T, CreateT, U
         return entities, total
 
     async def create(self, data: CreateT) -> T:
-        """Create new entity."""
-        entity_data = data.model_dump()
-        entity = self._model_class.model_validate(entity_data)
+        """Create new entity.
+
+        Args:
+            data: DTO with entity data.
+
+        Returns:
+            Created entity.
+
+        Raises:
+            AppValidationError: If data validation fails.
+        """
+        try:
+            entity_data = data.model_dump()
+            entity = self._model_class.model_validate(entity_data)
+        except ValidationError as e:
+            raise AppValidationError(
+                message="Entity validation failed",
+                details={"errors": e.errors()},
+            ) from e
+
         self._session.add(entity)
         await self._session.flush()
         await self._session.refresh(entity)

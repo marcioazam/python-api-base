@@ -11,7 +11,7 @@ Security features:
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Any, Protocol
 
 from jose import JWTError, jwt
@@ -41,7 +41,7 @@ class TokenRevocationStore(Protocol):
         ...
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ValidatedToken:
     """Result of successful token validation."""
 
@@ -196,8 +196,8 @@ class JWTValidator:
         return ValidatedToken(
             sub=claims["sub"],
             jti=claims["jti"],
-            exp=datetime.fromtimestamp(claims["exp"], tz=timezone.utc),
-            iat=datetime.fromtimestamp(claims["iat"], tz=timezone.utc),
+            exp=datetime.fromtimestamp(claims["exp"], tz=UTC),
+            iat=datetime.fromtimestamp(claims["iat"], tz=UTC),
             scopes=tuple(claims.get("scopes", [])),
             token_type=token_type,
             raw_claims=claims,
@@ -208,7 +208,7 @@ class JWTValidator:
         token: str,
         expected_type: str | None = None,
     ) -> ValidatedToken:
-        """Validate token and check revocation status.
+        """Validate token and check revocation status with fail-closed behavior.
 
         Args:
             token: JWT token string.
@@ -218,17 +218,30 @@ class JWTValidator:
             ValidatedToken if valid and not revoked.
 
         Raises:
-            InvalidTokenError: If validation fails or token is revoked.
+            InvalidTokenError: If validation fails, token is revoked, or revocation check fails.
+            
+        **Feature: core-improvements-v2**
+        **Validates: Requirements 3.1, 3.2, 3.3, 3.5**
         """
         validated = self.validate(token, expected_type)
 
         if self._revocation_store:
-            if await self._revocation_store.is_revoked(validated.jti):
-                logger.warning(
-                    "Rejected revoked token",
-                    extra={"jti": validated.jti},
+            try:
+                if await self._revocation_store.is_revoked(validated.jti):
+                    logger.warning(
+                        "Rejected revoked token",
+                        extra={"jti": validated.jti},
+                    )
+                    raise InvalidTokenError("Token has been revoked")
+            except InvalidTokenError:
+                raise  # Re-raise our own errors without modification
+            except Exception as e:
+                # Fail closed - reject token if revocation check fails
+                logger.error(
+                    "Revocation check failed, rejecting token",
+                    extra={"jti": validated.jti, "error": str(e)},
                 )
-                raise InvalidTokenError("Token has been revoked")
+                raise InvalidTokenError("Unable to verify token status") from e
 
         return validated
 

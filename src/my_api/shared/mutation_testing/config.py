@@ -1,14 +1,7 @@
 """mutation_testing configuration."""
 
 from dataclasses import dataclass, field
-from datetime import datetime
-from enum import Enum
-from pathlib import Path
-from typing import Any
-import json
-import hashlib
-from .enums import MutantStatus, MutationOperator
-from .models import MutationScore, MutationReport
+from .enums import MutationOperator
 
 
 @dataclass

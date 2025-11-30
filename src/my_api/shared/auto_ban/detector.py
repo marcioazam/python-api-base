@@ -5,7 +5,7 @@
 **Validates: Requirements 1.3, 2.1, 2.2, 5.1, 5.2, 5.3**
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 
 from .config import AutoBanConfig, AutoBanConfigBuilder
 from .enums import BanStatus, ViolationType
@@ -73,7 +73,7 @@ class AutoBanService:
             violation = Violation(
                 identifier=identifier,
                 violation_type=violation_type,
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 details=details,
                 severity=severity,
             )
@@ -83,7 +83,7 @@ class AutoBanService:
             if not threshold:
                 return BanCheckResult.allowed()
 
-            since = datetime.now(timezone.utc) - threshold.time_window
+            since = datetime.now(UTC) - threshold.time_window
             violations = await self._store.get_violations(identifier, violation_type, since)
 
             effective_count = sum(v.severity * threshold.severity_multiplier for v in violations)
@@ -105,7 +105,7 @@ class AutoBanService:
             threshold.ban_duration if threshold else self._config.default_ban_duration
         )
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         if ban_count >= self._config.permanent_ban_after:
             expires_at = None

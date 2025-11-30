@@ -10,7 +10,7 @@ import base64
 import secrets
 import warnings
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from enum import Enum
 from typing import Any, Protocol
 
@@ -310,7 +310,7 @@ class InMemoryKeyProvider:
         metadata = EncryptionKey(
             key_id=key_id,
             algorithm=EncryptionAlgorithm.AES_256_GCM,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         self._keys[key_id] = (key, metadata)
         self._active_key_id = key_id

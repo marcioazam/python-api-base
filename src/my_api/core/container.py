@@ -11,6 +11,14 @@ from typing import Any
 from dependency_injector import containers, providers
 
 from my_api.core.config import Settings
+
+__all__ = [
+    "Container",
+    "LifecycleManager",
+    "LifecycleHookError",
+    "create_container",
+    "lifecycle",
+]
 from my_api.infrastructure.observability.telemetry import TelemetryProvider
 from my_api.shared.caching import CacheConfig, InMemoryCacheProvider, RedisCacheProvider
 from my_api.shared.cqrs import CommandBus, QueryBus
@@ -53,13 +61,11 @@ class Container(containers.DeclarativeContainer):
         config=cache_config,
     )
 
-    # Redis cache provider (optional, configured at runtime)
+    # Redis cache provider - uses dedicated Redis settings
     redis_cache = providers.Singleton(
         RedisCacheProvider,
         redis_url=providers.Callable(
-            lambda cfg: cfg.database.url.replace("postgresql", "redis")
-            if hasattr(cfg, "database")
-            else "redis://localhost:6379",
+            lambda cfg: cfg.redis.url if hasattr(cfg, "redis") and cfg.redis.enabled else "redis://localhost:6379",
             config,
         ),
         config=cache_config,
@@ -97,11 +103,22 @@ class Container(containers.DeclarativeContainer):
     )
 
 
+class LifecycleHookError(Exception):
+    """Raised when lifecycle hooks fail."""
+
+    def __init__(self, message: str, errors: list[tuple[str, Exception]]) -> None:
+        self.errors = errors
+        super().__init__(message)
+
+
 class LifecycleManager:
     """Manages application lifecycle hooks for startup and shutdown.
 
     Provides a centralized way to register and execute startup/shutdown
     callbacks for resources like database connections, caches, etc.
+    
+    **Feature: core-code-review**
+    **Validates: Requirements 3.4, 3.5, 11.5**
     """
 
     def __init__(self) -> None:
@@ -159,8 +176,39 @@ class LifecycleManager:
         self._async_shutdown_hooks.append(func)
         return func
 
+    def get_hooks(self) -> dict[str, list[Callable[[], Any]]]:
+        """Get all registered hooks for inspection.
+        
+        **Feature: core-code-review**
+        **Validates: Requirements 11.5**
+        
+        Returns:
+            Dictionary with hook lists by type.
+        """
+        return {
+            "startup": list(self._startup_hooks),
+            "shutdown": list(self._shutdown_hooks),
+            "async_startup": list(self._async_startup_hooks),
+            "async_shutdown": list(self._async_shutdown_hooks),
+        }
+
+    def clear_hooks(self) -> None:
+        """Clear all registered hooks.
+        
+        **Feature: core-code-review**
+        **Validates: Requirements 11.5**
+        """
+        self._startup_hooks.clear()
+        self._shutdown_hooks.clear()
+        self._async_startup_hooks.clear()
+        self._async_shutdown_hooks.clear()
+
     def run_startup(self) -> None:
-        """Execute all synchronous startup hooks."""
+        """Execute all synchronous startup hooks in registration order.
+        
+        **Feature: core-code-review, Property 4: Lifecycle Hook Execution Order**
+        **Validates: Requirements 3.4**
+        """
         for hook in self._startup_hooks:
             try:
                 logger.info(f"Running startup hook: {hook.__name__}")
@@ -170,16 +218,36 @@ class LifecycleManager:
                 raise
 
     def run_shutdown(self) -> None:
-        """Execute all synchronous shutdown hooks in reverse order."""
+        """Execute all synchronous shutdown hooks in reverse order.
+        
+        Continues executing all hooks even if some fail, then raises
+        aggregated error if any failed.
+        
+        **Feature: core-code-review, Property 5: Lifecycle Hook Error Aggregation**
+        **Validates: Requirements 3.5**
+        """
+        errors: list[tuple[str, Exception]] = []
+
         for hook in reversed(self._shutdown_hooks):
             try:
                 logger.info(f"Running shutdown hook: {hook.__name__}")
                 hook()
             except Exception as e:
                 logger.error(f"Shutdown hook {hook.__name__} failed: {e}")
+                errors.append((hook.__name__, e))
+
+        if errors:
+            raise LifecycleHookError(
+                f"{len(errors)} shutdown hook(s) failed",
+                errors=errors,
+            )
 
     async def run_startup_async(self) -> None:
-        """Execute all async startup hooks."""
+        """Execute all async startup hooks in registration order.
+        
+        **Feature: core-code-review, Property 4: Lifecycle Hook Execution Order**
+        **Validates: Requirements 3.4**
+        """
         for hook in self._async_startup_hooks:
             try:
                 logger.info(f"Running async startup hook: {hook.__name__}")
@@ -189,13 +257,29 @@ class LifecycleManager:
                 raise
 
     async def run_shutdown_async(self) -> None:
-        """Execute all async shutdown hooks in reverse order."""
+        """Execute all async shutdown hooks in reverse order.
+        
+        Continues executing all hooks even if some fail, then raises
+        aggregated error if any failed.
+        
+        **Feature: core-code-review, Property 5: Lifecycle Hook Error Aggregation**
+        **Validates: Requirements 3.5**
+        """
+        errors: list[tuple[str, Exception]] = []
+
         for hook in reversed(self._async_shutdown_hooks):
             try:
                 logger.info(f"Running async shutdown hook: {hook.__name__}")
                 await hook()
             except Exception as e:
                 logger.error(f"Async shutdown hook {hook.__name__} failed: {e}")
+                errors.append((hook.__name__, e))
+
+        if errors:
+            raise LifecycleHookError(
+                f"{len(errors)} async shutdown hook(s) failed",
+                errors=errors,
+            )
 
 
 # Global lifecycle manager instance

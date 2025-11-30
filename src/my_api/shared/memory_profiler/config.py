@@ -1,18 +1,6 @@
 """memory_profiler configuration."""
 
-import gc
-import sys
-import tracemalloc
-from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from enum import Enum
-from typing import Any, Protocol, runtime_checkable
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
-from .enums import MemoryAlertSeverity, MemoryAlertType
-from .models import MemoryAlert, AllocationInfo
+from dataclasses import dataclass
 
 
 @dataclass

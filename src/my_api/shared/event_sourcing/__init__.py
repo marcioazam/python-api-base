@@ -23,24 +23,23 @@ Usage:
 
 # Backward compatible re-exports
 from .aggregate import Aggregate, AggregateId
-from .events import EventStream, EventT, SourcedEvent
+from .events import EventStream, SourcedEvent
 from .exceptions import ConcurrencyError
 from .projections import InMemoryProjection, Projection
 from .repository import EventSourcedRepository
 from .snapshots import Snapshot
-from .store import AggregateT, EventStore, InMemoryEventStore
+from .store import EventStore, InMemoryEventStore
 
 __all__ = [
     # Events
     "SourcedEvent",
     "EventStream",
-    "EventT",
     # Snapshots
     "Snapshot",
     # Aggregate
     "Aggregate",
     "AggregateId",
-    "AggregateT",
+
     # Store
     "EventStore",
     "InMemoryEventStore",

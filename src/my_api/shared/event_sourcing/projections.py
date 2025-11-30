@@ -6,14 +6,12 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 from .events import SourcedEvent
 
-EventT = TypeVar("EventT", bound=SourcedEvent)
 
-
-class Projection(ABC, Generic[EventT]):
+class Projection[EventT: SourcedEvent](ABC):
     """Base class for event projections.
 
     Projections build read models from event streams.
@@ -39,7 +37,7 @@ class Projection(ABC, Generic[EventT]):
         ...
 
 
-class InMemoryProjection(Projection[EventT], Generic[EventT]):
+class InMemoryProjection[EventT: SourcedEvent](Projection[EventT]):
     """In-memory projection with dictionary-based state."""
 
     def __init__(self) -> None:

@@ -1,5 +1,3 @@
 """response_transformation constants."""
 
-from typing import TypeVar
-
-T = TypeVar("T")
+# Type parameters are now defined inline using PEP 695 syntax

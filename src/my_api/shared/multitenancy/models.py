@@ -1,15 +1,6 @@
 """multitenancy models."""
 
-from abc import ABC, abstractmethod
-from collections.abc import Sequence
-from contextvars import ContextVar
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Generic, TypeVar
-from pydantic import BaseModel, Field
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from my_api.shared.repository import IRepository
 
 
 @dataclass

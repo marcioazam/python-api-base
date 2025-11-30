@@ -1,21 +1,16 @@
 """api_composition configuration."""
 
 from __future__ import annotations
-import asyncio
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from enum import Enum
-from typing import Any, Awaitable, Callable, Generic, TypeVar, TYPE_CHECKING
-from .enums import ExecutionStrategy, CompositionStatus
-from .models import CallResult, CompositionResult, T
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+from .enums import ExecutionStrategy
 
 if TYPE_CHECKING:
     from .service import APICall, APIComposer
 
 
 @dataclass
-class APICallConfig(Generic[T]):
+class APICallConfig[T]:
     """Configuration for an API call."""
 
     name: str
@@ -26,7 +21,7 @@ class APICallConfig(Generic[T]):
     retry_count: int = 0
     retry_delay: float = 1.0  # seconds
 
-class CompositionBuilder(Generic[T]):
+class CompositionBuilder[T]:
     """Fluent builder for API composition."""
 
     def __init__(self) -> None:

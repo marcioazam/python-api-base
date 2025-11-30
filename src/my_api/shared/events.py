@@ -19,10 +19,10 @@ class DomainEvent(ABC):
     
     All domain events should inherit from this class and be immutable.
     """
-    
+
     event_id: str = field(default_factory=lambda: str(uuid4()))
     occurred_at: datetime = field(default_factory=utc_now)
-    
+
     @property
     @abstractmethod
     def event_type(self) -> str:
@@ -33,10 +33,10 @@ class DomainEvent(ABC):
 @dataclass(frozen=True, slots=True)
 class EntityCreatedEvent(DomainEvent):
     """Event emitted when an entity is created."""
-    
+
     entity_type: str = ""
     entity_id: str = ""
-    
+
     @property
     def event_type(self) -> str:
         return f"{self.entity_type}.created"
@@ -45,11 +45,11 @@ class EntityCreatedEvent(DomainEvent):
 @dataclass(frozen=True, slots=True)
 class EntityUpdatedEvent(DomainEvent):
     """Event emitted when an entity is updated."""
-    
+
     entity_type: str = ""
     entity_id: str = ""
     changed_fields: tuple[str, ...] = ()
-    
+
     @property
     def event_type(self) -> str:
         return f"{self.entity_type}.updated"
@@ -58,11 +58,11 @@ class EntityUpdatedEvent(DomainEvent):
 @dataclass(frozen=True, slots=True)
 class EntityDeletedEvent(DomainEvent):
     """Event emitted when an entity is deleted."""
-    
+
     entity_type: str = ""
     entity_id: str = ""
     soft_delete: bool = True
-    
+
     @property
     def event_type(self) -> str:
         return f"{self.entity_type}.deleted"
@@ -76,12 +76,12 @@ class EventBus:
     
     Supports both sync and async handlers.
     """
-    
+
     def __init__(self) -> None:
         """Initialize event bus."""
         self._handlers: dict[str, list[EventHandler]] = {}
         self._global_handlers: list[EventHandler] = []
-    
+
     def subscribe(
         self,
         event_type: str | None = None,
@@ -106,11 +106,11 @@ class EventBus:
                     self._handlers[event_type] = []
                 self._handlers[event_type].append(fn)
             return fn
-        
+
         if handler is not None:
             return decorator(handler)
         return decorator
-    
+
     def unsubscribe(
         self,
         event_type: str | None,
@@ -128,7 +128,7 @@ class EventBus:
         elif event_type in self._handlers:
             if handler in self._handlers[event_type]:
                 self._handlers[event_type].remove(handler)
-    
+
     async def publish(self, event: DomainEvent) -> None:
         """Publish an event to all subscribed handlers.
         
@@ -137,10 +137,10 @@ class EventBus:
         """
         import asyncio
         import logging
-        
+
         logger = logging.getLogger(__name__)
         handlers = self._global_handlers + self._handlers.get(event.event_type, [])
-        
+
         for handler in handlers:
             try:
                 result = handler(event)
@@ -155,7 +155,7 @@ class EventBus:
                         "error": str(e),
                     },
                 )
-    
+
     def publish_sync(self, event: DomainEvent) -> None:
         """Publish an event synchronously (for sync handlers only).
         
@@ -163,10 +163,10 @@ class EventBus:
             event: Domain event to publish.
         """
         import logging
-        
+
         logger = logging.getLogger(__name__)
         handlers = self._global_handlers + self._handlers.get(event.event_type, [])
-        
+
         for handler in handlers:
             try:
                 handler(event)

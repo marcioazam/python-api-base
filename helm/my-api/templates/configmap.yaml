@@ -1,0 +1,18 @@
+{{- if .Values.config }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "my-api.fullname" . }}-config
+  labels:
+    {{- include "my-api.labels" . | nindent 4 }}
+data:
+  ENVIRONMENT: {{ .Values.config.environment | quote }}
+  LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  CORS_ORIGINS: {{ .Values.config.corsOrigins | quote }}
+  RATE_LIMIT_REQUESTS: {{ .Values.config.rateLimitRequests | quote }}
+  RATE_LIMIT_PERIOD: {{ .Values.config.rateLimitPeriod | quote }}
+  CACHE_TTL: {{ .Values.config.cacheTtl | quote }}
+  {{- with .Values.config.extra }}
+  {{- toYaml . | nindent 2 }}
+  {{- end }}
+{{- end }}

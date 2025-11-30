@@ -4,7 +4,7 @@
 **Validates: Requirements 9.4**
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from hypothesis import given, settings, assume
@@ -235,7 +235,7 @@ class TestCircuitBreakerTimeoutReset:
         assert cb._state == CircuitState.OPEN
         
         # Simulate time passing by setting last_failure_time in the past
-        cb._last_failure_time = datetime.now() - timedelta(seconds=timeout_seconds + 1)
+        cb._last_failure_time = datetime.now(timezone.utc) - timedelta(seconds=timeout_seconds + 1)
         
         # Accessing state property should trigger transition
         current_state = cb.state
@@ -266,7 +266,7 @@ class TestCircuitBreakerTimeoutReset:
         assert cb._state == CircuitState.OPEN
         
         # Set last_failure_time to just now (within timeout)
-        cb._last_failure_time = datetime.now()
+        cb._last_failure_time = datetime.now(timezone.utc)
         
         # Accessing state property should NOT trigger transition
         current_state = cb.state
@@ -307,7 +307,7 @@ class TestCircuitBreakerCanExecute:
         
         # Force into OPEN state
         cb._state = CircuitState.OPEN
-        cb._last_failure_time = datetime.now()  # Recent failure, within timeout
+        cb._last_failure_time = datetime.now(timezone.utc)  # Recent failure, within timeout
         
         assert cb._can_execute() is False
 

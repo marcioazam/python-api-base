@@ -7,13 +7,8 @@ type-safe request/response handling.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Generic, TypeVar
-import json
-
-
-T = TypeVar("T")
-RequestT = TypeVar("RequestT")
-ResponseT = TypeVar("ResponseT")
+from typing import Any
+from collections.abc import Callable
 
 
 class GRPCStatus(Enum):
@@ -45,7 +40,7 @@ class MethodType(Enum):
     BIDIRECTIONAL = "bidirectional"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class GRPCError:
     """gRPC error response."""
     code: GRPCStatus
@@ -137,7 +132,7 @@ class ServiceDescriptor:
                 "methods": [m.to_dict() for m in self.methods]}
 
 
-class GRPCService(Generic[T]):
+class GRPCService[T]:
     """Generic gRPC service base class."""
     def __init__(self, descriptor: ServiceDescriptor) -> None:
         self._descriptor = descriptor

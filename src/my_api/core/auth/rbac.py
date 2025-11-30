@@ -5,16 +5,16 @@
 """
 
 import logging
+import threading
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import wraps
-from typing import Any, Callable, Protocol, TypeVar, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
+from collections.abc import Callable
 
 from my_api.core.exceptions import AuthorizationError
 
 logger = logging.getLogger(__name__)
-
-F = TypeVar("F", bound=Callable[..., Any])
 
 
 class Permission(str, Enum):
@@ -35,7 +35,7 @@ class Permission(str, Enum):
     EXPORT_DATA = "export_data"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Role:
     """Role definition with associated permissions.
 
@@ -286,19 +286,28 @@ class RBACService:
             )
 
 
-# Global RBAC service instance
+# Global RBAC service instance with thread-safe initialization
 _rbac_service: RBACService | None = None
+_rbac_lock = threading.Lock()
 
 
 def get_rbac_service() -> RBACService:
-    """Get the global RBAC service instance."""
+    """Get the global RBAC service instance (thread-safe).
+    
+    Uses double-check locking pattern for thread-safe lazy initialization.
+    
+    **Feature: core-improvements-v2**
+    **Validates: Requirements 1.1, 1.4, 1.5**
+    """
     global _rbac_service
     if _rbac_service is None:
-        _rbac_service = RBACService()
+        with _rbac_lock:
+            if _rbac_service is None:  # Double-check locking
+                _rbac_service = RBACService()
     return _rbac_service
 
 
-def require_permission(*permissions: Permission) -> Callable[[F], F]:
+def require_permission[F: Callable[..., Any]](*permissions: Permission) -> Callable[[F], F]:
     """Decorator to require permissions on a function/endpoint.
 
     Can be used with FastAPI dependencies or standalone functions.

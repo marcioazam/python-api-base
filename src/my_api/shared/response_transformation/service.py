@@ -3,17 +3,11 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
-from typing import Any, Callable, Generic, TypeVar
-from .enums import TransformationType
-from .config import TransformationBuilder
-from .constants import T
-
-InputT = TypeVar("InputT")
-OutputT = TypeVar("OutputT")
+from typing import Any
+from collections.abc import Callable
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class TransformationContext:
     """Context for transformation operations."""
 
@@ -25,7 +19,7 @@ class TransformationContext:
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
-class Transformer(ABC, Generic[InputT, OutputT]):
+class Transformer[InputT, OutputT](ABC):
     """Abstract base class for transformers."""
 
     @abstractmethod
@@ -38,7 +32,7 @@ class Transformer(ABC, Generic[InputT, OutputT]):
         """Check if this transformer applies to the context."""
         ...
 
-class IdentityTransformer(Transformer[T, T]):
+class IdentityTransformer[T](Transformer[T, T]):
     """Transformer that returns data unchanged."""
 
     def transform(self, data: T, context: TransformationContext) -> T:
@@ -199,7 +193,7 @@ class CompositeTransformer(Transformer[dict[str, Any], dict[str, Any]]):
     def can_transform(self, context: TransformationContext) -> bool:
         return any(t.can_transform(context) for t in self._transformers)
 
-class ResponseTransformer(Generic[T]):
+class ResponseTransformer[T]:
     """Main response transformer with version and client support."""
 
     def __init__(self) -> None:

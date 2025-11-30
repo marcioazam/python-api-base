@@ -8,7 +8,8 @@ import asyncio
 import logging
 import time
 from enum import Enum
-from typing import Any, Callable, Coroutine
+from typing import Any
+from collections.abc import Callable, Coroutine
 
 from fastapi import APIRouter, Query, Request, Response
 from pydantic import BaseModel

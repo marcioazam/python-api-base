@@ -6,10 +6,8 @@ identification, timestamps, and soft deletion support.
 Feature: file-size-compliance-phase2
 """
 
-from abc import abstractmethod
 from datetime import datetime
-from typing import Any, Protocol, Sequence, runtime_checkable
-from pydantic import BaseModel
+from typing import Any, Protocol, runtime_checkable
 
 
 @runtime_checkable

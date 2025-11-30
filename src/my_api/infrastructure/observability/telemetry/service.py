@@ -8,9 +8,11 @@ import functools
 import logging
 import threading
 from contextvars import ContextVar
-from typing import Any, Callable, ParamSpec, TypeVar
-from .constants import P, T
+from typing import Any, ParamSpec
+from collections.abc import Callable
 from .noop import _NoOpSpan, _NoOpTracer, _NoOpMeter, _NoOpCounter, _NoOpHistogram
+
+P = ParamSpec("P")
 
 logger = logging.getLogger(__name__)
 
@@ -261,7 +263,7 @@ def init_telemetry(
         _telemetry.initialize()
         return _telemetry
 
-def traced(
+def traced[T](
     name: str | None = None,
     attributes: dict[str, Any] | None = None,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:

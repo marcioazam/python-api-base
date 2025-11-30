@@ -3,7 +3,7 @@
 Uses PEP 695 type parameter syntax (Python 3.12+) for cleaner generic definitions.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 from pydantic import BaseModel, Field, computed_field
 
@@ -19,7 +19,7 @@ class ApiResponse[T](BaseModel):
     message: str = Field(default="Success", description="Response message")
     status_code: int = Field(default=200, ge=100, le=599, description="HTTP status code")
     timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc),
+        default_factory=lambda: datetime.now(tz=UTC),
         description="Response timestamp in UTC",
     )
     request_id: str | None = Field(

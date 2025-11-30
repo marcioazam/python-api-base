@@ -3,12 +3,9 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Protocol, TypeVar, Generic, Any
+from typing import Protocol, Any
 from collections.abc import Callable, Awaitable
 import json
-
-
-T = TypeVar("T")
 
 
 class ArchivalStrategy(Enum):
@@ -65,7 +62,7 @@ class ArchivalJob:
 
 
 @dataclass
-class ArchivedRecord(Generic[T]):
+class ArchivedRecord[T]:
     """Archived record wrapper."""
     id: str
     entity_type: str
@@ -78,7 +75,7 @@ class ArchivedRecord(Generic[T]):
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
-class ArchivalBackend(Protocol[T]):
+class ArchivalBackend[T](Protocol):
     """Protocol for archival storage backend."""
 
     async def store(self, record: ArchivedRecord[T]) -> None: ...
@@ -88,7 +85,7 @@ class ArchivalBackend(Protocol[T]):
     async def move_tier(self, id: str, new_tier: StorageTier) -> bool: ...
 
 
-class SourceRepository(Protocol[T]):
+class SourceRepository[T](Protocol):
     """Protocol for source data repository."""
 
     async def find_older_than(
@@ -103,7 +100,7 @@ class SourceRepository(Protocol[T]):
     async def get_id(self, record: T) -> str: ...
 
 
-class ArchivalService(Generic[T]):
+class ArchivalService[T]:
     """Service for archiving old data."""
 
     def __init__(
@@ -275,7 +272,7 @@ class ArchivalService(Generic[T]):
         return migrated
 
 
-class InMemoryArchivalBackend(Generic[T]):
+class InMemoryArchivalBackend[T]:
     """In-memory archival backend for testing."""
 
     def __init__(self) -> None:

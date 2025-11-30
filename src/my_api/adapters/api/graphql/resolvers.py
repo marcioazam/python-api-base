@@ -8,8 +8,6 @@ to create type-safe GraphQL resolvers for any entity type.
 """
 
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
-from typing import Generic, TypeVar
 
 from pydantic import BaseModel
 
@@ -20,13 +18,8 @@ from my_api.adapters.api.graphql.types import (
 )
 from my_api.shared.repository import IRepository
 
-T = TypeVar("T", bound=BaseModel)
-CreateDTO = TypeVar("CreateDTO", bound=BaseModel)
-UpdateDTO = TypeVar("UpdateDTO", bound=BaseModel)
-GraphQLType = TypeVar("GraphQLType")
 
-
-class BaseResolver(ABC, Generic[T, CreateDTO, UpdateDTO, GraphQLType]):
+class BaseResolver[T: BaseModel, CreateDTO: BaseModel, UpdateDTO: BaseModel, GraphQLType](ABC):
     """Base resolver for GraphQL CRUD operations.
 
     Provides generic implementations for common GraphQL operations
@@ -147,7 +140,7 @@ class BaseResolver(ABC, Generic[T, CreateDTO, UpdateDTO, GraphQLType]):
         return await self._repository.delete(id)
 
 
-class ReadOnlyResolver(ABC, Generic[T, GraphQLType]):
+class ReadOnlyResolver[T: BaseModel, GraphQLType](ABC):
     """Read-only resolver for GraphQL queries.
 
     Provides generic implementations for read operations only.

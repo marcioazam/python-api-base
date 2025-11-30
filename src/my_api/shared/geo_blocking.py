@@ -21,11 +21,10 @@ Usage:
     middleware = GeoBlockMiddleware(config)
 """
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from ipaddress import IPv4Address, IPv6Address, ip_address
-from typing import Any, Protocol, Self
+from ipaddress import ip_address
+from typing import Protocol, Self
 
 from pydantic import BaseModel
 

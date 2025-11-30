@@ -1,12 +1,11 @@
 """background_tasks models."""
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Awaitable, Callable, Generic, TypeVar
+from datetime import datetime, UTC
+from typing import Any
+from collections.abc import Awaitable, Callable
 
 from .enums import TaskPriority, TaskStatus
-
-T = TypeVar("T")
 
 
 @dataclass
@@ -29,7 +28,7 @@ class TaskConfig:
 
 
 @dataclass
-class TaskResult(Generic[T]):
+class TaskResult[T]:
     """Task execution result.
 
     Attributes:
@@ -57,7 +56,7 @@ class TaskResult(Generic[T]):
     duration_ms: float = 0.0
 
 @dataclass
-class Task(Generic[T]):
+class Task[T]:
     """Background task.
 
     Attributes:
@@ -80,7 +79,7 @@ class Task(Generic[T]):
     config: TaskConfig = field(default_factory=TaskConfig)
     status: TaskStatus = TaskStatus.PENDING
     attempts: int = 0
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     scheduled_at: datetime | None = None
     result: TaskResult[T] | None = None
 

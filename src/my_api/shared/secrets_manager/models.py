@@ -5,7 +5,7 @@
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Any
 
 from pydantic import BaseModel
@@ -13,14 +13,14 @@ from pydantic import BaseModel
 from .enums import SecretType
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class SecretMetadata:
     """Metadata about a secret."""
 
     name: str
     version: str = "AWSCURRENT"
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     rotation_enabled: bool = False
     next_rotation: datetime | None = None
     tags: dict[str, str] = field(default_factory=dict)

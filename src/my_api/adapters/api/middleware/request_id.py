@@ -1,5 +1,6 @@
 """Request ID middleware for request tracing."""
 
+import re
 import uuid
 from collections.abc import Callable
 
@@ -9,13 +10,34 @@ from starlette.responses import Response
 
 from my_api.infrastructure.logging import clear_request_id, set_request_id
 
+# UUID format pattern for validation
+UUID_PATTERN = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+
+
+def _is_valid_request_id(request_id: str) -> bool:
+    """Validate request ID format (UUID).
+
+    Args:
+        request_id: Request ID string to validate.
+
+    Returns:
+        True if valid UUID format, False otherwise.
+    """
+    if not request_id:
+        return False
+    return bool(UUID_PATTERN.match(request_id))
+
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
     """Middleware that adds request ID to all requests for tracing.
 
     Generates a unique request ID for each request or uses the one
-    provided in X-Request-ID header. The ID is added to request state,
-    logging context, and included in the response headers.
+    provided in X-Request-ID header if it's a valid UUID format.
+    The ID is added to request state, logging context, and included
+    in the response headers.
     """
 
     HEADER_NAME = "X-Request-ID"
@@ -34,7 +56,9 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         """
         # Get existing request ID or generate new one
         request_id = request.headers.get(self.HEADER_NAME)
-        if not request_id:
+
+        # Validate format - generate new if invalid to prevent injection
+        if not _is_valid_request_id(request_id):
             request_id = str(uuid.uuid4())
 
         # Store in request state for access in handlers

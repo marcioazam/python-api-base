@@ -1,10 +1,15 @@
 """Generic repository interface for CRUD operations.
 
 Uses PEP 695 type parameter syntax (Python 3.12+) for cleaner generic definitions.
+
+**Feature: deep-code-quality-generics-review**
+**Validates: Requirements 1.1, 14.3**
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Sequence
+from collections.abc import Callable
+from typing import Any
+from collections.abc import Sequence
 
 from pydantic import BaseModel
 
@@ -133,7 +138,7 @@ class InMemoryRepository[T: BaseModel, CreateT: BaseModel, UpdateT: BaseModel](
     def __init__(
         self,
         entity_type: type[T],
-        id_generator: callable = None,
+        id_generator: Callable[[], str] | None = None,
     ) -> None:
         """Initialize in-memory repository.
 

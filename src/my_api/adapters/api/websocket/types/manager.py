@@ -4,19 +4,15 @@ Feature: file-size-compliance-phase2
 """
 
 from abc import ABC, abstractmethod
-from collections.abc import Callable
-from datetime import datetime, timezone
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 from fastapi import WebSocket, WebSocketDisconnect
 
-from .messages import ErrorMessage, SystemMessage, WebSocketMessage
+from .messages import ErrorMessage, WebSocketMessage
 from .models import WebSocketConnection
 
-MessageT = TypeVar("MessageT", bound=WebSocketMessage)
 
-
-class ConnectionManager(Generic[MessageT]):
+class ConnectionManager[MessageT: WebSocketMessage]:
     """Manages WebSocket connections with typed messages.
 
     Provides connection tracking, broadcasting, and room-based
@@ -49,6 +45,10 @@ class ConnectionManager(Generic[MessageT]):
     ) -> WebSocketConnection:
         """Accept and register a new WebSocket connection.
 
+        Validates client_id uniqueness before accepting. If a connection
+        with the same client_id already exists, it will be disconnected
+        first to ensure uniqueness.
+
         Args:
             websocket: The WebSocket instance.
             client_id: Unique identifier for the client.
@@ -57,6 +57,10 @@ class ConnectionManager(Generic[MessageT]):
         Returns:
             The created WebSocketConnection.
         """
+        # Ensure client_id uniqueness - disconnect existing if present
+        if client_id in self._connections:
+            await self.disconnect(client_id)
+
         await websocket.accept()
         connection = WebSocketConnection(
             websocket=websocket,
@@ -67,15 +71,26 @@ class ConnectionManager(Generic[MessageT]):
         return connection
 
     async def disconnect(self, client_id: str) -> None:
-        """Remove a connection from the manager.
+        """Remove a connection from the manager atomically.
+
+        Removes the client from all rooms and cleans up empty rooms
+        to prevent memory leaks.
 
         Args:
             client_id: The client identifier to disconnect.
         """
         if client_id in self._connections:
-            # Remove from all rooms
-            for room_clients in self._rooms.values():
+            # Remove from all rooms and cleanup empty rooms
+            empty_rooms = []
+            for room_name, room_clients in self._rooms.items():
                 room_clients.discard(client_id)
+                if not room_clients:
+                    empty_rooms.append(room_name)
+
+            # Delete empty rooms to prevent memory leaks
+            for room_name in empty_rooms:
+                del self._rooms[room_name]
+
             del self._connections[client_id]
 
     def get_connection(self, client_id: str) -> WebSocketConnection | None:
@@ -212,7 +227,7 @@ class ConnectionManager(Generic[MessageT]):
 
         return sent_count
 
-class WebSocketRoute(ABC, Generic[MessageT]):
+class WebSocketRoute[MessageT: WebSocketMessage](ABC):
     """Abstract base class for typed WebSocket routes.
 
     Provides a structured way to handle WebSocket connections

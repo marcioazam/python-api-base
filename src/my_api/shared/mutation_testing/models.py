@@ -3,18 +3,15 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
-from pathlib import Path
 from typing import Any, TYPE_CHECKING
 import json
-import hashlib
-from .enums import MutantStatus, MutationOperator
+from .enums import MutantStatus
 
 if TYPE_CHECKING:
     from .service import Mutant
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class MutantLocation:
     """Location of a mutation in source code."""
 

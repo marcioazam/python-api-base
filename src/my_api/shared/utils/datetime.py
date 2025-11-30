@@ -1,6 +1,6 @@
 """Timezone-aware datetime utilities with ISO 8601 formatting."""
 
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import overload
 
 import pendulum
@@ -38,8 +38,8 @@ def ensure_utc(dt: datetime) -> datetime:
         True
     """
     if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
+        return dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
 
 
 def now(tz: str = "UTC") -> datetime:
@@ -76,7 +76,7 @@ def to_iso8601(dt: datetime | None) -> str | None:
 
     # Ensure timezone awareness
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
 
     # Convert to pendulum for consistent formatting
     if not isinstance(dt, PendulumDateTime):
@@ -124,7 +124,7 @@ def to_timestamp(dt: datetime) -> float:
         float: Unix timestamp (seconds since epoch).
     """
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt.timestamp()
 
 
@@ -153,7 +153,7 @@ def format_datetime(dt: datetime, fmt: str = "YYYY-MM-DD HH:mm:ss") -> str:
     """
     if not isinstance(dt, PendulumDateTime):
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
         dt = pendulum.instance(dt)
     return dt.format(fmt)
 
@@ -186,7 +186,7 @@ def add_duration(
     """
     if not isinstance(dt, PendulumDateTime):
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
         dt = pendulum.instance(dt)
 
     return dt.add(
@@ -211,7 +211,7 @@ def start_of_day(dt: datetime) -> datetime:
     """
     if not isinstance(dt, PendulumDateTime):
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
         dt = pendulum.instance(dt)
     return dt.start_of("day")
 
@@ -227,6 +227,6 @@ def end_of_day(dt: datetime) -> datetime:
     """
     if not isinstance(dt, PendulumDateTime):
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
         dt = pendulum.instance(dt)
     return dt.end_of("day")

@@ -8,7 +8,7 @@ import importlib
 import sys
 import time
 from pathlib import Path
-from typing import Callable
+from collections.abc import Callable
 
 from .models import ReloadResult
 

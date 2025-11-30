@@ -7,14 +7,11 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Generic, Protocol, TypeVar, runtime_checkable
-
-T = TypeVar("T")
-ID = TypeVar("ID")
+from typing import Protocol, runtime_checkable
 
 
 @runtime_checkable
-class RepositoryProtocol(Protocol[T, ID]):
+class RepositoryProtocol[T, ID](Protocol):
     """Base repository interface for domain entities.
 
     This protocol defines the standard CRUD operations that all
@@ -94,7 +91,7 @@ class RepositoryProtocol(Protocol[T, ID]):
 
 
 @runtime_checkable
-class ReadOnlyRepositoryProtocol(Protocol[T, ID]):
+class ReadOnlyRepositoryProtocol[T, ID](Protocol):
     """Read-only repository interface for query operations.
 
     Use this protocol for repositories that only need read access.

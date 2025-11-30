@@ -12,13 +12,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from .config import SignatureConfig
-from .enums import HashAlgorithm
 
 # Minimum secret key length in bytes (256 bits)
 MIN_SECRET_KEY_LENGTH = 32
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class SignedRequest:
     """Signed request data.
 

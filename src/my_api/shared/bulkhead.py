@@ -9,16 +9,13 @@ Provides resource isolation to prevent cascading failures.
 from __future__ import annotations
 
 import asyncio
-from abc import ABC, abstractmethod
 from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
-from datetime import datetime
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, AsyncIterator, Callable, Awaitable, TypeVar
+from typing import Any
+from collections.abc import AsyncIterator
+from collections.abc import Callable, Awaitable
 import functools
-
-
-T = TypeVar("T")
 
 
 class BulkheadState(str, Enum):
@@ -226,7 +223,7 @@ class BulkheadRegistry:
         return {name: b.stats.to_dict() for name, b in self._bulkheads.items()}
 
 
-def bulkhead(
+def bulkhead[T](
     name: str,
     max_concurrent: int = 10,
     max_wait_seconds: float | None = None,

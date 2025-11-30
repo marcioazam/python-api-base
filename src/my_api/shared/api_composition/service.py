@@ -1,21 +1,18 @@
 """api_composition service."""
 
 import asyncio
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Any, Awaitable, Callable, Generic, TypeVar
+from datetime import datetime, UTC
+from typing import Any
+from collections.abc import Awaitable, Callable
 from .enums import ExecutionStrategy, CompositionStatus
 from .models import CallResult, CompositionResult
-from .config import APICallConfig, CompositionBuilder
-from .constants import T
+from .config import APICallConfig
 
 # Type alias for API calls
 APICall = Callable[[], Awaitable[Any]]
 
 
-class APIComposer(Generic[T]):
+class APIComposer[T]:
     """Composes multiple API calls with configurable execution strategy."""
 
     def __init__(
@@ -50,7 +47,7 @@ class APIComposer(Generic[T]):
 
     async def execute(self) -> CompositionResult[T]:
         """Execute all API calls according to the strategy."""
-        start_time = datetime.now(timezone.utc)
+        start_time = datetime.now(UTC)
 
         if self._strategy == ExecutionStrategy.PARALLEL:
             results = await self._execute_parallel()
@@ -59,7 +56,7 @@ class APIComposer(Generic[T]):
         else:  # PARALLEL_WITH_FALLBACK
             results = await self._execute_parallel_with_fallback()
 
-        duration = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
+        duration = (datetime.now(UTC) - start_time).total_seconds() * 1000
         status = self._determine_status(results)
 
         return CompositionResult(
@@ -116,12 +113,12 @@ class APIComposer(Generic[T]):
         last_error = ""
 
         for attempt in range(attempts):
-            start_time = datetime.now(timezone.utc)
+            start_time = datetime.now(UTC)
             try:
                 result = await asyncio.wait_for(
                     config.call(), timeout=config.timeout
                 )
-                duration = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
+                duration = (datetime.now(UTC) - start_time).total_seconds() * 1000
                 return CallResult.ok(config.name, result, duration)
             except asyncio.TimeoutError:
                 last_error = f"Timeout after {config.timeout}s"
@@ -132,7 +129,7 @@ class APIComposer(Generic[T]):
             if attempt < attempts - 1:
                 await asyncio.sleep(config.retry_delay)
 
-        duration = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
+        duration = (datetime.now(UTC) - start_time).total_seconds() * 1000
         return CallResult.fail(config.name, last_error, duration)
 
     def _determine_status(self, results: dict[str, CallResult[T]]) -> CompositionStatus:
@@ -161,7 +158,7 @@ class APIComposer(Generic[T]):
         """Get the number of configured calls."""
         return len(self._calls)
 
-class AggregatedResponse(Generic[T]):
+class AggregatedResponse[T]:
     """Aggregated response from multiple API calls."""
 
     def __init__(self, composition_result: CompositionResult[T]) -> None:

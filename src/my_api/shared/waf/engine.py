@@ -4,7 +4,7 @@
 **Validates: Requirements 1.1, 5.1, 5.2, 5.3**
 """
 
-from typing import Callable
+from collections.abc import Callable
 
 from .models import ThreatDetection, WAFRequest, WAFRule
 

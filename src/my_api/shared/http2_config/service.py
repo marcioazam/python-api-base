@@ -1,14 +1,13 @@
 """http2_config service."""
 
 from dataclasses import dataclass, field
-from enum import Enum
 from typing import Any
 from .enums import HTTPProtocol, PushPriority
 from .models import ConnectionStats
 from .config import MultiplexConfig, HTTP3Config, HTTP2Config, ProtocolConfig
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class PushResource:
     """Resource to be pushed to client."""
 

@@ -4,8 +4,9 @@
 **Validates: Requirements 5.4**
 """
 
-from datetime import datetime, timezone
-from typing import Any, Callable, Generic, TypeVar
+from datetime import datetime, UTC
+from typing import Any
+from collections.abc import Callable
 
 from pydantic import BaseModel, ValidationError
 
@@ -13,11 +14,8 @@ from .contract import Contract, ContractInteraction
 from .enums import ContractStatus
 from .report import ContractReport, ContractVerificationResult
 
-RequestT = TypeVar("RequestT", bound=BaseModel)
-ResponseT = TypeVar("ResponseT", bound=BaseModel)
 
-
-class ContractTester(Generic[RequestT, ResponseT]):
+class ContractTester[RequestT: BaseModel, ResponseT: BaseModel]:
     """Generic contract tester for API validation."""
 
     def __init__(
@@ -75,7 +73,7 @@ class ContractTester(Generic[RequestT, ResponseT]):
         actual_body: Any,
     ) -> ContractVerificationResult:
         """Verify a single interaction against actual response."""
-        start_time = datetime.now(timezone.utc)
+        start_time = datetime.now(UTC)
         errors: list[str] = []
 
         if actual_status != interaction.expectation.status_code:
@@ -112,7 +110,7 @@ class ContractTester(Generic[RequestT, ResponseT]):
                 for err in e.errors():
                     errors.append(f"Schema validation: {err['loc']} - {err['msg']}")
 
-        duration = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
+        duration = (datetime.now(UTC) - start_time).total_seconds() * 1000
         status = ContractStatus.PASSED if not errors else ContractStatus.FAILED
 
         return ContractVerificationResult(

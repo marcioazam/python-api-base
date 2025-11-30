@@ -7,13 +7,13 @@
 import base64
 import hashlib
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Any
 
 from .enums import CrashType
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class FuzzInput:
     """Represents a fuzz test input."""
 
@@ -60,7 +60,7 @@ class CrashInfo:
     crash_type: CrashType
     message: str
     stack_trace: str = ""
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     minimized: bool = False
 
     @property
@@ -129,13 +129,13 @@ class FuzzingStats:
     timeouts: int = 0
     executions_per_second: float = 0.0
     coverage: CoverageInfo = field(default_factory=CoverageInfo)
-    start_time: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    start_time: datetime = field(default_factory=lambda: datetime.now(UTC))
     end_time: datetime | None = None
 
     @property
     def duration_seconds(self) -> float:
         """Get duration in seconds."""
-        end = self.end_time or datetime.now(timezone.utc)
+        end = self.end_time or datetime.now(UTC)
         return (end - self.start_time).total_seconds()
 
     def record_input(self, is_unique: bool = False) -> None:

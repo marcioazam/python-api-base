@@ -4,8 +4,8 @@ import gc
 import logging
 import tracemalloc
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from dataclasses import dataclass
+from datetime import datetime, timedelta, UTC
 from typing import Any, Protocol, runtime_checkable
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -19,7 +19,7 @@ from .models import AllocationInfo, MemoryAlert
 logger = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class MemorySnapshot:
     """A snapshot of memory state."""
 
@@ -121,7 +121,7 @@ class MemoryProfiler:
             heap = current
 
         snapshot = MemorySnapshot(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             rss_bytes=rss,
             vms_bytes=vms,
             heap_bytes=heap,
@@ -188,7 +188,7 @@ class MemoryProfiler:
             return None
 
         window = timedelta(minutes=self._config.leak_detection_window)
-        cutoff = datetime.now(timezone.utc) - window
+        cutoff = datetime.now(UTC) - window
         recent = [s for s in self._snapshots if s.timestamp > cutoff]
 
         if len(recent) < self._config.min_samples_for_leak:
@@ -238,7 +238,7 @@ class MemoryProfiler:
                 message=f"High GC pressure: {total_collections} collections",
                 current_value=float(total_collections),
                 threshold=float(self._config.gc_pressure_threshold),
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 details={"gen0": current_counts[0], "gen1": current_counts[1], "gen2": current_counts[2]},
             )
         return None

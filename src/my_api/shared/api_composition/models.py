@@ -1,18 +1,12 @@
 """api_composition models."""
 
-import asyncio
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from enum import Enum
-from typing import Any, Awaitable, Callable, Generic, TypeVar
-from .enums import ExecutionStrategy, CompositionStatus
-
-T = TypeVar("T")
+from datetime import datetime
+from .enums import CompositionStatus
 
 
 @dataclass
-class CallResult(Generic[T]):
+class CallResult[T]:
     """Result of a single API call."""
 
     name: str
@@ -33,7 +27,7 @@ class CallResult(Generic[T]):
         return cls(name=name, success=False, error=error, duration_ms=duration_ms)
 
 @dataclass
-class CompositionResult(Generic[T]):
+class CompositionResult[T]:
     """Result of a composition operation."""
 
     status: CompositionStatus

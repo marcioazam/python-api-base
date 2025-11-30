@@ -4,17 +4,14 @@
 **Validates: Requirements 2.1**
 """
 
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 from .aggregate import Aggregate
 from .events import SourcedEvent
 from .store import EventStore
 
-EventT = TypeVar("EventT", bound=SourcedEvent)
-AggregateT = TypeVar("AggregateT", bound=Aggregate[Any])
 
-
-class EventSourcedRepository(Generic[AggregateT, EventT]):
+class EventSourcedRepository[AggregateT: Aggregate[Any], EventT: SourcedEvent]:
     """Repository adapter for event-sourced aggregates.
 
     Provides a familiar repository interface while using

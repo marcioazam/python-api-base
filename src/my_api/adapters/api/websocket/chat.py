@@ -7,8 +7,7 @@ to build a real-time chat application.
 **Validates: Requirements 4.5**
 """
 
-from datetime import datetime, timezone
-from typing import Any
+from datetime import datetime, UTC
 
 from pydantic import Field
 
@@ -99,7 +98,7 @@ class ChatRoute(WebSocketRoute[ChatMessage]):
         """Handle a regular chat message."""
         # Set sender from connection
         message.sender = connection.client_id
-        message.timestamp = datetime.now(tz=timezone.utc)
+        message.timestamp = datetime.now(tz=UTC)
 
         if message.room:
             # Send to specific room

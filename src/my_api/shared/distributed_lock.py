@@ -11,9 +11,9 @@ from __future__ import annotations
 import asyncio
 from abc import ABC, abstractmethod
 from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
 import uuid
 
 
@@ -219,7 +219,7 @@ class LockManager:
 
     def _start_renewal(self, lock_info: LockInfo, ttl_seconds: float) -> None:
         """Start automatic renewal task."""
-        async def renewal_loop():
+        async def renewal_loop() -> None:
             current_info = lock_info
             while True:
                 await asyncio.sleep(self._renewal_interval)

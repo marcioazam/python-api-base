@@ -1,21 +1,16 @@
 """bff models."""
 
 from __future__ import annotations
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Awaitable, Callable, Generic, Protocol, TypeVar, runtime_checkable, TYPE_CHECKING
+from typing import TYPE_CHECKING
 from .enums import ClientType
-
-RequestT = TypeVar("RequestT")
-ResponseT = TypeVar("ResponseT")
 
 if TYPE_CHECKING:
     from .service import HandlerFunc, ClientInfo
 
 
 @dataclass
-class BFFRoute(Generic[RequestT, ResponseT]):
+class BFFRoute[RequestT, ResponseT]:
     """A BFF route with client-specific handlers."""
 
     path: str

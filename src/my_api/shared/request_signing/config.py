@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from .enums import HashAlgorithm
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class SignatureConfig:
     """HMAC signature configuration.
 

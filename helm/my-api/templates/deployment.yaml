@@ -31,6 +31,11 @@ spec:
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
@@ -40,8 +45,20 @@ spec:
           envFrom:
             - configMapRef:
                 name: {{ include "my-api.fullname" . }}-config
+            {{- if not .Values.externalSecrets.enabled }}
             - secretRef:
                 name: {{ include "my-api.fullname" . }}-secrets
+            {{- end }}
+          {{- if .Values.externalSecrets.enabled }}
+          env:
+            {{- range .Values.externalSecrets.data }}
+            - name: {{ .secretKey }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "my-api.fullname" $ }}-external
+                  key: {{ .secretKey }}
+            {{- end }}
+          {{- end }}
           livenessProbe:
             {{- toYaml .Values.livenessProbe | nindent 12 }}
           readinessProbe:
@@ -58,5 +75,9 @@ spec:
       {{- end }}
       {{- with .Values.tolerations }}
       tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
         {{- toYaml . | nindent 8 }}
       {{- end }}

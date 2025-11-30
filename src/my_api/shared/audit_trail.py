@@ -1,14 +1,11 @@
 """Enhanced Audit Trail with diff tracking and snapshots."""
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
-from typing import Protocol, TypeVar, Generic, Any
+from typing import Protocol, Any
 import json
 import hashlib
-
-
-T = TypeVar("T")
 
 
 class AuditAction(Enum):
@@ -116,7 +113,7 @@ class DiffCalculator:
         return result
 
 
-class AuditService(Generic[T]):
+class AuditService[T]:
     """Enhanced audit service with diff tracking."""
 
     def __init__(self, backend: AuditBackend) -> None:
@@ -151,7 +148,7 @@ class AuditService(Generic[T]):
             entity_type=entity_type,
             entity_id=entity_id,
             action=AuditAction.CREATE,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             user_id=user_id,
             user_ip=user_ip,
             changes=changes,
@@ -184,7 +181,7 @@ class AuditService(Generic[T]):
             entity_type=entity_type,
             entity_id=entity_id,
             action=AuditAction.UPDATE,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             user_id=user_id,
             user_ip=user_ip,
             changes=changes,
@@ -214,7 +211,7 @@ class AuditService(Generic[T]):
             entity_type=entity_type,
             entity_id=entity_id,
             action=AuditAction.DELETE,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             user_id=user_id,
             user_ip=user_ip,
             changes=self._diff_calc.compute_diff(before, None),

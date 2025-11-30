@@ -4,10 +4,10 @@
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Any
 
-from .enums import OptimizationSuggestion, QueryType
+from .enums import QueryType
 
 
 @dataclass
@@ -29,7 +29,7 @@ class QueryMetrics:
     execution_time_ms: float
     rows_examined: int = 0
     rows_returned: int = 0
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     explain_plan: dict[str, Any] | None = None
 
 

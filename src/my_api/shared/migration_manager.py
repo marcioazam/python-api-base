@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Protocol, TypeVar, Generic
+from typing import Protocol
 from collections.abc import Callable, Awaitable
 import hashlib
 
@@ -286,7 +286,6 @@ class MigrationManager:
         diff: SchemaDiff
     ) -> Migration:
         """Generate a migration from schema diff."""
-        import time
         version = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
 
         return Migration(

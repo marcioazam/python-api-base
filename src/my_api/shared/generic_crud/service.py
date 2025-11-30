@@ -4,20 +4,15 @@ import inspect
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
 from .repository import FilterCondition, GenericRepository, PaginatedResult, QueryOptions, SortCondition
 
-T = TypeVar("T")
-CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
-UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
-ResponseSchemaType = TypeVar("ResponseSchemaType", bound=BaseModel)
-
 
 @dataclass
-class ServiceResult(Generic[T]):
+class ServiceResult[T]:
     """Service operation result."""
 
     success: bool
@@ -37,7 +32,7 @@ class ValidationRule:
     async_validator: Callable[[Any], Awaitable[bool]] | None = None
 
 
-class GenericService(Generic[T, CreateSchemaType, UpdateSchemaType, ResponseSchemaType]):
+class GenericService[T, CreateSchemaType: BaseModel, UpdateSchemaType: BaseModel, ResponseSchemaType: BaseModel]:
     """Generic service base class with business logic."""
 
     def __init__(self, repository: GenericRepository[T], response_model: type[ResponseSchemaType]) -> None:

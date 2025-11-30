@@ -7,15 +7,11 @@
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import Generic, ParamSpec, TypeVar
 
 from .proxy import LazyCollection, LazyProxy
 
-T = TypeVar("T")
-P = ParamSpec("P")
 
-
-def lazy_load(func: Callable[P, Awaitable[T]]) -> Callable[P, LazyProxy[T]]:
+def lazy_load[T, **P](func: Callable[P, Awaitable[T]]) -> Callable[P, LazyProxy[T]]:
     """Decorator that wraps an async function to return a LazyProxy."""
 
     @wraps(func)
@@ -25,7 +21,7 @@ def lazy_load(func: Callable[P, Awaitable[T]]) -> Callable[P, LazyProxy[T]]:
     return wrapper
 
 
-def lazy_collection(
+def lazy_collection[T, **P](
     func: Callable[P, Awaitable[list[T]]],
 ) -> Callable[P, LazyCollection[T]]:
     """Decorator that wraps an async function to return a LazyCollection."""
@@ -38,7 +34,7 @@ def lazy_collection(
 
 
 @dataclass
-class BatchLoader(Generic[T]):
+class BatchLoader[T]:
     """Batch loader for preventing N+1 queries."""
 
     batch_resolver: Callable[[list[str]], Awaitable[dict[str, T]]]

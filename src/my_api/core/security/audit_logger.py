@@ -12,10 +12,14 @@ Provides structured logging for security-relevant events including:
 
 import logging
 import re
+import threading
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from enum import Enum
 from typing import Any
+
+from my_api.shared.utils.ids import generate_ulid
 
 
 class SecurityEventType(str, Enum):
@@ -30,12 +34,17 @@ class SecurityEventType(str, Enum):
     SUSPICIOUS_ACTIVITY = "SUSPICIOUS_ACTIVITY"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class SecurityEvent:
-    """Immutable security event record."""
+    """Immutable security event record with correlation ID.
+    
+    **Feature: core-improvements-v2**
+    **Validates: Requirements 4.5**
+    """
 
     event_type: SecurityEventType
     timestamp: datetime
+    correlation_id: str
     client_ip: str | None = None
     user_id: str | None = None
     resource: str | None = None
@@ -48,6 +57,7 @@ class SecurityEvent:
         return {
             "event_type": self.event_type.value,
             "timestamp": self.timestamp.isoformat(),
+            "correlation_id": self.correlation_id,
             "client_ip": self.client_ip,
             "user_id": self.user_id,
             "resource": self.resource,
@@ -68,36 +78,65 @@ class SecurityAuditLogger:
     PII_PATTERNS = [
         (re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"), "[EMAIL]"),
         (re.compile(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b"), "[PHONE]"),
+        (re.compile(r"\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b"), "[PHONE]"),
+        (re.compile(r"\b\+\d{1,3}[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}\b"), "[PHONE]"),
         (re.compile(r"\b\d{3}-\d{2}-\d{4}\b"), "[SSN]"),
+        (re.compile(r"\b(?:\d{4}[-\s]?){3}\d{4}\b"), "[CARD]"),
         (re.compile(r"\b\d{16}\b"), "[CARD]"),
         (re.compile(r"password[\"']?\s*[:=]\s*[\"']?[^\"'\s]+", re.I), "password=[REDACTED]"),
         (re.compile(r"secret[\"']?\s*[:=]\s*[\"']?[^\"'\s]+", re.I), "secret=[REDACTED]"),
         (re.compile(r"token[\"']?\s*[:=]\s*[\"']?[^\"'\s]+", re.I), "token=[REDACTED]"),
         (re.compile(r"api[_-]?key[\"']?\s*[:=]\s*[\"']?[^\"'\s]+", re.I), "api_key=[REDACTED]"),
+        (re.compile(r"Bearer\s+[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+", re.I), "Bearer [REDACTED]"),
+    ]
+
+    # IP address patterns (optional, configurable)
+    IP_PATTERNS = [
+        (re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b"), "[IP_REDACTED]"),
+        (re.compile(r"\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b"), "[IP_REDACTED]"),
     ]
 
     def __init__(
         self,
         logger: logging.Logger | None = None,
         redact_pii: bool = True,
+        correlation_id_provider: Callable[[], str] | None = None,
+        redact_ip_addresses: bool = False,
     ) -> None:
         """Initialize security audit logger.
 
         Args:
             logger: Logger instance to use. Defaults to security logger.
             redact_pii: Whether to redact PII from log messages.
+            correlation_id_provider: Callable to get correlation ID. Defaults to generate_ulid.
+            redact_ip_addresses: Whether to redact IP addresses.
+            
+        **Feature: core-improvements-v2**
+        **Validates: Requirements 4.1, 4.3, 5.1**
         """
         self._logger = logger or logging.getLogger("security.audit")
         self._redact_pii = redact_pii
+        self._get_correlation_id = correlation_id_provider or generate_ulid
+        self._redact_ip = redact_ip_addresses
 
     def _redact(self, value: str | None) -> str | None:
-        """Redact PII from a string value."""
+        """Redact PII from a string value.
+        
+        **Feature: core-improvements-v2**
+        **Validates: Requirements 5.2, 5.3, 5.4, 5.5**
+        """
         if not value or not self._redact_pii:
             return value
 
         result = value
         for pattern, replacement in self.PII_PATTERNS:
             result = pattern.sub(replacement, result)
+
+        # Apply IP redaction if enabled
+        if self._redact_ip:
+            for pattern, replacement in self.IP_PATTERNS:
+                result = pattern.sub(replacement, result)
+
         return result
 
     def _create_event(
@@ -105,10 +144,15 @@ class SecurityAuditLogger:
         event_type: SecurityEventType,
         **kwargs: Any,
     ) -> SecurityEvent:
-        """Create a security event with current timestamp."""
+        """Create a security event with current timestamp and correlation ID.
+        
+        **Feature: core-improvements-v2**
+        **Validates: Requirements 4.2, 4.4**
+        """
         return SecurityEvent(
             event_type=event_type,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
+            correlation_id=self._get_correlation_id(),
             **kwargs,
         )
 
@@ -346,13 +390,22 @@ class SecurityAuditLogger:
         return event
 
 
-# Module-level singleton
+# Module-level singleton with thread-safe initialization
 _audit_logger: SecurityAuditLogger | None = None
+_audit_lock = threading.Lock()
 
 
 def get_audit_logger() -> SecurityAuditLogger:
-    """Get the global security audit logger instance."""
+    """Get the global security audit logger instance (thread-safe).
+    
+    Uses double-check locking pattern for thread-safe lazy initialization.
+    
+    **Feature: core-improvements-v2**
+    **Validates: Requirements 1.3, 1.4, 1.5**
+    """
     global _audit_logger
     if _audit_logger is None:
-        _audit_logger = SecurityAuditLogger()
+        with _audit_lock:
+            if _audit_logger is None:  # Double-check locking
+                _audit_logger = SecurityAuditLogger()
     return _audit_logger

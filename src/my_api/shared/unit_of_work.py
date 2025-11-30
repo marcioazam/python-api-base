@@ -2,7 +2,8 @@
 
 from abc import ABC, abstractmethod
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Self
+from typing import Self
+from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -322,4 +323,4 @@ async def atomic_operation[T](
 
 # Import for type hints
 import asyncio
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable

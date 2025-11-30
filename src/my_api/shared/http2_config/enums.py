@@ -1,8 +1,6 @@
 """http2_config enums."""
 
-from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
 
 
 class HTTPProtocol(Enum):

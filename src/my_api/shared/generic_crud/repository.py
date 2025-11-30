@@ -3,16 +3,12 @@
 from abc import ABC
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 from sqlalchemy import and_, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlmodel import SQLModel
-
-T = TypeVar("T", bound=SQLModel)
-CreateSchemaType = TypeVar("CreateSchemaType")
-UpdateSchemaType = TypeVar("UpdateSchemaType")
 
 
 class FilterOperator(Enum):
@@ -64,7 +60,7 @@ class QueryOptions:
 
 
 @dataclass
-class PaginatedResult(Generic[T]):
+class PaginatedResult[T]:
     """Paginated query result."""
 
     items: list[T]
@@ -75,7 +71,7 @@ class PaginatedResult(Generic[T]):
     has_prev: bool
 
 
-class GenericRepository(Generic[T], ABC):
+class GenericRepository[T: SQLModel](ABC):
     """Generic repository base class with type safety."""
 
     def __init__(self, session: AsyncSession, model: type[T]) -> None:
@@ -160,7 +156,7 @@ class GenericRepository(Generic[T], ABC):
                     return field_attr.between(value[0], value[1])
         return None
 
-    async def create(self, obj_in: CreateSchemaType) -> T:
+    async def create[CreateSchemaType](self, obj_in: CreateSchemaType) -> T:
         """Create a new record."""
         data = obj_in.model_dump() if hasattr(obj_in, "model_dump") else dict(obj_in)
         db_obj = self._model(**data)
@@ -213,7 +209,7 @@ class GenericRepository(Generic[T], ABC):
             has_prev=page > 1,
         )
 
-    async def update(self, id: Any, obj_in: UpdateSchemaType) -> T | None:
+    async def update[UpdateSchemaType](self, id: Any, obj_in: UpdateSchemaType) -> T | None:
         """Update a record."""
         db_obj = await self.get(id)
         if not db_obj:
@@ -237,7 +233,7 @@ class GenericRepository(Generic[T], ABC):
         await self._session.commit()
         return True
 
-    async def bulk_create(self, objs_in: list[CreateSchemaType]) -> list[T]:
+    async def bulk_create[CreateSchemaType](self, objs_in: list[CreateSchemaType]) -> list[T]:
         """Create multiple records."""
         db_objs = []
         for obj_in in objs_in:

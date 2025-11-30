@@ -1,13 +1,21 @@
 """Password policy validation service.
 
-**Feature: api-base-improvements**
-**Validates: Requirements 10.1, 10.2, 10.3, 10.4, 10.5**
+**Feature: api-base-improvements, core-improvements-v2**
+**Validates: Requirements 10.1, 10.2, 10.3, 10.4, 10.5, 8.1, 8.2, 8.4, 8.5**
 """
 
-import re
+import threading
 from dataclasses import dataclass, field
+from typing import Final
 
 from my_api.shared.utils.password import hash_password, verify_password
+
+# Password strength scoring constants
+SCORE_PER_REQUIREMENT: Final[int] = 20  # Points per met requirement
+MAX_SCORE: Final[int] = 100  # Maximum possible score
+LENGTH_BONUS_MULTIPLIER: Final[int] = 2  # Points per extra character
+MAX_LENGTH_BONUS: Final[int] = 20  # Maximum bonus for extra length
+COMMON_PASSWORD_PENALTY: Final[int] = 40  # Penalty for common passwords
 
 
 # Common passwords list (top 100 most common)
@@ -35,7 +43,7 @@ COMMON_PASSWORDS = frozenset([
 ])
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class PasswordPolicy:
     """Password policy configuration.
 
@@ -118,7 +126,7 @@ class PasswordValidator:
                 f"Password must be at least {self._policy.min_length} characters long"
             )
         else:
-            score += 20
+            score += SCORE_PER_REQUIREMENT
 
         # Check maximum length
         if len(password) > self._policy.max_length:
@@ -131,21 +139,21 @@ class PasswordValidator:
             if not any(c.isupper() for c in password):
                 result.add_error("Password must contain at least one uppercase letter")
             else:
-                score += 20
+                score += SCORE_PER_REQUIREMENT
 
         # Check lowercase requirement
         if self._policy.require_lowercase:
             if not any(c.islower() for c in password):
                 result.add_error("Password must contain at least one lowercase letter")
             else:
-                score += 20
+                score += SCORE_PER_REQUIREMENT
 
         # Check digit requirement
         if self._policy.require_digit:
             if not any(c.isdigit() for c in password):
                 result.add_error("Password must contain at least one digit")
             else:
-                score += 20
+                score += SCORE_PER_REQUIREMENT
 
         # Check special character requirement
         if self._policy.require_special:
@@ -155,18 +163,18 @@ class PasswordValidator:
                     f"({self._policy.special_characters})"
                 )
             else:
-                score += 20
+                score += SCORE_PER_REQUIREMENT
 
         # Check against common passwords
         if self._policy.check_common_passwords:
             if password.lower() in COMMON_PASSWORDS:
                 result.add_error("Password is too common and easily guessable")
-                score = max(0, score - 40)
+                score = max(0, score - COMMON_PASSWORD_PENALTY)
 
         # Bonus for length beyond minimum
         extra_length = len(password) - self._policy.min_length
         if extra_length > 0:
-            score = min(100, score + min(extra_length * 2, 20))
+            score = min(MAX_SCORE, score + min(extra_length * LENGTH_BONUS_MULTIPLIER, MAX_LENGTH_BONUS))
 
         result.strength_score = score
         return result
@@ -243,13 +251,22 @@ class PasswordValidator:
         return verify_password(password, hashed)
 
 
-# Default validator instance
+# Default validator instance with thread-safe initialization
 _default_validator: PasswordValidator | None = None
+_password_lock = threading.Lock()
 
 
 def get_password_validator() -> PasswordValidator:
-    """Get the default password validator instance."""
+    """Get the default password validator instance (thread-safe).
+    
+    Uses double-check locking pattern for thread-safe lazy initialization.
+    
+    **Feature: core-improvements-v2**
+    **Validates: Requirements 1.2, 1.4, 1.5**
+    """
     global _default_validator
     if _default_validator is None:
-        _default_validator = PasswordValidator()
+        with _password_lock:
+            if _default_validator is None:  # Double-check locking
+                _default_validator = PasswordValidator()
     return _default_validator

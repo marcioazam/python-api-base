@@ -10,7 +10,6 @@ compliance score calculation for architecture audits.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Literal
 
 
 class Severity(str, Enum):

@@ -1,16 +1,12 @@
 """Generic CRUD router for FastAPI."""
 
-from typing import Any, Callable, Generic, TypeVar
+from typing import Any
+from collections.abc import Callable
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from my_api.shared.dto import ApiResponse, PaginatedResponse
-
-T = TypeVar("T")
-CreateDTO = TypeVar("CreateDTO")
-UpdateDTO = TypeVar("UpdateDTO")
-ResponseDTO = TypeVar("ResponseDTO")
 
 
 class BulkDeleteRequest(BaseModel):
@@ -26,7 +22,7 @@ class BulkDeleteResponse(BaseModel):
     failed_ids: list[str]
 
 
-class GenericCRUDRouter(Generic[T, CreateDTO, UpdateDTO, ResponseDTO]):
+class GenericCRUDRouter[T, CreateDTO, UpdateDTO, ResponseDTO]:
     """Generic router that generates CRUD endpoints.
 
     Creates standard REST endpoints for any entity type with

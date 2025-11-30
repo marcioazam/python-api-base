@@ -1,13 +1,11 @@
 """feature_flags service."""
 
 import hashlib
-import random
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Any, Callable
+from datetime import datetime, UTC
+from typing import Any
+from collections.abc import Callable
 from pydantic import BaseModel
-from .enums import FlagStatus, RolloutStrategy
+from .enums import FlagStatus
 from .models import EvaluationContext
 from .config import FlagConfig
 
@@ -249,7 +247,7 @@ class FeatureFlagService:
         flag = self._flags.get(key)
         if flag:
             flag.status = FlagStatus.ENABLED
-            flag.updated_at = datetime.now(timezone.utc)
+            flag.updated_at = datetime.now(UTC)
             return True
         return False
 
@@ -265,7 +263,7 @@ class FeatureFlagService:
         flag = self._flags.get(key)
         if flag:
             flag.status = FlagStatus.DISABLED
-            flag.updated_at = datetime.now(timezone.utc)
+            flag.updated_at = datetime.now(UTC)
             return True
         return False
 
@@ -283,7 +281,7 @@ class FeatureFlagService:
         if flag:
             flag.status = FlagStatus.PERCENTAGE
             flag.percentage = max(0, min(100, percentage))
-            flag.updated_at = datetime.now(timezone.utc)
+            flag.updated_at = datetime.now(UTC)
             return True
         return False
 
@@ -302,7 +300,7 @@ class FeatureFlagService:
             if user_id not in flag.user_ids:
                 flag.user_ids.append(user_id)
             flag.status = FlagStatus.TARGETED
-            flag.updated_at = datetime.now(timezone.utc)
+            flag.updated_at = datetime.now(UTC)
             return True
         return False
 
@@ -319,7 +317,7 @@ class FeatureFlagService:
         flag = self._flags.get(key)
         if flag and user_id in flag.user_ids:
             flag.user_ids.remove(user_id)
-            flag.updated_at = datetime.now(timezone.utc)
+            flag.updated_at = datetime.now(UTC)
             return True
         return False
 

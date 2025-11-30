@@ -1,17 +1,38 @@
 """JWT authentication service for token generation and verification.
 
-**Feature: api-base-improvements**
-**Validates: Requirements 1.1, 1.2, 1.3, 1.6**
+**Feature: core-code-review**
+**Validates: Requirements 4.1, 4.4, 4.5, 11.1**
 """
 
+from collections import OrderedDict
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from typing import Any
+from datetime import datetime, timedelta, UTC
+from typing import Any, Final, Protocol
 
 from jose import JWTError, jwt
 
 from my_api.core.exceptions import AuthenticationError
 from my_api.shared.utils.ids import generate_ulid
+
+
+class TimeSource(Protocol):
+    """Protocol for injectable time sources.
+    
+    **Feature: core-code-review**
+    **Validates: Requirements 11.1**
+    """
+
+    def now(self) -> datetime:
+        """Get current UTC datetime."""
+        ...
+
+
+class SystemTimeSource:
+    """Default system time source."""
+
+    def now(self) -> datetime:
+        """Get current UTC datetime from system clock."""
+        return datetime.now(UTC)
 
 
 class TokenExpiredError(AuthenticationError):
@@ -38,7 +59,7 @@ class TokenRevokedError(AuthenticationError):
         self.error_code = "TOKEN_REVOKED"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class TokenPayload:
     """JWT token payload data.
 
@@ -85,8 +106,8 @@ class TokenPayload:
         """
         return cls(
             sub=data["sub"],
-            exp=datetime.fromtimestamp(data["exp"], tz=timezone.utc),
-            iat=datetime.fromtimestamp(data["iat"], tz=timezone.utc),
+            exp=datetime.fromtimestamp(data["exp"], tz=UTC),
+            iat=datetime.fromtimestamp(data["iat"], tz=UTC),
             jti=data["jti"],
             scopes=tuple(data.get("scopes", [])),
             token_type=data.get("token_type", "access"),
@@ -111,7 +132,7 @@ class TokenPayload:
         return "\n".join(lines)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class TokenPair:
     """Access and refresh token pair.
 
@@ -146,7 +167,13 @@ class JWTService:
 
     Handles creation, verification, and refresh of JWT tokens
     using the python-jose library.
+    
+    **Feature: core-code-review, core-improvements-v2**
+    **Validates: Requirements 4.1, 4.4, 4.5, 11.1, 2.1, 2.2, 2.3, 2.4, 2.5**
     """
+
+    # Default maximum number of tracked refresh tokens
+    DEFAULT_MAX_TRACKED_TOKENS: Final[int] = 10000
 
     def __init__(
         self,
@@ -154,6 +181,9 @@ class JWTService:
         algorithm: str = "HS256",
         access_token_expire_minutes: int = 30,
         refresh_token_expire_days: int = 7,
+        clock_skew_seconds: int = 30,
+        time_source: TimeSource | None = None,
+        max_tracked_tokens: int = DEFAULT_MAX_TRACKED_TOKENS,
     ) -> None:
         """Initialize JWT service.
 
@@ -162,6 +192,9 @@ class JWTService:
             algorithm: JWT signing algorithm.
             access_token_expire_minutes: Access token TTL in minutes.
             refresh_token_expire_days: Refresh token TTL in days.
+            clock_skew_seconds: Allowed clock skew for expiration checks.
+            time_source: Injectable time source for testing.
+            max_tracked_tokens: Maximum number of refresh tokens to track for replay protection.
         """
         if not secret_key or len(secret_key) < 32:
             raise ValueError("Secret key must be at least 32 characters")
@@ -170,6 +203,27 @@ class JWTService:
         self._algorithm = algorithm
         self._access_expire = timedelta(minutes=access_token_expire_minutes)
         self._refresh_expire = timedelta(days=refresh_token_expire_days)
+        self._clock_skew = timedelta(seconds=clock_skew_seconds)
+        self._time_source = time_source or SystemTimeSource()
+        self._max_tracked_tokens = max_tracked_tokens
+
+        # Track used refresh token JTIs with expiry for bounded memory
+        # OrderedDict maintains insertion order for FIFO removal
+        self._used_refresh_tokens: OrderedDict[str, datetime] = OrderedDict()
+
+    def _cleanup_expired_tokens(self) -> None:
+        """Remove expired tokens from tracking.
+        
+        **Feature: core-improvements-v2**
+        **Validates: Requirements 2.3, 2.4**
+        """
+        now = self._time_source.now()
+        expired_jtis = [
+            jti for jti, exp in self._used_refresh_tokens.items()
+            if exp < now
+        ]
+        for jti in expired_jtis:
+            del self._used_refresh_tokens[jti]
 
     def create_access_token(
         self,
@@ -177,6 +231,9 @@ class JWTService:
         scopes: list[str] | None = None,
     ) -> tuple[str, TokenPayload]:
         """Create a new access token.
+        
+        **Feature: core-code-review, Property 6: JWT Required Claims**
+        **Validates: Requirements 4.1**
 
         Args:
             user_id: User identifier to encode in token.
@@ -185,7 +242,7 @@ class JWTService:
         Returns:
             Tuple of (token_string, payload).
         """
-        now = datetime.now(timezone.utc)
+        now = self._time_source.now()
         payload = TokenPayload(
             sub=user_id,
             exp=now + self._access_expire,
@@ -212,7 +269,7 @@ class JWTService:
         Returns:
             Tuple of (token_string, payload).
         """
-        now = datetime.now(timezone.utc)
+        now = self._time_source.now()
         payload = TokenPayload(
             sub=user_id,
             exp=now + self._refresh_expire,
@@ -261,6 +318,9 @@ class JWTService:
         expected_type: str | None = None,
     ) -> TokenPayload:
         """Verify and decode a JWT token.
+        
+        **Feature: core-code-review**
+        **Validates: Requirements 4.4**
 
         Args:
             token: JWT token string to verify.
@@ -278,6 +338,7 @@ class JWTService:
                 token,
                 self._secret_key,
                 algorithms=[self._algorithm],
+                options={"leeway": self._clock_skew.total_seconds()},
             )
         except JWTError as e:
             error_msg = str(e).lower()
@@ -287,8 +348,9 @@ class JWTService:
 
         payload = TokenPayload.from_dict(data)
 
-        # Check expiration explicitly
-        if payload.exp < datetime.now(timezone.utc):
+        # Check expiration with clock skew tolerance
+        now = self._time_source.now()
+        if payload.exp < (now - self._clock_skew):
             raise TokenExpiredError()
 
         # Validate token type if specified
@@ -298,6 +360,45 @@ class JWTService:
             )
 
         return payload
+
+    def verify_refresh_token(self, token: str) -> TokenPayload:
+        """Verify refresh token with replay protection and memory management.
+        
+        **Feature: core-code-review, core-improvements-v2**
+        **Validates: Requirements 4.5, 2.1, 2.2, 2.3, 2.4**
+
+        Args:
+            token: Refresh token string.
+
+        Returns:
+            Decoded TokenPayload.
+
+        Raises:
+            TokenRevokedError: If token has already been used.
+            TokenExpiredError: If token has expired.
+            TokenInvalidError: If token is invalid.
+        """
+        # Cleanup expired tokens first
+        self._cleanup_expired_tokens()
+
+        payload = self.verify_token(token, expected_type="refresh")
+
+        # Check for replay attack
+        if payload.jti in self._used_refresh_tokens:
+            raise TokenRevokedError("Refresh token has already been used")
+
+        # Track with expiry for cleanup
+        self._used_refresh_tokens[payload.jti] = payload.exp
+
+        # Enforce max size (FIFO removal of oldest)
+        while len(self._used_refresh_tokens) > self._max_tracked_tokens:
+            self._used_refresh_tokens.popitem(last=False)
+
+        return payload
+
+    def clear_used_refresh_tokens(self) -> None:
+        """Clear used refresh token tracking (for testing)."""
+        self._used_refresh_tokens.clear()
 
     def decode_token_unverified(self, token: str) -> TokenPayload:
         """Decode token without verification (for debugging).

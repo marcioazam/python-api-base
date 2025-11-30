@@ -5,9 +5,10 @@
 """
 
 import os
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 from .enums import FileChangeType, ReloadStrategy
 from .handler import ModuleReloader
@@ -78,7 +79,7 @@ class HotReloadMiddleware:
         result = self._reloader.reload_modules(modules_to_reload)
         if result.reloaded_modules:
             self._reload_count += 1
-            self._last_reload = datetime.now(timezone.utc)
+            self._last_reload = datetime.now(UTC)
 
         return result
 

@@ -10,14 +10,10 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from enum import Enum
-from typing import Any, Generic, TypeVar
-from collections.abc import AsyncIterator
+from typing import Any
 import uuid
-
-
-T = TypeVar("T")
 
 
 class PollStatus(str, Enum):
@@ -84,7 +80,7 @@ class PollConfig:
 class EventQueue[T]:
     """Queue for events to be delivered via long polling."""
 
-    def __init__(self, max_size: int = 1000):
+    def __init__(self, max_size: int = 1000) -> None:
         self._queue: asyncio.Queue[T] = asyncio.Queue(maxsize=max_size)
         self._subscribers: dict[str, asyncio.Event] = {}
 
@@ -140,7 +136,7 @@ class EventQueue[T]:
 class LongPollEndpoint[T]:
     """Long polling endpoint handler."""
 
-    def __init__(self, config: PollConfig | None = None):
+    def __init__(self, config: PollConfig | None = None) -> None:
         self._config = config or PollConfig()
         self._queues: dict[str, EventQueue[T]] = {}
         self._sessions: dict[str, datetime] = {}
@@ -149,7 +145,7 @@ class LongPollEndpoint[T]:
         """Create a new polling session."""
         session_id = str(uuid.uuid4())
         self._queues[session_id] = EventQueue()
-        self._sessions[session_id] = datetime.now(timezone.utc)
+        self._sessions[session_id] = datetime.now(UTC)
         return session_id
 
     def close_session(self, session_id: str) -> bool:
@@ -216,9 +212,9 @@ class LongPollEndpoint[T]:
         )
 
         events: list[T] = []
-        end_time = datetime.now(timezone.utc) + timedelta(seconds=actual_timeout)
+        end_time = datetime.now(UTC) + timedelta(seconds=actual_timeout)
 
-        while datetime.now(timezone.utc) < end_time:
+        while datetime.now(UTC) < end_time:
             if queue.get_pending_count() > 0:
                 while (
                     queue.get_pending_count() > 0
@@ -245,7 +241,7 @@ class LongPollEndpoint[T]:
 
     def cleanup_stale_sessions(self, max_age_seconds: float = 3600) -> int:
         """Clean up stale sessions."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         stale = [
             sid
             for sid, created in self._sessions.items()

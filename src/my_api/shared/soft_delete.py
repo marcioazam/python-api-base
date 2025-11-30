@@ -1,12 +1,9 @@
 """Enhanced Soft Delete with cascade and restore support."""
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Protocol, TypeVar, Generic, Any
+from datetime import datetime, UTC
+from typing import Protocol
 from collections.abc import Callable, Awaitable
-
-
-T = TypeVar("T")
 
 
 @dataclass
@@ -19,7 +16,7 @@ class SoftDeleteConfig:
 
 
 @dataclass
-class DeletedRecord(Generic[T]):
+class DeletedRecord[T]:
     """Wrapper for soft-deleted records."""
     id: str
     entity_type: str
@@ -31,7 +28,7 @@ class DeletedRecord(Generic[T]):
     restore_token: str = ""
 
 
-class SoftDeleteBackend(Protocol[T]):
+class SoftDeleteBackend[T](Protocol):
     """Protocol for soft delete storage."""
 
     async def mark_deleted(
@@ -51,7 +48,7 @@ class RelationResolver(Protocol):
     ) -> list[tuple[str, str]]: ...
 
 
-class SoftDeleteService(Generic[T]):
+class SoftDeleteService[T]:
     """Service for soft delete with cascade support."""
 
     def __init__(
@@ -172,7 +169,7 @@ class SoftDeleteService(Generic[T]):
             return 0
 
         from datetime import timedelta
-        cutoff = datetime.now(timezone.utc) - timedelta(days=config.permanent_delete_after_days)
+        cutoff = datetime.now(UTC) - timedelta(days=config.permanent_delete_after_days)
         deleted_count = 0
 
         records = await self._backend.get_deleted(entity_type)
@@ -184,7 +181,7 @@ class SoftDeleteService(Generic[T]):
         return deleted_count
 
 
-class InMemorySoftDeleteBackend(Generic[T]):
+class InMemorySoftDeleteBackend[T]:
     """In-memory soft delete backend for testing."""
 
     def __init__(self) -> None:
@@ -200,7 +197,7 @@ class InMemorySoftDeleteBackend(Generic[T]):
             entity_type=entity_type,
             original_id=entity_id,
             data=None,  # type: ignore
-            deleted_at=datetime.now(timezone.utc),
+            deleted_at=datetime.now(UTC),
             deleted_by=deleted_by
         )
 

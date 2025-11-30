@@ -11,12 +11,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Awaitable, TypeVar
+from typing import Any
+from collections.abc import Callable, Awaitable
 import random
 import re
-
-
-T = TypeVar("T")
 
 
 class RoutingStrategy(str, Enum):

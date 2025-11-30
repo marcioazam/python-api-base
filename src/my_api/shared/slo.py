@@ -7,11 +7,10 @@ targets and alerting when SLOs are violated.
 **Validates: Requirements 7.3**
 """
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from enum import Enum
-from typing import Any, Callable, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 
 class SLOType(Enum):
@@ -36,7 +35,7 @@ class SLOStatus(Enum):
     UNKNOWN = "unknown"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class SLOTarget:
     """Definition of an SLO target."""
 
@@ -214,7 +213,7 @@ class SLOMonitor:
         metric = SLOMetric(
             slo_type=SLOType.AVAILABILITY,
             value=1.0 if is_available else 0.0,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             labels=labels or {},
         )
         await self._store.record(metric)
@@ -233,7 +232,7 @@ class SLOMonitor:
             metric = SLOMetric(
                 slo_type=slo_type,
                 value=latency_ms,
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 labels=labels or {},
             )
             await self._store.record(metric)
@@ -245,7 +244,7 @@ class SLOMonitor:
         metric = SLOMetric(
             slo_type=SLOType.ERROR_RATE,
             value=1.0 if is_error else 0.0,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             labels=labels or {},
         )
         await self._store.record(metric)
@@ -260,12 +259,12 @@ class SLOMonitor:
                 status=SLOStatus.UNKNOWN,
                 error_budget_remaining=0,
                 samples=0,
-                window_start=datetime.now(timezone.utc),
-                window_end=datetime.now(timezone.utc),
+                window_start=datetime.now(UTC),
+                window_end=datetime.now(UTC),
                 details=f"Unknown SLO target: {target_name}",
             )
 
-        window_end = datetime.now(timezone.utc)
+        window_end = datetime.now(UTC)
         window_start = window_end - target.window
 
         metrics = await self._store.get_metrics(target.slo_type, window_start)

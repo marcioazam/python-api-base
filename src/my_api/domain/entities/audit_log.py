@@ -4,7 +4,7 @@
 **Validates: Requirements 4.4**
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 from sqlalchemy import Column, DateTime, Index, String, Text
 from sqlmodel import Field as SQLField
@@ -33,7 +33,7 @@ class AuditLogDB(SQLModel, table=True):
         description="ULID identifier",
     )
     timestamp: datetime = SQLField(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True), nullable=False, index=True),
         description="When the action occurred",
     )
@@ -80,7 +80,7 @@ class AuditLogDB(SQLModel, table=True):
         description="Request correlation ID",
     )
     created_at: datetime = SQLField(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True), nullable=False),
         description="Record creation timestamp",
     )

@@ -1,22 +1,11 @@
 """auth service."""
 
-import logging
-from dataclasses import dataclass
-from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel, Field
 from my_api.core.auth.jwt import (
     JWTService,
-    TokenExpiredError,
-    TokenInvalidError,
-    TokenPair,
-    TokenPayload,
 )
-from my_api.core.auth.rbac import RBACUser
 from my_api.core.config import get_settings
 from my_api.infrastructure.auth.token_store import InMemoryTokenStore, RefreshTokenStore
-from .constants import DEMO_USERS
 
 
 class TokenResponse(BaseModel):
