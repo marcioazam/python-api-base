@@ -37,12 +37,12 @@ class LeaderInfo:
     @property
     def is_lease_valid(self) -> bool:
         """Check if lease is still valid."""
-        return datetime.utcnow() < self.lease_expires_at
+        return datetime.now(timezone.utc) < self.lease_expires_at
 
     @property
     def remaining_lease_seconds(self) -> float:
         """Get remaining lease time in seconds."""
-        remaining = (self.lease_expires_at - datetime.utcnow()).total_seconds()
+        remaining = (self.lease_expires_at - datetime.now(timezone.utc)).total_seconds()
         return max(0, remaining)
 
     def to_dict(self) -> dict[str, Any]:
@@ -114,7 +114,7 @@ class InMemoryLeaderElectionBackend(LeaderElectionBackend):
             if current and current.is_lease_valid and current.node_id != node_id:
                 return False
 
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             self._leaders[election_name] = LeaderInfo(
                 node_id=node_id,
                 elected_at=now,
@@ -134,7 +134,7 @@ class InMemoryLeaderElectionBackend(LeaderElectionBackend):
             if not current or current.node_id != node_id:
                 return False
 
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             current.lease_expires_at = now + lease_duration
             return True
 

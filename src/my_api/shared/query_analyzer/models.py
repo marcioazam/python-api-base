@@ -1,13 +1,13 @@
-"""query_analyzer models."""
+"""query_analyzer models.
 
-import re
-import time
+**Feature: shared-modules-phase3-fixes, Task 5.3**
+"""
+
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from enum import Enum
 from typing import Any
-from pydantic import BaseModel
-from .enums import QueryType, OptimizationSuggestion
+
+from .enums import OptimizationSuggestion, QueryType
 
 
 @dataclass
@@ -31,6 +31,7 @@ class QueryMetrics:
     rows_returned: int = 0
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     explain_plan: dict[str, Any] | None = None
+
 
 @dataclass
 class IndexSuggestion:

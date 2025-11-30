@@ -5,6 +5,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, TYPE_CHECKING
+from .constants import (
+    DEFAULT_INITIAL_WINDOW_SIZE,
+    DEFAULT_MAX_CONCURRENT_STREAMS,
+    DEFAULT_MAX_HEADER_LIST_SIZE,
+    MAX_CONCURRENT_STREAMS_LIMIT,
+    MAX_FRAME_SIZE,
+    MAX_WINDOW_SIZE,
+    MIN_FRAME_SIZE,
+)
 from .enums import HTTPProtocol, PushPriority
 from .models import ConnectionStats
 
@@ -16,26 +25,26 @@ if TYPE_CHECKING:
 class MultiplexConfig:
     """HTTP/2 multiplexing configuration."""
 
-    max_concurrent_streams: int = 100
-    initial_window_size: int = 65535
-    max_frame_size: int = 16384
-    max_header_list_size: int = 8192
+    max_concurrent_streams: int = DEFAULT_MAX_CONCURRENT_STREAMS
+    initial_window_size: int = DEFAULT_INITIAL_WINDOW_SIZE
+    max_frame_size: int = MIN_FRAME_SIZE
+    max_header_list_size: int = DEFAULT_MAX_HEADER_LIST_SIZE
     enable_connect_protocol: bool = False
 
     def validate(self) -> list[str]:
-        """Validate configuration values."""
+        """Validate configuration values per RFC 7540."""
         errors: list[str] = []
         if self.max_concurrent_streams < 1:
             errors.append("max_concurrent_streams must be >= 1")
-        if self.max_concurrent_streams > 2147483647:
+        if self.max_concurrent_streams > MAX_CONCURRENT_STREAMS_LIMIT:
             errors.append("max_concurrent_streams exceeds max value")
         if self.initial_window_size < 0:
             errors.append("initial_window_size must be >= 0")
-        if self.initial_window_size > 2147483647:
+        if self.initial_window_size > MAX_WINDOW_SIZE:
             errors.append("initial_window_size exceeds max value")
-        if self.max_frame_size < 16384:
+        if self.max_frame_size < MIN_FRAME_SIZE:
             errors.append("max_frame_size must be >= 16384")
-        if self.max_frame_size > 16777215:
+        if self.max_frame_size > MAX_FRAME_SIZE:
             errors.append("max_frame_size exceeds max value")
         if self.max_header_list_size < 0:
             errors.append("max_header_list_size must be >= 0")

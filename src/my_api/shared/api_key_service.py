@@ -11,11 +11,14 @@ Provides:
 """
 
 import hashlib
+import hmac
 import secrets
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any
+
+import bcrypt
 
 
 class KeyStatus(str, Enum):
@@ -46,7 +49,7 @@ class APIKey:
     name: str
     scopes: list[KeyScope] = field(default_factory=list)
     status: KeyStatus = KeyStatus.ACTIVE
-    created_at: datetime = field(default_factory=datetime.now)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     expires_at: datetime | None = None
     last_used_at: datetime | None = None
     rate_limit: int = 1000  # requests per hour
@@ -57,7 +60,7 @@ class APIKey:
         """Check if key is expired."""
         if self.expires_at is None:
             return False
-        return datetime.now() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
     @property
     def is_active(self) -> bool:
@@ -95,7 +98,17 @@ class KeyRotationResult:
 
 
 class APIKeyService:
-    """Service for managing API keys."""
+    """Service for managing API keys with secure bcrypt hashing.
+
+    **Feature: shared-modules-security-fixes**
+    **Validates: Requirements 2.1, 2.2, 2.3, 2.4**
+    """
+
+    # Bcrypt cost factor (12 is recommended minimum for security)
+    BCRYPT_COST_FACTOR = 12
+    # Hash format prefixes for migration support
+    HASH_PREFIX_BCRYPT = "$2b$"
+    HASH_PREFIX_SHA256 = "sha256:"
 
     def __init__(
         self,
@@ -117,8 +130,53 @@ class APIKeyService:
         return f"{self._key_prefix}{random_part}"
 
     def _hash_key(self, key: str) -> str:
-        """Hash an API key for storage."""
-        return hashlib.sha256(key.encode()).hexdigest()
+        """Hash an API key using bcrypt with unique salt.
+
+        Each call generates a unique salt, so the same key will produce
+        different hashes (this is expected and correct for bcrypt).
+
+        Args:
+            key: The API key to hash.
+
+        Returns:
+            Bcrypt hash string (starts with $2b$).
+        """
+        salt = bcrypt.gensalt(rounds=self.BCRYPT_COST_FACTOR)
+        return bcrypt.hashpw(key.encode("utf-8"), salt).decode("utf-8")
+
+    def _hash_key_sha256(self, key: str) -> str:
+        """Legacy SHA256 hash (for migration support only).
+
+        Args:
+            key: The API key to hash.
+
+        Returns:
+            SHA256 hash with prefix.
+        """
+        hash_value = hashlib.sha256(key.encode("utf-8")).hexdigest()
+        return f"{self.HASH_PREFIX_SHA256}{hash_value}"
+
+    def _verify_key(self, key: str, key_hash: str) -> bool:
+        """Verify key using constant-time comparison.
+
+        Supports both bcrypt (new) and SHA256 (legacy) formats.
+
+        Args:
+            key: The API key to verify.
+            key_hash: The stored hash to verify against.
+
+        Returns:
+            True if key matches hash, False otherwise.
+        """
+        if key_hash.startswith(self.HASH_PREFIX_BCRYPT):
+            # Bcrypt verification (already constant-time)
+            return bcrypt.checkpw(key.encode("utf-8"), key_hash.encode("utf-8"))
+        elif key_hash.startswith(self.HASH_PREFIX_SHA256):
+            # Legacy SHA256 with constant-time comparison
+            computed = hashlib.sha256(key.encode("utf-8")).hexdigest()
+            stored = key_hash[len(self.HASH_PREFIX_SHA256):]
+            return hmac.compare_digest(computed, stored)
+        return False
 
     def _generate_key_id(self) -> str:
         """Generate a unique key ID."""
@@ -143,7 +201,9 @@ class APIKeyService:
         key_id = self._generate_key_id()
 
         expiry_days = expires_in_days or self._default_expiry_days
-        expires_at = datetime.now() + timedelta(days=expiry_days) if expiry_days > 0 else None
+        expires_at = None
+        if expiry_days > 0:
+            expires_at = datetime.now(timezone.utc) + timedelta(days=expiry_days)
 
         api_key = APIKey(
             key_id=key_id,
@@ -168,9 +228,16 @@ class APIKeyService:
         raw_key: str,
         required_scope: KeyScope | None = None,
     ) -> KeyValidationResult:
-        """Validate an API key."""
-        key_hash = self._hash_key(raw_key)
-        key_id = self._key_hashes.get(key_hash)
+        """Validate an API key using constant-time comparison.
+
+        Supports both bcrypt (new) and SHA256 (legacy) hash formats.
+        """
+        # Find matching key by verifying against all stored hashes
+        key_id = None
+        for stored_hash, stored_key_id in self._key_hashes.items():
+            if self._verify_key(raw_key, stored_hash):
+                key_id = stored_key_id
+                break
 
         if key_id is None:
             return KeyValidationResult(valid=False, error="Invalid API key")
@@ -204,7 +271,7 @@ class APIKeyService:
             )
 
         # Update last used
-        api_key.last_used_at = datetime.now()
+        api_key.last_used_at = datetime.now(timezone.utc)
         self._record_usage(key_id)
 
         return KeyValidationResult(
@@ -215,7 +282,7 @@ class APIKeyService:
 
     def _check_rate_limit(self, key_id: str, limit: int) -> int:
         """Check rate limit and return remaining requests."""
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         hour_ago = now - timedelta(hours=1)
 
         # Clean old entries
@@ -229,7 +296,7 @@ class APIKeyService:
         """Record API key usage."""
         if key_id not in self._usage:
             self._usage[key_id] = []
-        self._usage[key_id].append(datetime.now())
+        self._usage[key_id].append(datetime.now(timezone.utc))
 
     def revoke_key(self, key_id: str) -> bool:
         """Revoke an API key."""
@@ -303,7 +370,7 @@ class APIKeyService:
             return False
 
         if api_key.expires_at is None:
-            api_key.expires_at = datetime.now() + timedelta(days=days)
+            api_key.expires_at = datetime.now(timezone.utc) + timedelta(days=days)
         else:
             api_key.expires_at = api_key.expires_at + timedelta(days=days)
         return True
@@ -314,7 +381,7 @@ class APIKeyService:
         if api_key is None:
             return {}
 
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         hour_ago = now - timedelta(hours=1)
         day_ago = now - timedelta(days=1)
 
@@ -330,7 +397,9 @@ class APIKeyService:
             "requests_last_day": daily,
             "rate_limit": api_key.rate_limit,
             "remaining_requests": api_key.rate_limit - hourly,
-            "last_used": api_key.last_used_at.isoformat() if api_key.last_used_at else None,
+            "last_used": (
+                api_key.last_used_at.isoformat() if api_key.last_used_at else None
+            ),
         }
 
     def cleanup_expired_keys(self) -> int:

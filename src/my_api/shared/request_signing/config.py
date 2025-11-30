@@ -1,12 +1,11 @@
-"""request_signing configuration."""
+"""request_signing configuration.
 
-import hashlib
-import hmac
-import time
+**Feature: shared-modules-code-review-fixes, Task 8.2**
+**Validates: Requirements 3.2**
+"""
+
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Any
+
 from .enums import HashAlgorithm
 
 

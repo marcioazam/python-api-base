@@ -59,14 +59,14 @@ class MutationScoreTracker:
         """Load history from storage."""
         if self._storage_path.exists():
             try:
-                with open(self._storage_path) as f:
+                with open(self._storage_path, encoding="utf-8") as f:
                     self._history = json.load(f)
-            except (json.JSONDecodeError, OSError):
+            except (json.JSONDecodeError, OSError, UnicodeDecodeError):
                 self._history = []
 
     def _save_history(self) -> None:
         """Save history to storage."""
-        with open(self._storage_path, "w") as f:
+        with open(self._storage_path, "w", encoding="utf-8") as f:
             json.dump(self._history, f, indent=2)
 
     def record(self, report: MutationReport) -> None:
@@ -204,7 +204,7 @@ def parse_mutmut_results(results_path: Path) -> MutationReport:
     if not results_path.exists():
         return report
     try:
-        with open(results_path) as f:
+        with open(results_path, encoding="utf-8") as f:
             data = json.load(f)
         for mutant_data in data.get("mutants", []):
             status = MutantStatus(mutant_data.get("status", "survived"))

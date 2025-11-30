@@ -123,7 +123,7 @@ class RetryQueue(Generic[T]):
         message = QueueMessage(
             id=str(uuid.uuid4()),
             payload=payload,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             metadata=metadata or {}
         )
         await self._backend.enqueue(message)
@@ -156,7 +156,7 @@ class RetryQueue(Generic[T]):
                 message.last_error = result.error
                 message.status = MessageStatus.PENDING
                 delay = self._calculate_delay(message.retry_count)
-                message.next_retry_at = datetime.utcnow() + timedelta(milliseconds=delay)
+                message.next_retry_at = datetime.now(timezone.utc) + timedelta(milliseconds=delay)
                 await self._backend.update(message)
             else:
                 message.status = MessageStatus.DEAD_LETTER
@@ -170,7 +170,7 @@ class RetryQueue(Generic[T]):
                 message.retry_count += 1
                 message.status = MessageStatus.PENDING
                 delay = self._calculate_delay(message.retry_count)
-                message.next_retry_at = datetime.utcnow() + timedelta(milliseconds=delay)
+                message.next_retry_at = datetime.now(timezone.utc) + timedelta(milliseconds=delay)
                 await self._backend.update(message)
             else:
                 message.status = MessageStatus.DEAD_LETTER
@@ -227,7 +227,7 @@ class InMemoryQueueBackend(Generic[T]):
         self._queue.append(message)
 
     async def dequeue(self, limit: int) -> list[QueueMessage[T]]:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         ready = [
             m for m in self._queue
             if m.status == MessageStatus.PENDING and

@@ -16,6 +16,32 @@ def utc_now() -> datetime:
     return pendulum.now("UTC")
 
 
+def ensure_utc(dt: datetime) -> datetime:
+    """Ensure datetime is timezone-aware UTC.
+
+    If the datetime is naive (no timezone info), it is assumed to be UTC.
+    If the datetime has a different timezone, it is converted to UTC.
+
+    Args:
+        dt: Datetime to ensure is UTC.
+
+    Returns:
+        datetime: Timezone-aware datetime in UTC.
+
+    Example:
+        >>> naive_dt = datetime(2024, 1, 1, 12, 0, 0)
+        >>> ensure_utc(naive_dt).tzinfo
+        datetime.timezone.utc
+
+        >>> aware_dt = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        >>> ensure_utc(aware_dt) == aware_dt
+        True
+    """
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 def now(tz: str = "UTC") -> datetime:
     """Get current datetime in specified timezone.
 

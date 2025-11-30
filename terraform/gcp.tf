@@ -1,15 +1,4 @@
-# GCP Provider Configuration and Module Calls
-
-variable "gcp_project_id" {
-  description = "GCP Project ID"
-  type        = string
-  default     = ""
-}
-
-provider "google" {
-  project = var.gcp_project_id
-  region  = var.region
-}
+# GCP Resources and Module Calls
 
 # VPC Network
 resource "google_compute_network" "main" {

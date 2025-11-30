@@ -1,7 +1,7 @@
 """Enhanced Soft Delete with cascade and restore support."""
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Protocol, TypeVar, Generic, Any
 from collections.abc import Callable, Awaitable
 
@@ -172,7 +172,7 @@ class SoftDeleteService(Generic[T]):
             return 0
 
         from datetime import timedelta
-        cutoff = datetime.utcnow() - timedelta(days=config.permanent_delete_after_days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=config.permanent_delete_after_days)
         deleted_count = 0
 
         records = await self._backend.get_deleted(entity_type)
@@ -200,7 +200,7 @@ class InMemorySoftDeleteBackend(Generic[T]):
             entity_type=entity_type,
             original_id=entity_id,
             data=None,  # type: ignore
-            deleted_at=datetime.utcnow(),
+            deleted_at=datetime.now(timezone.utc),
             deleted_by=deleted_by
         )
 

@@ -1,0 +1,25 @@
+# Backend Configuration Template
+# Copy this file to backend.hcl and fill in the values for your environment
+# Usage: terraform init -backend-config=backend.hcl
+
+# S3 bucket for storing Terraform state
+bucket = "my-api-terraform-state-ENVIRONMENT"
+
+# Path within the bucket for the state file
+# Use different keys for different environments: dev/terraform.tfstate, prod/terraform.tfstate
+key = "ENVIRONMENT/terraform.tfstate"
+
+# AWS region where the S3 bucket is located
+region = "us-east-1"
+
+# DynamoDB table for state locking
+dynamodb_table = "my-api-terraform-locks"
+
+# Optional: Enable server-side encryption (already set in main.tf)
+# encrypt = true
+
+# Optional: Use a specific AWS profile
+# profile = "my-aws-profile"
+
+# Optional: Assume a specific IAM role
+# role_arn = "arn:aws:iam::ACCOUNT_ID:role/TerraformRole"

@@ -1,38 +1,54 @@
 """Auto-ban detection service.
 
 **Feature: file-size-compliance-phase2, Task 2.3**
-**Validates: Requirements 1.3, 5.1, 5.2, 5.3**
+**Feature: shared-modules-refactoring**
+**Validates: Requirements 1.3, 2.1, 2.2, 5.1, 5.2, 5.3**
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from .config import AutoBanConfig, AutoBanConfigBuilder
 from .enums import BanStatus, ViolationType
+from .lock_manager import InMemoryLockManager, LockManager
 from .models import BanCheckResult, BanRecord, BanThreshold, Violation
 from .store import BanStore, InMemoryBanStore
 
 
 class AutoBanService:
-    """Service for automatic banning based on violations."""
+    """Service for automatic banning based on violations.
 
-    def __init__(self, config: AutoBanConfig, store: BanStore) -> None:
+    Uses per-identifier locking to prevent race conditions when
+    recording violations and checking ban status concurrently.
+    """
+
+    def __init__(
+        self,
+        config: AutoBanConfig,
+        store: BanStore,
+        lock_manager: LockManager | None = None,
+    ) -> None:
         self._config = config
         self._store = store
+        self._lock_manager = lock_manager or InMemoryLockManager()
         self._threshold_map: dict[ViolationType, BanThreshold] = {
             t.violation_type: t for t in config.thresholds
         }
 
     async def check_ban(self, identifier: str) -> BanCheckResult:
-        """Check if identifier is currently banned."""
+        """Check if identifier is currently banned.
+
+        Uses per-identifier locking to ensure atomic check operations.
+        """
         if identifier in self._config.allowlist:
             return BanCheckResult.allowed()
 
-        ban = await self._store.get_ban(identifier)
-        if ban and ban.is_active:
-            return BanCheckResult.banned(
-                ban, f"Banned for {ban.reason.value} until {ban.expires_at}"
-            )
-        return BanCheckResult.allowed()
+        async with self._lock_manager.acquire(identifier):
+            ban = await self._store.get_ban(identifier)
+            if ban and ban.is_active:
+                return BanCheckResult.banned(
+                    ban, f"Banned for {ban.reason.value} until {ban.expires_at}"
+                )
+            return BanCheckResult.allowed()
 
     async def record_violation(
         self,
@@ -41,37 +57,42 @@ class AutoBanService:
         details: str = "",
         severity: int = 1,
     ) -> BanCheckResult:
-        """Record a violation and check if ban threshold is reached."""
+        """Record a violation and check if ban threshold is reached.
+
+        Uses per-identifier locking to serialize concurrent violations
+        and ensure atomic check-and-update operations.
+        """
         if identifier in self._config.allowlist:
             return BanCheckResult.allowed()
 
-        existing_ban = await self._store.get_ban(identifier)
-        if existing_ban and existing_ban.is_active:
-            return BanCheckResult.banned(existing_ban, "Already banned")
+        async with self._lock_manager.acquire(identifier):
+            existing_ban = await self._store.get_ban(identifier)
+            if existing_ban and existing_ban.is_active:
+                return BanCheckResult.banned(existing_ban, "Already banned")
 
-        violation = Violation(
-            identifier=identifier,
-            violation_type=violation_type,
-            timestamp=datetime.now(),
-            details=details,
-            severity=severity,
-        )
-        await self._store.add_violation(violation)
+            violation = Violation(
+                identifier=identifier,
+                violation_type=violation_type,
+                timestamp=datetime.now(timezone.utc),
+                details=details,
+                severity=severity,
+            )
+            await self._store.add_violation(violation)
 
-        threshold = self._threshold_map.get(violation_type)
-        if not threshold:
+            threshold = self._threshold_map.get(violation_type)
+            if not threshold:
+                return BanCheckResult.allowed()
+
+            since = datetime.now(timezone.utc) - threshold.time_window
+            violations = await self._store.get_violations(identifier, violation_type, since)
+
+            effective_count = sum(v.severity * threshold.severity_multiplier for v in violations)
+
+            if effective_count >= threshold.max_violations:
+                ban = await self._create_ban(identifier, violation_type, len(violations))
+                return BanCheckResult.banned(ban, f"Threshold exceeded for {violation_type.value}")
+
             return BanCheckResult.allowed()
-
-        since = datetime.now() - threshold.time_window
-        violations = await self._store.get_violations(identifier, violation_type, since)
-
-        effective_count = sum(v.severity * threshold.severity_multiplier for v in violations)
-
-        if effective_count >= threshold.max_violations:
-            ban = await self._create_ban(identifier, violation_type, len(violations))
-            return BanCheckResult.banned(ban, f"Threshold exceeded for {violation_type.value}")
-
-        return BanCheckResult.allowed()
 
     async def _create_ban(
         self, identifier: str, reason: ViolationType, violation_count: int
@@ -84,6 +105,8 @@ class AutoBanService:
             threshold.ban_duration if threshold else self._config.default_ban_duration
         )
 
+        now = datetime.now(timezone.utc)
+
         if ban_count >= self._config.permanent_ban_after:
             expires_at = None
         elif self._config.escalation_enabled and base_duration:
@@ -91,16 +114,16 @@ class AutoBanService:
             escalated = base_duration * multiplier
             if escalated > self._config.max_ban_duration:
                 escalated = self._config.max_ban_duration
-            expires_at = datetime.now() + escalated
+            expires_at = now + escalated
         elif base_duration:
-            expires_at = datetime.now() + base_duration
+            expires_at = now + base_duration
         else:
             expires_at = None
 
         ban = BanRecord(
             identifier=identifier,
             reason=reason,
-            banned_at=datetime.now(),
+            banned_at=now,
             expires_at=expires_at,
             violation_count=violation_count,
             status=BanStatus.ACTIVE,

@@ -2,12 +2,13 @@
 
 import asyncio
 import logging
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from functools import wraps
-from typing import Any, ParamSpec, TypeVar
+from typing import ParamSpec, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +79,8 @@ class CircuitBreaker:
         """Check if enough time has passed to try resetting."""
         if self._last_failure_time is None:
             return True
-        return datetime.now() - self._last_failure_time >= self.config.timeout
+        elapsed = datetime.now(timezone.utc) - self._last_failure_time
+        return elapsed >= self.config.timeout
     
     def _record_success(self) -> None:
         """Record a successful call."""
@@ -93,7 +95,7 @@ class CircuitBreaker:
     def _record_failure(self) -> None:
         """Record a failed call."""
         self._failure_count += 1
-        self._last_failure_time = datetime.now()
+        self._last_failure_time = datetime.now(timezone.utc)
         
         if self._state == CircuitState.HALF_OPEN:
             self._trip()
@@ -206,8 +208,82 @@ def circuit_breaker(
     return decorator
 
 
-# Registry of circuit breakers for monitoring
-_circuit_breakers: dict[str, CircuitBreaker] = {}
+# Thread-safe registry of circuit breakers
+# **Feature: shared-modules-security-fixes**
+# **Validates: Requirements 5.1, 5.2, 5.3**
+
+
+class CircuitBreakerRegistry:
+    """Thread-safe singleton registry for circuit breakers.
+    
+    Provides thread-safe access to circuit breakers with test isolation support.
+    """
+    
+    _instance: "CircuitBreakerRegistry | None" = None
+    _lock: threading.Lock = threading.Lock()
+    
+    def __new__(cls) -> "CircuitBreakerRegistry":
+        """Create or return singleton instance (thread-safe)."""
+        if cls._instance is None:
+            with cls._lock:
+                # Double-checked locking
+                if cls._instance is None:
+                    instance = super().__new__(cls)
+                    instance._breakers: dict[str, CircuitBreaker] = {}
+                    instance._breakers_lock = threading.RLock()
+                    cls._instance = instance
+        return cls._instance
+    
+    def get(
+        self,
+        name: str,
+        config: CircuitBreakerConfig | None = None,
+    ) -> CircuitBreaker:
+        """Get or create circuit breaker (thread-safe).
+        
+        Args:
+            name: Circuit breaker name.
+            config: Configuration (only used if creating new).
+            
+        Returns:
+            Circuit breaker instance.
+        """
+        with self._breakers_lock:
+            if name not in self._breakers:
+                self._breakers[name] = CircuitBreaker(name, config)
+            return self._breakers[name]
+    
+    def get_all(self) -> dict[str, CircuitBreaker]:
+        """Get all registered circuit breakers (thread-safe).
+        
+        Returns:
+            Copy of circuit breakers dictionary.
+        """
+        with self._breakers_lock:
+            return self._breakers.copy()
+    
+    def reset(self) -> None:
+        """Reset registry for testing (clears all breakers)."""
+        with self._breakers_lock:
+            self._breakers.clear()
+    
+    @classmethod
+    def reset_instance(cls) -> None:
+        """Reset singleton instance for test isolation."""
+        with cls._lock:
+            cls._instance = None
+
+
+# Module-level registry instance
+_registry: CircuitBreakerRegistry | None = None
+
+
+def _get_registry() -> CircuitBreakerRegistry:
+    """Get the global registry instance."""
+    global _registry
+    if _registry is None:
+        _registry = CircuitBreakerRegistry()
+    return _registry
 
 
 def get_circuit_breaker(
@@ -223,9 +299,7 @@ def get_circuit_breaker(
     Returns:
         Circuit breaker instance.
     """
-    if name not in _circuit_breakers:
-        _circuit_breakers[name] = CircuitBreaker(name, config)
-    return _circuit_breakers[name]
+    return _get_registry().get(name, config)
 
 
 def get_all_circuit_breakers() -> dict[str, CircuitBreaker]:
@@ -234,4 +308,13 @@ def get_all_circuit_breakers() -> dict[str, CircuitBreaker]:
     Returns:
         Dictionary of circuit breakers by name.
     """
-    return _circuit_breakers.copy()
+    return _get_registry().get_all()
+
+
+def reset_circuit_breaker_registry() -> None:
+    """Reset the circuit breaker registry for testing."""
+    global _registry
+    if _registry is not None:
+        _registry.reset()
+    CircuitBreakerRegistry.reset_instance()
+    _registry = None

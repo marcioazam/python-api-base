@@ -91,18 +91,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await close_database()
 
 
-def create_app() -> FastAPI:
-    """Create and configure the FastAPI application.
-
-    Returns:
-        FastAPI: Configured application instance.
-    """
-    settings = get_settings()
-
-    app = FastAPI(
-        title=settings.app_name,
-        version=settings.version,
-        description="""
+def _get_api_description() -> str:
+    """Return API description for OpenAPI docs."""
+    return """
 ## Modern REST API Framework
 
 A production-ready, reusable REST API framework built with Python 3.12+ and FastAPI.
@@ -121,36 +112,11 @@ A production-ready, reusable REST API framework built with Python 3.12+ and Fast
 
 This API uses URL path versioning. The current version is `v1`.
 All endpoints are prefixed with `/api/v1`.
-        """,
-        docs_url="/docs",
-        redoc_url="/redoc",
-        openapi_url="/openapi.json",
-        openapi_tags=[
-            {
-                "name": "Health",
-                "description": "Health check endpoints for liveness and readiness probes",
-            },
-            {
-                "name": "Authentication",
-                "description": "Authentication endpoints for login, logout, and token management",
-            },
-            {
-                "name": "Items",
-                "description": "CRUD operations for Item entities",
-            },
-        ],
-        contact={
-            "name": "API Support",
-            "email": "support@example.com",
-        },
-        license_info={
-            "name": "MIT",
-            "url": "https://opensource.org/licenses/MIT",
-        },
-        lifespan=lifespan,
-    )
+    """
 
-    # Configure CORS
+
+def _configure_middleware(app: FastAPI, settings) -> None:
+    """Configure all middleware for the application."""
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.security.cors_origins,
@@ -158,32 +124,21 @@ All endpoints are prefixed with `/api/v1`.
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    # Add security headers middleware with CSP and Permissions-Policy
     app.add_middleware(
         SecurityHeadersMiddleware,
         content_security_policy=settings.security.csp,
         permissions_policy=settings.security.permissions_policy,
     )
-
-    # Add tracing middleware for OpenTelemetry
     app.add_middleware(
         TracingMiddleware,
         service_name=settings.observability.service_name,
         excluded_paths=["/health/live", "/health/ready", "/docs", "/redoc", "/openapi.json"],
     )
-
-    # Add request ID middleware for tracing
     app.add_middleware(RequestIDMiddleware)
 
-    # Configure rate limiting
-    app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
-    # Register exception handlers
-    register_exception_handlers(app)
-
-    # Wire DI container
+def _configure_routes(app: FastAPI) -> None:
+    """Configure routes and DI container."""
     container = Container()
     container.wire(modules=[
         "my_api.adapters.api.routes.items",
@@ -192,15 +147,43 @@ All endpoints are prefixed with `/api/v1`.
     ])
     app.state.container = container
 
-    # Create versioned router for v1
     v1_config = VersionConfig(version=APIVersion.V1, deprecated=False)
     v1_router = VersionedRouter(version=APIVersion.V1, config=v1_config)
     v1_router.include_router(items.router)
     v1_router.include_router(auth.router)
 
-    # Include routers
     app.include_router(health.router)
     app.include_router(v1_router.router)
+
+
+def create_app() -> FastAPI:
+    """Create and configure the FastAPI application."""
+    settings = get_settings()
+
+    app = FastAPI(
+        title=settings.app_name,
+        version=settings.version,
+        description=_get_api_description(),
+        docs_url="/docs",
+        redoc_url="/redoc",
+        openapi_url="/openapi.json",
+        openapi_tags=[
+            {"name": "Health", "description": "Health check endpoints"},
+            {"name": "Authentication", "description": "Auth endpoints"},
+            {"name": "Items", "description": "CRUD operations for Items"},
+        ],
+        contact={"name": "API Support", "email": "support@example.com"},
+        license_info={"name": "MIT", "url": "https://opensource.org/licenses/MIT"},
+        lifespan=lifespan,
+    )
+
+    _configure_middleware(app, settings)
+
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+    register_exception_handlers(app)
+
+    _configure_routes(app)
 
     return app
 

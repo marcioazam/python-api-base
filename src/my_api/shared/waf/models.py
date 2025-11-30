@@ -2,13 +2,19 @@
 
 **Feature: file-size-compliance-phase2, Task 2.1**
 **Validates: Requirements 1.1, 5.1, 5.2, 5.3**
+
+**Feature: shared-modules-code-review-fixes, Task 5.2, 7.1**
+**Validates: Requirements 4.1, 4.2, 5.3**
 """
 
+import logging
 import re
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .enums import RuleAction, RuleSeverity, ThreatType
+
+_logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -31,7 +37,11 @@ class WAFRule:
         if self.pattern:
             try:
                 self._compiled = re.compile(self.pattern, re.IGNORECASE)
-            except re.error:
+            except re.error as e:
+                _logger.warning(
+                    "Failed to compile WAF pattern",
+                    extra={"rule_id": self.id, "pattern": self.pattern, "error": str(e)},
+                )
                 self._compiled = None
 
     def matches(self, value: str) -> bool:
@@ -49,7 +59,7 @@ class ThreatDetection:
     rule: WAFRule | None = None
     matched_value: str | None = None
     target: str | None = None
-    timestamp: datetime = field(default_factory=datetime.now)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     @property
     def threat_type(self) -> ThreatType | None:

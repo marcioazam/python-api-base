@@ -29,6 +29,9 @@ class BatchResult[T]:
 
     Type Parameters:
         T: Type of successfully processed items.
+
+    **Feature: shared-modules-refactoring**
+    **Validates: Requirements 10.1, 10.2, 10.3**
     """
 
     succeeded: Sequence[T]
@@ -36,6 +39,8 @@ class BatchResult[T]:
     total_processed: int
     total_succeeded: int
     total_failed: int
+    rolled_back: bool = False
+    rollback_error: Exception | None = None
 
     @property
     def success_rate(self) -> float:
@@ -47,12 +52,12 @@ class BatchResult[T]:
     @property
     def is_complete_success(self) -> bool:
         """Check if all operations succeeded."""
-        return self.total_failed == 0
+        return self.total_failed == 0 and not self.rolled_back
 
     @property
     def has_failures(self) -> bool:
         """Check if any operations failed."""
-        return self.total_failed > 0
+        return self.total_failed > 0 or self.rolled_back
 
 
 @dataclass(slots=True)

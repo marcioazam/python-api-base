@@ -7,7 +7,7 @@
 import hashlib
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .enums import FingerprintComponent, SuspicionLevel
 from .models import (
@@ -44,7 +44,7 @@ class FingerprintGenerator:
             fingerprint_id=fingerprint_id,
             components=components,
             hash_value=hash_value,
-            created_at=datetime.now(),
+            created_at=datetime.now(timezone.utc),
             confidence=self._calculate_confidence(components),
         )
 
@@ -128,7 +128,7 @@ class FingerprintGenerator:
 
     def _generate_id(self, hash_value: str, request_data: RequestData) -> str:
         """Generate unique fingerprint ID."""
-        timestamp = datetime.now().isoformat()
+        timestamp = datetime.now(timezone.utc).isoformat()
         combined = f"{hash_value}:{request_data.ip_address}:{timestamp}"
         return hashlib.sha256(combined.encode()).hexdigest()
 

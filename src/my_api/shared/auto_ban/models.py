@@ -34,12 +34,21 @@ class BanRecord:
 
     @property
     def is_active(self) -> bool:
-        """Check if ban is currently active."""
+        """Check if ban is currently active.
+
+        Uses timezone-aware datetime comparisons for correctness.
+        Naive datetimes in expires_at are treated as UTC.
+        """
         if self.status != BanStatus.ACTIVE:
             return False
         if self.expires_at is None:
             return True
-        return datetime.now() < self.expires_at
+        from datetime import timezone
+        now = datetime.now(timezone.utc)
+        expires = self.expires_at
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        return now < expires
 
     @property
     def is_permanent(self) -> bool:

@@ -157,11 +157,11 @@ class ArchivalService(Generic[T]):
         job = ArchivalJob(
             id=str(uuid.uuid4()),
             policy=policy,
-            started_at=datetime.utcnow()
+            started_at=datetime.now(timezone.utc)
         )
 
         try:
-            cutoff = datetime.utcnow() - timedelta(days=policy.hot_retention_days)
+            cutoff = datetime.now(timezone.utc) - timedelta(days=policy.hot_retention_days)
             records = await self._source.find_older_than(
                 entity_type, cutoff, batch_size
             )
@@ -175,7 +175,7 @@ class ArchivalService(Generic[T]):
                     job.errors.append(str(e))
 
             if policy.delete_after_days:
-                delete_cutoff = datetime.utcnow() - timedelta(
+                delete_cutoff = datetime.now(timezone.utc) - timedelta(
                     days=policy.delete_after_days
                 )
                 old_records = await self._source.find_older_than(
@@ -197,7 +197,7 @@ class ArchivalService(Generic[T]):
             job.status = "failed"
             job.errors.append(str(e))
 
-        job.completed_at = datetime.utcnow()
+        job.completed_at = datetime.now(timezone.utc)
         return job
 
     async def _archive_record(
@@ -211,7 +211,7 @@ class ArchivalService(Generic[T]):
         await self._run_hooks("before_archive", record)
 
         created_at = await self._source.get_created_at(record)
-        age_days = (datetime.utcnow() - created_at).days
+        age_days = (datetime.now(timezone.utc) - created_at).days
         tier = policy.get_tier_for_age(age_days)
 
         archived = ArchivedRecord(
@@ -219,7 +219,7 @@ class ArchivalService(Generic[T]):
             entity_type=policy.entity_type,
             original_id=await self._source.get_id(record),
             data=record,
-            archived_at=datetime.utcnow(),
+            archived_at=datetime.now(timezone.utc),
             original_created_at=created_at,
             tier=tier,
             checksum=self._compute_checksum(record)
@@ -265,7 +265,7 @@ class ArchivalService(Generic[T]):
                 if record.entity_type != entity_type:
                     continue
 
-                age_days = (datetime.utcnow() - record.original_created_at).days
+                age_days = (datetime.now(timezone.utc) - record.original_created_at).days
                 expected_tier = policy.get_tier_for_age(age_days)
 
                 if expected_tier != record.tier:

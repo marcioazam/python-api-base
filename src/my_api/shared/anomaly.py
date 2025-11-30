@@ -9,7 +9,7 @@ statistical methods for automatic problem detection.
 
 import math
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Callable, Protocol, runtime_checkable
 
@@ -180,14 +180,14 @@ class AnomalyDetector:
 
     async def record(self, metric_name: str, value: float, labels: dict[str, str] | None = None) -> Anomaly | None:
         """Record a data point and check for anomalies."""
-        point = DataPoint(value=value, timestamp=datetime.now(), labels=labels or {})
+        point = DataPoint(value=value, timestamp=datetime.now(timezone.utc), labels=labels or {})
 
         if metric_name not in self._data:
             self._data[metric_name] = []
         self._data[metric_name].append(point)
 
         # Trim old data
-        cutoff = datetime.now() - timedelta(hours=24)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
         self._data[metric_name] = [p for p in self._data[metric_name] if p.timestamp > cutoff]
 
         # Check for anomalies

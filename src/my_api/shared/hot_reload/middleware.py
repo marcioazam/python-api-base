@@ -5,7 +5,7 @@
 """
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
@@ -78,7 +78,7 @@ class HotReloadMiddleware:
         result = self._reloader.reload_modules(modules_to_reload)
         if result.reloaded_modules:
             self._reload_count += 1
-            self._last_reload = datetime.now()
+            self._last_reload = datetime.now(timezone.utc)
 
         return result
 

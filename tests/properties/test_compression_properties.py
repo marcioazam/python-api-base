@@ -441,3 +441,120 @@ class TestConvenienceFunctions:
         service = create_compression_service(min_size=min_size, level=level)
         assert service._config.min_size == min_size
         assert service._config.level == level
+
+
+# =============================================================================
+# Property Tests - Compression Level Validation (shared-modules-refactoring)
+# =============================================================================
+
+
+class TestCompressionLevelValidation:
+    """Property tests for compression level validation.
+
+    **Feature: shared-modules-refactoring**
+    **Validates: Requirements 8.1, 8.2, 8.3**
+    """
+
+    @given(level=st.integers(min_value=-100, max_value=100))
+    @settings(max_examples=100)
+    def test_gzip_level_validation(self, level: int) -> None:
+        """**Feature: shared-modules-refactoring, Property 15: Compression Level Validation - Gzip**
+        **Validates: Requirements 8.1**
+
+        For any integer level outside range [1, 9], creating a GzipCompressor
+        SHALL raise ValueError.
+        """
+        if 1 <= level <= 9:
+            compressor = GzipCompressor(level)
+            assert compressor._level == level
+        else:
+            with pytest.raises(ValueError) as exc_info:
+                GzipCompressor(level)
+            assert "1" in str(exc_info.value) and "9" in str(exc_info.value)
+            assert str(level) in str(exc_info.value)
+
+    @given(level=st.integers(min_value=-100, max_value=100))
+    @settings(max_examples=100)
+    def test_deflate_level_validation(self, level: int) -> None:
+        """**Feature: shared-modules-refactoring, Property 15: Compression Level Validation - Gzip**
+        **Validates: Requirements 8.1**
+
+        For any integer level outside range [1, 9], creating a DeflateCompressor
+        SHALL raise ValueError.
+        """
+        if 1 <= level <= 9:
+            compressor = DeflateCompressor(level)
+            assert compressor._level == level
+        else:
+            with pytest.raises(ValueError) as exc_info:
+                DeflateCompressor(level)
+            assert "1" in str(exc_info.value) and "9" in str(exc_info.value)
+            assert str(level) in str(exc_info.value)
+
+    @pytest.mark.skipif(not BROTLI_AVAILABLE, reason="Brotli not available")
+    @given(level=st.integers(min_value=-100, max_value=100))
+    @settings(max_examples=100)
+    def test_brotli_level_validation(self, level: int) -> None:
+        """**Feature: shared-modules-refactoring, Property 16: Compression Level Validation - Brotli**
+        **Validates: Requirements 8.2**
+
+        For any integer level outside range [0, 11], creating a BrotliCompressor
+        SHALL raise ValueError.
+        """
+        from my_api.shared.compression import BrotliCompressor
+
+        if 0 <= level <= 11:
+            compressor = BrotliCompressor(level)
+            assert compressor._level == level
+        else:
+            with pytest.raises(ValueError) as exc_info:
+                BrotliCompressor(level)
+            assert "0" in str(exc_info.value) and "11" in str(exc_info.value)
+            assert str(level) in str(exc_info.value)
+
+    def test_validation_error_message_content_gzip(self) -> None:
+        """**Feature: shared-modules-refactoring, Property 17: Validation Error Message Content**
+        **Validates: Requirements 8.3**
+
+        For any compression level validation failure, the error message SHALL
+        contain both the valid range and the provided invalid value.
+        """
+        invalid_level = 15
+        with pytest.raises(ValueError) as exc_info:
+            GzipCompressor(invalid_level)
+
+        error_msg = str(exc_info.value)
+        # Should contain valid range
+        assert "1" in error_msg
+        assert "9" in error_msg
+        # Should contain provided value
+        assert str(invalid_level) in error_msg
+
+    def test_validation_error_message_content_deflate(self) -> None:
+        """**Feature: shared-modules-refactoring, Property 17: Validation Error Message Content**
+        **Validates: Requirements 8.3**
+        """
+        invalid_level = -5
+        with pytest.raises(ValueError) as exc_info:
+            DeflateCompressor(invalid_level)
+
+        error_msg = str(exc_info.value)
+        assert "1" in error_msg
+        assert "9" in error_msg
+        assert str(invalid_level) in error_msg
+
+    @pytest.mark.skipif(not BROTLI_AVAILABLE, reason="Brotli not available")
+    def test_validation_error_message_content_brotli(self) -> None:
+        """**Feature: shared-modules-refactoring, Property 17: Validation Error Message Content**
+        **Validates: Requirements 8.3**
+        """
+        from my_api.shared.compression import BrotliCompressor
+
+        invalid_level = 20
+        with pytest.raises(ValueError) as exc_info:
+            BrotliCompressor(invalid_level)
+
+        error_msg = str(exc_info.value)
+        assert "0" in error_msg
+        assert "11" in error_msg
+        assert str(invalid_level) in error_msg

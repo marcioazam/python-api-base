@@ -135,7 +135,9 @@ class InMemoryEventStore(EventStore[AggregateT, EventT]):
 
         if expected_version is not None and stream.version != expected_version:
             raise ConcurrencyError(
-                f"Expected version {expected_version}, but found {stream.version}"
+                "Optimistic concurrency check failed",
+                expected_version=expected_version,
+                actual_version=stream.version,
             )
 
         for event in events:

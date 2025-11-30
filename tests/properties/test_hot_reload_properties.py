@@ -1,9 +1,10 @@
-"""Property-based tests for Hot Reload Middleware.
+"""Property tests for hot_reload module.
 
-**Feature: api-architecture-analysis, Task 10.5: Hot Reload Middleware**
-**Validates: Requirements 10.3**
+**Feature: shared-modules-phase2**
+**Validates: Requirements 17.2, 17.3, 18.1, 18.2**
 """
 
+import os
 import tempfile
 from pathlib import Path
 

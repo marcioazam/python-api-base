@@ -2,8 +2,12 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: my-api
+  namespace: my-api
   labels:
-    app: my-api
+    app.kubernetes.io/name: my-api
+    app.kubernetes.io/component: hpa
+    app.kubernetes.io/part-of: my-api
+    app.kubernetes.io/managed-by: kubectl
 spec:
   scaleTargetRef:
     apiVersion: apps/v1

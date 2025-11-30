@@ -1,5 +1,7 @@
 language: "pt-BR"
 
+tone_instructions: "Seja direto e técnico. Foque em problemas de segurança, performance e manutenibilidade."
+
 reviews:
   auto_review:
     enabled: true
@@ -8,10 +10,17 @@ reviews:
       - main
       - develop
   
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  
   path_filters:
     - "!.venv/**"
     - "!**/__pycache__/**"
     - "!*.lock"
+    - "!.hypothesis/**"
+    - "!htmlcov/**"
   
   path_instructions:
     - path: "src/**/*.py"
@@ -23,6 +32,8 @@ reviews:
         - Uso de type hints
         - Tratamento adequado de erros
         - Princípios SOLID
+        - Sem secrets hardcoded
+        - SQL injection prevention
     
     - path: "tests/**/*.py"
       instructions: |
@@ -30,6 +41,7 @@ reviews:
         - Cobertura de edge cases
         - Nomenclatura descritiva
         - Arrange-Act-Assert pattern
+        - Sem dados sensíveis em fixtures
     
     - path: "alembic/**/*.py"
       instructions: |
@@ -37,7 +49,19 @@ reviews:
         - Migrations reversíveis
         - Sem dados sensíveis
 
+    - path: "terraform/**/*.tf"
+      instructions: |
+        Verifique:
+        - Sem secrets hardcoded
+        - Uso de variáveis para valores sensíveis
+        - Tags obrigatórias
+        - Encryption at rest habilitado
+
 chat:
   auto_reply: true
 
 early_access: true
+
+knowledge_base:
+  learnings:
+    scope: auto

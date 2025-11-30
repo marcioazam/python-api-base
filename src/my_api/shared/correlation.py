@@ -10,7 +10,7 @@ for distributed tracing and log correlation.
 import contextvars
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable
 
@@ -48,7 +48,7 @@ def generate_id(format: IdFormat = IdFormat.UUID4_HEX) -> str:
     elif format == IdFormat.SHORT:
         return uuid.uuid4().hex[:16]
     elif format == IdFormat.TIMESTAMP:
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
         return f"{timestamp}-{uuid.uuid4().hex[:12]}"
     return uuid.uuid4().hex
 
@@ -168,7 +168,7 @@ class CorrelationContext:
             span_id=headers.get("X-Span-ID"),
             parent_span_id=headers.get("X-Parent-Span-ID"),
             trace_id=headers.get("X-Trace-ID"),
-            timestamp=datetime.now(),
+            timestamp=datetime.now(timezone.utc),
         )
 
     @classmethod
@@ -183,12 +183,16 @@ class CorrelationContext:
             request_id=generate_id(id_format),
             span_id=generate_id(IdFormat.SHORT),
             service_name=service_name,
-            timestamp=datetime.now(),
+            timestamp=datetime.now(timezone.utc),
         )
 
 
 class CorrelationContextManager:
-    """Context manager for correlation context."""
+    """Context manager for correlation context with safe token handling.
+
+    **Feature: shared-modules-security-fixes**
+    **Validates: Requirements 6.1, 6.2, 6.3**
+    """
 
     def __init__(
         self,
@@ -197,9 +201,19 @@ class CorrelationContextManager:
     ) -> None:
         self._context = context or CorrelationContext.create_new(service_name)
         self._tokens: list[contextvars.Token[str | None]] = []
+        self._entered = False
 
     def __enter__(self) -> CorrelationContext:
         """Enter context and set correlation IDs."""
+        if self._entered:
+            # Already entered - log warning and return existing context
+            import logging
+            logging.getLogger(__name__).warning(
+                "CorrelationContextManager entered multiple times"
+            )
+            return self._context
+
+        self._entered = True
         self._tokens.append(set_correlation_id(self._context.correlation_id))
         self._tokens.append(set_request_id(self._context.request_id))
         if self._context.span_id:
@@ -209,12 +223,27 @@ class CorrelationContextManager:
         return self._context
 
     def __exit__(self, *args: Any) -> None:
-        """Exit context and restore previous values."""
+        """Exit context and safely restore previous values.
+
+        Handles already-reset tokens gracefully by catching ValueError
+        and logging a warning instead of raising an exception.
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
         for token in reversed(self._tokens):
-            # Reset to previous value
-            if hasattr(token, "var"):
-                token.var.reset(token)
+            try:
+                if hasattr(token, "var"):
+                    token.var.reset(token)
+            except ValueError:
+                # Token already reset - log and continue
+                logger.warning(
+                    "Correlation context token already reset",
+                    extra={"token_var": getattr(token, "var", None)},
+                )
+
         self._tokens.clear()
+        self._entered = False
 
 
 def get_current_context() -> CorrelationContext | None:

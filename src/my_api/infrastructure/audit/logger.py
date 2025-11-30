@@ -1,11 +1,12 @@
 """Audit logging service for tracking security-relevant events.
 
-**Feature: api-base-improvements**
-**Validates: Requirements 4.1, 4.2, 4.3**
+**Feature: api-base-improvements, infrastructure-code-review**
+**Validates: Requirements 3.1, 3.2, 3.3, 3.4, 4.1, 4.2, 4.3**
 """
 
 import json
 import logging
+import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -100,10 +101,31 @@ class AuditEntry:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "AuditEntry":
-        """Create entry from dictionary."""
+        """Create entry from dictionary.
+        
+        Args:
+            data: Dictionary containing audit entry data.
+            
+        Returns:
+            AuditEntry instance.
+            
+        Raises:
+            KeyError: If required fields are missing.
+            ValueError: If timestamp format is invalid.
+        """
+        # Validate required fields
+        required_fields = ["id", "timestamp", "action", "resource_type", "result"]
+        missing = [f for f in required_fields if f not in data]
+        if missing:
+            raise KeyError(f"Missing required fields: {', '.join(missing)}")
+        
         timestamp = data["timestamp"]
         if isinstance(timestamp, str):
             timestamp = datetime.fromisoformat(timestamp)
+        
+        # Ensure timestamp is timezone-aware (assume UTC if naive)
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=timezone.utc)
 
         return cls(
             id=data["id"],
@@ -238,14 +260,16 @@ class InMemoryAuditLogger(AuditLogger):
         """
         self._entries: list[AuditEntry] = []
         self._max_entries = max_entries
+        self._lock = threading.Lock()
 
     async def log(self, entry: AuditEntry) -> None:
         """Log an audit entry to memory."""
-        self._entries.append(entry)
+        with self._lock:
+            self._entries.append(entry)
 
-        # Trim old entries if over limit
-        if len(self._entries) > self._max_entries:
-            self._entries = self._entries[-self._max_entries:]
+            # Trim old entries if over limit (keep newest)
+            if len(self._entries) > self._max_entries:
+                self._entries = self._entries[-self._max_entries:]
 
         logger.debug(
             f"Audit: {entry.action} on {entry.resource_type} "
@@ -254,7 +278,8 @@ class InMemoryAuditLogger(AuditLogger):
 
     async def query(self, filters: AuditFilters) -> list[AuditEntry]:
         """Query audit logs with filters."""
-        results = self._entries.copy()
+        with self._lock:
+            results = self._entries.copy()
 
         # Apply filters
         if filters.user_id:

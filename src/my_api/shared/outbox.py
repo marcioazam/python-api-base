@@ -84,7 +84,7 @@ class OutboxEntry:
     def mark_published(self) -> None:
         """Mark entry as published."""
         self.status = OutboxStatus.PUBLISHED
-        self.processed_at = datetime.utcnow()
+        self.processed_at = datetime.now(timezone.utc)
 
     def mark_failed(self, error: str) -> None:
         """Mark entry as failed."""

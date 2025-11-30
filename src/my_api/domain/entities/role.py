@@ -4,7 +4,7 @@
 **Validates: Requirements 2.3**
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, String, Text
 from sqlmodel import Field as SQLField
@@ -44,13 +44,13 @@ class RoleDB(RoleBase, table=True):
         description="Comma-separated permission list",
     )
     created_at: datetime = SQLField(
-        default_factory=lambda: datetime.now(),
-        sa_column=Column(DateTime, nullable=False),
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
         description="Creation timestamp",
     )
     updated_at: datetime = SQLField(
-        default_factory=lambda: datetime.now(),
-        sa_column=Column(DateTime, nullable=False),
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
         description="Last update timestamp",
     )
 
@@ -79,8 +79,8 @@ class UserRoleDB(SQLModel, table=True):
         description="Role ID",
     )
     assigned_at: datetime = SQLField(
-        default_factory=lambda: datetime.now(),
-        sa_column=Column(DateTime, nullable=False),
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
         description="When the role was assigned",
     )
     assigned_by: str | None = SQLField(

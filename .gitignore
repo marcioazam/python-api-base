@@ -95,3 +95,17 @@ logs/
 # uv
 .uv/
 uv.lock
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+*.tfvars.local
+backend.hcl
+terraform/secrets/
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json

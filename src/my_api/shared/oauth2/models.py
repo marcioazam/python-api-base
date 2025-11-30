@@ -27,6 +27,7 @@ class OAuthConfig:
         token_url: Token exchange endpoint URL.
         userinfo_url: User info endpoint URL.
         jwks_url: JWKS endpoint for token verification (OIDC).
+        request_timeout: HTTP request timeout in seconds.
     """
 
     provider: OAuthProvider
@@ -38,6 +39,7 @@ class OAuthConfig:
     token_url: str = ""
     userinfo_url: str = ""
     jwks_url: str | None = None
+    request_timeout: float = 30.0
 
 
 class OAuthUserInfo(BaseModel):

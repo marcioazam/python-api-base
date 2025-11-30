@@ -99,7 +99,7 @@ class DataExporter(Generic[T]):
         if config.include_metadata:
             output = {
                 "metadata": {
-                    "exported_at": datetime.utcnow().isoformat(),
+                    "exported_at": datetime.now(timezone.utc).isoformat(),
                     "record_count": len(data),
                     "format": "json"
                 },

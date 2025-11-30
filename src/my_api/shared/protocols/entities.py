@@ -1,4 +1,8 @@
-"""Protocols base definitions.
+"""Entity protocol compositions for domain modeling.
+
+Provides composite protocols that combine base traits for common
+entity patterns like tracked entities, deletable entities, and
+versioned entities.
 
 Feature: file-size-compliance-phase2
 """

@@ -29,13 +29,13 @@ class LockInfo:
     @property
     def ttl_seconds(self) -> float:
         """Get remaining TTL in seconds."""
-        remaining = (self.expires_at - datetime.utcnow()).total_seconds()
+        remaining = (self.expires_at - datetime.now(timezone.utc)).total_seconds()
         return max(0, remaining)
 
     @property
     def is_expired(self) -> bool:
         """Check if lock is expired."""
-        return datetime.utcnow() >= self.expires_at
+        return datetime.now(timezone.utc) >= self.expires_at
 
 
 class LockAcquisitionError(Exception):
@@ -115,7 +115,7 @@ class InMemoryDistributedLock(DistributedLock):
         wait_timeout: float | None = None,
     ) -> LockInfo:
         """Acquire a lock."""
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         token = str(uuid.uuid4())
 
         while True:
@@ -123,7 +123,7 @@ class InMemoryDistributedLock(DistributedLock):
                 self._cleanup_expired()
 
                 if key not in self._locks:
-                    now = datetime.utcnow()
+                    now = datetime.now(timezone.utc)
                     expires_at = now + timedelta(seconds=ttl_seconds)
                     self._locks[key] = InMemoryLockEntry(token=token, expires_at=expires_at)
                     return LockInfo(
@@ -136,7 +136,7 @@ class InMemoryDistributedLock(DistributedLock):
             if wait_timeout is None:
                 raise LockAcquisitionError(f"Failed to acquire lock for key: {key}")
 
-            elapsed = (datetime.utcnow() - start_time).total_seconds()
+            elapsed = (datetime.now(timezone.utc) - start_time).total_seconds()
             if elapsed >= wait_timeout:
                 raise LockAcquisitionError(
                     f"Timeout waiting for lock on key: {key}"
@@ -164,7 +164,7 @@ class InMemoryDistributedLock(DistributedLock):
             if entry.token != lock_info.token:
                 raise LockRenewalError(f"Token mismatch for key: {lock_info.key}")
 
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             new_expires_at = now + timedelta(seconds=ttl_seconds)
             entry.expires_at = new_expires_at
 
@@ -183,7 +183,7 @@ class InMemoryDistributedLock(DistributedLock):
 
     def _cleanup_expired(self) -> None:
         """Remove expired locks."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         expired = [k for k, v in self._locks.items() if v.expires_at <= now]
         for key in expired:
             del self._locks[key]

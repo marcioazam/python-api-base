@@ -143,7 +143,7 @@ class TenantRepository(IRepository[T, CreateT, UpdateT], Generic[T, CreateT, Upd
         # Apply soft delete filter if exists
         if hasattr(self._model_class, "is_deleted"):
             query = query.where(
-                self._model_class.is_deleted == False  # noqa: E712
+                self._model_class.is_deleted.is_(False)
             )
 
         # Count total

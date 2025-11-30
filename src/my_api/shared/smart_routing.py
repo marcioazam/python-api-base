@@ -10,7 +10,7 @@ routing based on metrics.
 import random
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Generic, TypeVar
 
@@ -46,7 +46,7 @@ class EndpointMetrics:
     error_count: int = 0
     total_response_time_ms: float = 0.0
     active_connections: int = 0
-    last_check: datetime = field(default_factory=datetime.now)
+    last_check: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     last_error: datetime | None = None
 
     @property
@@ -69,7 +69,7 @@ class EndpointMetrics:
         self.total_response_time_ms += response_time_ms
         if is_error:
             self.error_count += 1
-            self.last_error = datetime.now()
+            self.last_error = datetime.now(timezone.utc)
 
     def increment_connections(self) -> None:
         """Increment active connections."""

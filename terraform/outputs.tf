@@ -17,30 +17,38 @@ output "region" {
 
 output "database_endpoint" {
   description = "Database connection endpoint"
-  value       = var.cloud_provider == "aws" ? module.aws_database[0].endpoint : (
-                var.cloud_provider == "gcp" ? module.gcp_database[0].endpoint : 
-                module.azure_database[0].endpoint)
-  sensitive   = true
+  value = coalesce(
+    try(module.aws_database[0].endpoint, null),
+    try(module.gcp_database[0].endpoint, null),
+    try(module.azure_database[0].endpoint, null)
+  )
+  sensitive = true
 }
 
 output "redis_endpoint" {
   description = "Redis connection endpoint"
-  value       = var.cloud_provider == "aws" ? module.aws_redis[0].endpoint : (
-                var.cloud_provider == "gcp" ? module.gcp_redis[0].endpoint : 
-                module.azure_redis[0].endpoint)
-  sensitive   = true
+  value = coalesce(
+    try(module.aws_redis[0].endpoint, null),
+    try(module.gcp_redis[0].endpoint, null),
+    try(module.azure_redis[0].endpoint, null)
+  )
+  sensitive = true
 }
 
 output "kubernetes_endpoint" {
   description = "Kubernetes API endpoint"
-  value       = var.cloud_provider == "aws" ? module.aws_eks[0].endpoint : (
-                var.cloud_provider == "gcp" ? module.gcp_gke[0].endpoint : 
-                module.azure_aks[0].endpoint)
+  value = coalesce(
+    try(module.aws_eks[0].endpoint, null),
+    try(module.gcp_gke[0].endpoint, null),
+    try(module.azure_aks[0].endpoint, null)
+  )
 }
 
 output "kubernetes_cluster_name" {
   description = "Kubernetes cluster name"
-  value       = var.cloud_provider == "aws" ? module.aws_eks[0].cluster_name : (
-                var.cloud_provider == "gcp" ? module.gcp_gke[0].cluster_name : 
-                module.azure_aks[0].cluster_name)
+  value = coalesce(
+    try(module.aws_eks[0].cluster_name, null),
+    try(module.gcp_gke[0].cluster_name, null),
+    try(module.azure_aks[0].cluster_name, null)
+  )
 }

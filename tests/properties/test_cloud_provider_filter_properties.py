@@ -379,3 +379,173 @@ class TestHelperMethods:
         filter = CloudProviderFilter(config=CloudProviderConfig())
         provider = filter.get_provider(ip)
         assert provider == CloudProvider.AWS
+
+
+# =============================================================================
+# Property Tests - IPv6 and External Sources (shared-modules-refactoring)
+# =============================================================================
+
+
+class TestIPv6Support:
+    """Property tests for IPv6 support.
+
+    **Feature: shared-modules-refactoring**
+    **Validates: Requirements 9.1, 9.2, 9.3**
+    """
+
+    def test_ipv6_provider_identification(self) -> None:
+        """**Feature: shared-modules-refactoring, Property 18: IPv6 Provider Identification**
+        **Validates: Requirements 9.1**
+
+        For any valid IPv6 address in a known cloud provider range,
+        the CloudProviderFilter SHALL return the correct provider.
+        """
+        provider = InMemoryCloudRangeProvider()
+
+        # Test AWS IPv6
+        result = provider.identify_provider("2600:1f00::1")
+        assert result == CloudProvider.AWS
+
+        # Test Cloudflare IPv6
+        result = provider.identify_provider("2606:4700::1")
+        assert result == CloudProvider.CLOUDFLARE
+
+    def test_ipv6_ranges_stored_separately(self) -> None:
+        """**Feature: shared-modules-refactoring, Property 18: IPv6 Provider Identification**
+        **Validates: Requirements 9.2**
+
+        IPv6 ranges SHALL be stored separately from IPv4 ranges.
+        """
+        provider = InMemoryCloudRangeProvider()
+
+        ipv4_ranges = provider.get_ranges(CloudProvider.AWS)
+        ipv6_ranges = provider.get_ipv6_ranges(CloudProvider.AWS)
+
+        # Both should have ranges
+        assert len(ipv4_ranges) > 0
+        assert len(ipv6_ranges) > 0
+
+        # They should be different types
+        from ipaddress import IPv4Network, IPv6Network
+        assert all(isinstance(r, IPv4Network) for r in ipv4_ranges)
+        assert all(isinstance(r, IPv6Network) for r in ipv6_ranges)
+
+    @given(invalid_ip=st.sampled_from([
+        "not-an-ip",
+        "256.256.256.256",
+        "::gggg",
+        "",
+        "1.2.3",
+        "1.2.3.4.5",
+    ]))
+    @settings(max_examples=20)
+    def test_invalid_ip_graceful_handling(self, invalid_ip: str) -> None:
+        """**Feature: shared-modules-refactoring, Property 19: Invalid IP Graceful Handling**
+        **Validates: Requirements 9.3**
+
+        For any invalid IP address string, the CloudProviderFilter SHALL
+        return None without raising an exception.
+        """
+        provider = InMemoryCloudRangeProvider()
+
+        # Should not raise, should return None
+        result = provider.identify_provider(invalid_ip)
+        assert result is None
+
+
+class TestExternalRangeSource:
+    """Property tests for external range source support.
+
+    **Feature: shared-modules-refactoring**
+    **Validates: Requirements 5.1, 5.4**
+    """
+
+    def test_external_range_source_support(self) -> None:
+        """**Feature: shared-modules-refactoring, Property 11: External Range Source Support**
+        **Validates: Requirements 5.1**
+
+        For any CloudIPRangeProvider initialized with external sources,
+        the provider SHALL contain ranges from both default and external sources.
+        """
+        from my_api.shared.cloud_provider_filter.ranges import UpdatableCloudRangeProvider
+
+        provider = UpdatableCloudRangeProvider()
+
+        # Should have default ranges
+        aws_ranges = provider.get_ranges(CloudProvider.AWS)
+        assert len(aws_ranges) > 0
+
+        # Add custom range
+        provider._base_provider.add_range(CloudProvider.AWS, "100.0.0.0/8")
+
+        # Should now have both default and custom ranges
+        updated_ranges = provider.get_ranges(CloudProvider.AWS)
+        assert len(updated_ranges) > len(aws_ranges) or "100.0.0.0/8" in [str(r) for r in updated_ranges]
+
+    def test_range_merge_without_duplicates(self) -> None:
+        """**Feature: shared-modules-refactoring, Property 12: Range Merge Without Duplicates**
+        **Validates: Requirements 5.4**
+
+        For any set of IP ranges added to InMemoryCloudRangeProvider,
+        the stored ranges SHALL contain no duplicate networks.
+        """
+        provider = InMemoryCloudRangeProvider()
+
+        # Add same range multiple times
+        provider.add_range(CloudProvider.AWS, "100.0.0.0/8")
+        provider.add_range(CloudProvider.AWS, "100.0.0.0/8")
+        provider.add_range(CloudProvider.AWS, "100.0.0.0/8")
+
+        ranges = provider.get_ranges(CloudProvider.AWS)
+
+        # Count occurrences of the specific range
+        from ipaddress import ip_network
+        target = ip_network("100.0.0.0/8")
+        count = sum(1 for r in ranges if r == target)
+
+        assert count == 1, f"Expected 1 occurrence, found {count}"
+
+    def test_merge_ranges_deduplicates(self) -> None:
+        """**Feature: shared-modules-refactoring, Property 12: Range Merge Without Duplicates**
+        **Validates: Requirements 5.4**
+
+        merge_ranges SHALL deduplicate when adding multiple ranges.
+        """
+        provider = InMemoryCloudRangeProvider()
+
+        # Merge with duplicates
+        provider.merge_ranges(CloudProvider.GCP, [
+            "200.0.0.0/8",
+            "200.0.0.0/8",
+            "201.0.0.0/8",
+            "201.0.0.0/8",
+        ])
+
+        ranges = provider.get_ranges(CloudProvider.GCP)
+
+        from ipaddress import ip_network
+        range_200 = ip_network("200.0.0.0/8")
+        range_201 = ip_network("201.0.0.0/8")
+
+        count_200 = sum(1 for r in ranges if r == range_200)
+        count_201 = sum(1 for r in ranges if r == range_201)
+
+        assert count_200 == 1
+        assert count_201 == 1
+
+    def test_staleness_detection(self) -> None:
+        """Test that staleness is properly detected."""
+        from datetime import timedelta
+        from my_api.shared.cloud_provider_filter.ranges import InMemoryCloudRangeProvider
+
+        provider = InMemoryCloudRangeProvider()
+
+        # Fresh provider should not be stale
+        assert not provider.is_stale(max_age=timedelta(hours=24))
+
+        # Manually set old timestamp
+        from datetime import datetime, timezone
+        provider._last_update = datetime.now(timezone.utc) - timedelta(hours=25)
+
+        # Now should be stale
+        assert provider.is_stale(max_age=timedelta(hours=24))

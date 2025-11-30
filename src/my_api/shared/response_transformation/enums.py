@@ -1,10 +1,10 @@
-"""response_transformation enums."""
+"""response_transformation enums.
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from datetime import datetime
+**Feature: shared-modules-code-review-fixes, Task 9.1**
+**Validates: Requirements 3.3**
+"""
+
 from enum import Enum
-from typing import Any, Callable, Generic, TypeVar
 
 
 class TransformationType(Enum):

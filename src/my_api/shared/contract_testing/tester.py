@@ -4,7 +4,7 @@
 **Validates: Requirements 5.4**
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Callable, Generic, TypeVar
 
 from pydantic import BaseModel, ValidationError
@@ -75,7 +75,7 @@ class ContractTester(Generic[RequestT, ResponseT]):
         actual_body: Any,
     ) -> ContractVerificationResult:
         """Verify a single interaction against actual response."""
-        start_time = datetime.now()
+        start_time = datetime.now(timezone.utc)
         errors: list[str] = []
 
         if actual_status != interaction.expectation.status_code:
@@ -112,7 +112,7 @@ class ContractTester(Generic[RequestT, ResponseT]):
                 for err in e.errors():
                     errors.append(f"Schema validation: {err['loc']} - {err['msg']}")
 
-        duration = (datetime.now() - start_time).total_seconds() * 1000
+        duration = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         status = ContractStatus.PASSED if not errors else ContractStatus.FAILED
 
         return ContractVerificationResult(

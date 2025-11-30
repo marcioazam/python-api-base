@@ -2,11 +2,17 @@
 
 **Feature: code-review-refactoring, Task 18.1: Refactor secrets_manager.py**
 **Validates: Requirements 5.7**
+
+**Feature: shared-modules-code-review-fixes, Task 2.1, 2.2, 2.3**
+**Validates: Requirements 2.1, 2.2, 2.3**
 """
 
 import asyncio
 import json
+import logging
 from typing import Any
+
+_logger = logging.getLogger(__name__)
 
 from .enums import SecretType
 from .exceptions import SecretNotFoundError
@@ -125,8 +131,15 @@ class SecretsManager:
                 await asyncio.sleep(interval_seconds)
                 try:
                     await self.rotate_secret(name)
+                    _logger.info(
+                        "Secret rotated successfully",
+                        extra={"secret_name": name},
+                    )
                 except Exception:
-                    pass
+                    _logger.exception(
+                        "Secret rotation failed",
+                        extra={"secret_name": name},
+                    )
 
         task = asyncio.create_task(rotation_loop())
         self._rotation_tasks[name] = task

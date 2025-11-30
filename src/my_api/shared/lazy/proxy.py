@@ -4,6 +4,7 @@
 **Validates: Requirements 1.5, 5.1, 5.2, 5.3**
 """
 
+import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Generic, TypeVar
@@ -42,8 +43,18 @@ class LazyProxy(Generic[T]):
         """Get the current loading state."""
         return self._state
 
-    async def get(self) -> T:
-        """Get the value, loading it if necessary."""
+    async def get(self, timeout: float | None = None) -> T:
+        """Get the value, loading it if necessary.
+
+        Args:
+            timeout: Optional timeout in seconds. If exceeded, raises TimeoutError.
+
+        Returns:
+            The loaded value.
+
+        Raises:
+            TimeoutError: If timeout is exceeded during loading.
+        """
         if self._state == LoadState.LOADED:
             return self._value  # type: ignore
 
@@ -54,11 +65,23 @@ class LazyProxy(Generic[T]):
         try:
             result = self.loader()
             if isinstance(result, Awaitable):
-                self._value = await result
+                if timeout is not None:
+                    try:
+                        self._value = await asyncio.wait_for(result, timeout=timeout)
+                    except asyncio.TimeoutError:
+                        self._state = LoadState.ERROR
+                        self._error = TimeoutError(
+                            f"LazyProxy loading exceeded timeout of {timeout} seconds"
+                        )
+                        raise self._error
+                else:
+                    self._value = await result
             else:
                 self._value = result
             self._state = LoadState.LOADED
             return self._value
+        except TimeoutError:
+            raise
         except Exception as e:
             self._state = LoadState.ERROR
             self._error = e

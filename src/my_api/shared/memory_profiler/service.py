@@ -1,19 +1,22 @@
 """memory_profiler service."""
 
 import gc
-import sys
+import logging
 import tracemalloc
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from enum import Enum
+from datetime import datetime, timedelta, timezone
 from typing import Any, Protocol, runtime_checkable
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
-from .enums import MemoryAlertSeverity, MemoryAlertType
-from .models import MemoryAlert, AllocationInfo
+
 from .config import MemoryProfilerConfig
+from .enums import MemoryAlertSeverity, MemoryAlertType
+from .models import AllocationInfo, MemoryAlert
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -49,13 +52,24 @@ class MemoryAlertHandler(Protocol):
     async def handle(self, alert: MemoryAlert) -> None: ...
 
 class LogMemoryAlertHandler:
-    """Handler that logs memory alerts."""
+    """Handler that logs memory alerts using Python logging."""
+
+    SEVERITY_MAP: dict[MemoryAlertSeverity, int] = {
+        MemoryAlertSeverity.CRITICAL: logging.ERROR,
+        MemoryAlertSeverity.WARNING: logging.WARNING,
+        MemoryAlertSeverity.INFO: logging.INFO,
+    }
 
     async def handle(self, alert: MemoryAlert) -> None:
-        """Log the memory alert."""
-        print(
-            f"[MEMORY] {alert.severity.value.upper()}: {alert.alert_type.value} - "
-            f"{alert.message} (current: {alert.current_value:.2f}, threshold: {alert.threshold:.2f})"
+        """Log the memory alert with appropriate severity level."""
+        level = self.SEVERITY_MAP.get(alert.severity, logging.WARNING)
+        logger.log(
+            level,
+            "Memory alert: %s - %s (current: %.2f, threshold: %.2f)",
+            alert.alert_type.value,
+            alert.message,
+            alert.current_value,
+            alert.threshold,
         )
 
 class MemoryProfiler:
@@ -107,7 +121,7 @@ class MemoryProfiler:
             heap = current
 
         snapshot = MemorySnapshot(
-            timestamp=datetime.now(),
+            timestamp=datetime.now(timezone.utc),
             rss_bytes=rss,
             vms_bytes=vms,
             heap_bytes=heap,
@@ -174,7 +188,7 @@ class MemoryProfiler:
             return None
 
         window = timedelta(minutes=self._config.leak_detection_window)
-        cutoff = datetime.now() - window
+        cutoff = datetime.now(timezone.utc) - window
         recent = [s for s in self._snapshots if s.timestamp > cutoff]
 
         if len(recent) < self._config.min_samples_for_leak:
@@ -224,7 +238,7 @@ class MemoryProfiler:
                 message=f"High GC pressure: {total_collections} collections",
                 current_value=float(total_collections),
                 threshold=float(self._config.gc_pressure_threshold),
-                timestamp=datetime.now(),
+                timestamp=datetime.now(timezone.utc),
                 details={"gen0": current_counts[0], "gen1": current_counts[1], "gen2": current_counts[2]},
             )
         return None

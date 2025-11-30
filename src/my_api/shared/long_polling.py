@@ -149,7 +149,7 @@ class LongPollEndpoint[T]:
         """Create a new polling session."""
         session_id = str(uuid.uuid4())
         self._queues[session_id] = EventQueue()
-        self._sessions[session_id] = datetime.utcnow()
+        self._sessions[session_id] = datetime.now(timezone.utc)
         return session_id
 
     def close_session(self, session_id: str) -> bool:
@@ -216,9 +216,9 @@ class LongPollEndpoint[T]:
         )
 
         events: list[T] = []
-        end_time = datetime.utcnow() + timedelta(seconds=actual_timeout)
+        end_time = datetime.now(timezone.utc) + timedelta(seconds=actual_timeout)
 
-        while datetime.utcnow() < end_time:
+        while datetime.now(timezone.utc) < end_time:
             if queue.get_pending_count() > 0:
                 while (
                     queue.get_pending_count() > 0
@@ -245,7 +245,7 @@ class LongPollEndpoint[T]:
 
     def cleanup_stale_sessions(self, max_age_seconds: float = 3600) -> int:
         """Clean up stale sessions."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         stale = [
             sid
             for sid, created in self._sessions.items()

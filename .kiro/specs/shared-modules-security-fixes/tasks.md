@@ -1,0 +1,162 @@
+# Implementation Plan
+
+- [x] 1. Implement Secure Field Encryption with AES-256-GCM
+  - [x] 1.1 Add cryptography library dependency and create encryption exceptions
+    - Add `cryptography>=41.0.0` to pyproject.toml
+    - Create `EncryptionError`, `DecryptionError`, `AuthenticationError` in exceptions module
+    - _Requirements: 1.3_
+  - [x] 1.2 Implement AES-256-GCM encryption in FieldEncryptor
+    - Replace `_xor_encrypt` with AES-256-GCM using `cryptography.hazmat.primitives.ciphers.aead.AESGCM`
+    - Use 12-byte nonce (96 bits) and 16-byte tag (128 bits)
+    - Update `encrypt()` method to use AESGCM
+    - Update `decrypt()` method to verify authentication tag
+    - _Requirements: 1.1, 1.2_
+  - [x] 1.3 Write property test for encryption round-trip with authentication
+    - **Property 1: Encryption Round-Trip with Authentication**
+    - **Validates: Requirements 1.1, 1.2**
+  - [x] 1.4 Deprecate XOR encryption method
+    - Add `@deprecated` decorator or `warnings.warn(DeprecationWarning)` to `_xor_encrypt`
+    - Raise `EncryptionError` after warning to prevent usage
+    - _Requirements: 1.4_
+  - [x] 1.5 Update EncryptedValue data model for version 2
+    - Add `version` field defaulting to 2 for new encryptions
+    - Ensure backward compatibility for reading version 1 data
+    - _Requirements: 1.1_
+
+- [x] 2. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 3. Implement Secure API Key Hashing with Bcrypt
+  - [x] 3.1 Add bcrypt library dependency
+    - Add `bcrypt>=4.0.0` to pyproject.toml
+    - _Requirements: 2.1_
+  - [x] 3.2 Implement bcrypt hashing in APIKeyService
+    - Replace SHA256 `_hash_key` with bcrypt using cost factor 12
+    - Add `BCRYPT_COST_FACTOR = 12` constant
+    - Use `bcrypt.gensalt(rounds=12)` for unique salts
+    - _Requirements: 2.1, 2.3_
+  - [x] 3.3 Write property test for bcrypt hash uniqueness
+    - **Property 2: Bcrypt Hash Uniqueness**
+    - **Validates: Requirements 2.1, 2.3**
+  - [x] 3.4 Implement constant-time key validation
+    - Use `bcrypt.checkpw()` for bcrypt hashes (already constant-time)
+    - Use `hmac.compare_digest()` for legacy SHA256 hashes
+    - _Requirements: 2.2_
+  - [x] 3.5 Add migration support for legacy SHA256 hashes
+    - Detect hash format by prefix (`$2b$` for bcrypt, `sha256:` for legacy)
+    - Support validation of both formats
+    - Add `hash_version` field to APIKey model
+    - _Requirements: 2.4_
+  - [x] 3.6 Write property test for hash format migration compatibility
+    - **Property 3: Hash Format Migration Compatibility**
+    - **Validates: Requirements 2.4**
+
+- [x] 4. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 5. Implement Datetime API Modernization
+  - [x] 5.1 Audit and fix deprecated datetime.utcnow() usage
+    - Search for `datetime.utcnow()` in all shared modules
+    - Replace with `datetime.now(timezone.utc)` or `utc_now()` from utils
+    - _Requirements: 3.1_
+  - [x] 5.2 Ensure timestamp comparisons use timezone-aware datetimes
+    - Review timestamp comparison code in all modules
+    - Add `ensure_utc()` calls where needed
+    - _Requirements: 3.2_
+  - [x] 5.3 Verify ISO 8601 serialization includes timezone
+    - Review all `isoformat()` calls
+    - Replace with `to_iso8601()` from utils where needed
+    - _Requirements: 3.3_
+  - [x] 5.4 Write property test for timestamp timezone awareness
+    - **Property 4: Timestamp Timezone Awareness**
+    - **Validates: Requirements 3.1, 3.2, 3.3**
+
+- [x] 6. Implement Regex Injection Prevention
+  - [x] 6.1 Create SafePatternCompiler class
+    - Create new module or add to existing utils
+    - Implement pattern validation with dangerous pattern detection
+    - Add `MAX_PATTERN_LENGTH` constant
+    - _Requirements: 4.2_
+  - [x] 6.2 Implement safe glob-to-regex conversion
+    - Create `glob_to_regex()` function that escapes special regex chars
+    - Use `re.escape()` before converting glob wildcards
+    - _Requirements: 4.1_
+  - [x] 6.3 Write property test for glob-to-regex safe conversion
+    - **Property 5: Glob-to-Regex Safe Conversion**
+    - **Validates: Requirements 4.1**
+  - [x] 6.4 Create PatternValidationError exception
+    - Add to exceptions module with pattern and reason fields
+    - _Requirements: 4.3_
+  - [x] 6.5 Update WAF patterns to use bounded quantifiers
+    - Review patterns in `waf/patterns.py`
+    - Replace unbounded `.*` with bounded `.{0,100}` where applicable
+    - _Requirements: 4.2_
+
+
+- [x] 7. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 8. Implement Thread-Safe Circuit Breaker Registry
+  - [x] 8.1 Create CircuitBreakerRegistry singleton class
+    - Implement double-checked locking pattern
+    - Use `threading.Lock` for singleton creation
+    - Use `threading.RLock` for breaker operations
+    - _Requirements: 5.1_
+  - [x] 8.2 Add thread-safe get/create operations
+    - Implement `get()` method with lock protection
+    - Ensure same instance returned for same name
+    - _Requirements: 5.3_
+  - [x] 8.3 Write property test for registry thread safety
+    - **Property 6: Circuit Breaker Registry Thread Safety**
+    - **Validates: Requirements 5.1, 5.3**
+  - [x] 8.4 Add reset methods for test isolation
+    - Implement `reset()` to clear all breakers
+    - Implement `reset_instance()` class method to reset singleton
+    - _Requirements: 5.2_
+  - [x] 8.5 Update module-level functions for backward compatibility
+    - Update `get_circuit_breaker()` to use registry
+    - Update `get_all_circuit_breakers()` to use registry
+    - _Requirements: 5.1_
+
+- [x] 9. Implement Context Variable Safety
+  - [x] 9.1 Add safe token reset in CorrelationContextManager
+    - Wrap `token.var.reset(token)` in try-except
+    - Catch `ValueError` for already-reset tokens
+    - Log warning and continue processing
+    - _Requirements: 6.1_
+  - [x] 9.2 Write property test for context token safe reset
+    - **Property 7: Context Token Safe Reset**
+    - **Validates: Requirements 6.1, 6.3**
+  - [x] 9.3 Add graceful recovery for incorrect context manager usage
+    - Handle edge cases in `__enter__` and `__exit__`
+    - Log warnings for debugging
+    - _Requirements: 6.2_
+  - [x] 9.4 Verify nested context parent-child relationships
+    - Review nested context handling
+    - Ensure parent span IDs are properly maintained
+    - _Requirements: 6.3_
+
+- [x] 10. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 11. Code Quality Improvements
+  - [x] 11.1 Fix line length violations (max 120 chars)
+    - Run linter to identify violations
+    - Refactor long lines
+    - _Requirements: 7.1_
+  - [x] 11.2 Remove unused imports
+    - Run linter to identify unused imports
+    - Remove or comment with justification
+    - _Requirements: 7.2_
+  - [x] 11.3 Replace magic numbers with named constants
+    - Identify magic numbers in security-related code
+    - Create named constants with semantic names
+    - _Requirements: 7.3_
+  - [x] 11.4 Ensure explicit UTF-8 encoding
+    - Review all `encode()` and `decode()` calls
+    - Add explicit `encoding="utf-8"` parameter
+    - _Requirements: 7.4_
+
+- [x] 12. Final Checkpoint - Ensure all tests pass
+
+  - Ensure all tests pass, ask the user if questions arise.

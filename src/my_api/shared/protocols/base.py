@@ -1,4 +1,7 @@
-"""Protocols base definitions.
+"""Base protocol definitions for entity traits.
+
+Defines fundamental protocols for common entity characteristics like
+identification, timestamps, and soft deletion support.
 
 Feature: file-size-compliance-phase2
 """

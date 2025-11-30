@@ -1,13 +1,10 @@
-"""streaming enums."""
+"""streaming enums.
 
-import asyncio
-import json
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+**Feature: shared-modules-code-review-fixes, Task 10.1**
+**Validates: Requirements 3.4**
+"""
+
 from enum import Enum
-from typing import Any, AsyncIterator, Callable, Generic, TypeVar
-from pydantic import BaseModel
 
 
 class StreamFormat(str, Enum):

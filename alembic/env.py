@@ -1,7 +1,8 @@
 """Alembic environment configuration for async SQLAlchemy."""
 
 import asyncio
-import os
+import importlib
+import pkgutil
 from logging.config import fileConfig
 
 from alembic import context
@@ -10,8 +11,41 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlmodel import SQLModel
 
-# Import all models to ensure they're registered with SQLModel.metadata
-from my_api.domain.entities.item import Item  # noqa: F401
+from my_api.infrastructure.database.alembic_utils import get_database_url
+
+
+def import_models() -> list[str]:
+    """Auto-import all entity models for metadata registration.
+
+    Uses pkgutil to discover and import all modules in the entities package,
+    ensuring all SQLModel classes are registered with metadata.
+
+    Returns:
+        List of imported module names.
+
+    Raises:
+        ImportError: If entities package is not found.
+    """
+    try:
+        import my_api.domain.entities as entities_pkg
+    except ImportError as e:
+        raise ImportError(
+            "Cannot find entities package at my_api.domain.entities. "
+            "Ensure the package exists and is properly installed."
+        ) from e
+
+    imported_modules: list[str] = []
+    for _, module_name, is_pkg in pkgutil.iter_modules(entities_pkg.__path__):
+        if not is_pkg and not module_name.startswith("_"):
+            full_module_name = f"my_api.domain.entities.{module_name}"
+            importlib.import_module(full_module_name)
+            imported_modules.append(module_name)
+
+    return imported_modules
+
+
+# Auto-discover and import all entity models
+import_models()
 
 # This is the Alembic Config object
 config = context.config
@@ -24,19 +58,9 @@ if config.config_file_name is not None:
 target_metadata = SQLModel.metadata
 
 
-def get_database_url() -> str:
-    """Get database URL from environment or config.
-    
-    Returns:
-        Database URL string.
-    """
-    # Try environment variable first (for production/CI)
-    url = os.getenv("DATABASE__URL") or os.getenv("DATABASE_URL")
-    if url:
-        return url
-    
-    # Fall back to alembic.ini config
-    return config.get_main_option("sqlalchemy.url", "")
+def _get_url() -> str:
+    """Get database URL using config_utils with alembic config."""
+    return get_database_url(config)
 
 
 def run_migrations_offline() -> None:
@@ -50,7 +74,7 @@ def run_migrations_offline() -> None:
     Calls to context.execute() here emit the given string to the
     script output.
     """
-    url = get_database_url()
+    url = _get_url()
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -84,7 +108,7 @@ async def run_async_migrations() -> None:
     and associate a connection with the context.
     """
     configuration = config.get_section(config.config_ini_section, {})
-    configuration["sqlalchemy.url"] = get_database_url()
+    configuration["sqlalchemy.url"] = _get_url()
     
     connectable = async_engine_from_config(
         configuration,

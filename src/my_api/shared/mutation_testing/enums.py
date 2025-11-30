@@ -1,12 +1,9 @@
-"""mutation_testing enums."""
+"""mutation_testing enums.
 
-from dataclasses import dataclass, field
-from datetime import datetime
+**Feature: shared-modules-phase3-fixes, Task 5.2**
+"""
+
 from enum import Enum
-from pathlib import Path
-from typing import Any
-import json
-import hashlib
 
 
 class MutantStatus(Enum):
@@ -18,6 +15,7 @@ class MutantStatus(Enum):
     SUSPICIOUS = "suspicious"
     SKIPPED = "skipped"
     INCOMPETENT = "incompetent"
+
 
 class MutationOperator(Enum):
     """Standard mutation operators."""

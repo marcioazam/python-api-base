@@ -1,23 +1,4 @@
-# AWS VPC Module
-
-variable "name_prefix" {
-  type = string
-}
-
-variable "vpc_cidr" {
-  type    = string
-  default = "10.0.0.0/16"
-}
-
-variable "availability_zones" {
-  type    = list(string)
-  default = ["us-east-1a", "us-east-1b", "us-east-1c"]
-}
-
-variable "tags" {
-  type    = map(string)
-  default = {}
-}
+# AWS VPC Module - Main Resources
 
 # VPC
 resource "aws_vpc" "main" {
@@ -67,8 +48,10 @@ resource "aws_subnet" "private" {
 }
 
 # NAT Gateway
+# When single_nat_gateway is true, create only 1 NAT Gateway (cost optimization)
+# When false, create one per AZ (high availability for production)
 resource "aws_eip" "nat" {
-  count  = length(var.availability_zones)
+  count  = var.single_nat_gateway ? 1 : length(var.availability_zones)
   domain = "vpc"
 
   tags = merge(var.tags, {
@@ -77,9 +60,9 @@ resource "aws_eip" "nat" {
 }
 
 resource "aws_nat_gateway" "main" {
-  count         = length(var.availability_zones)
+  count         = var.single_nat_gateway ? 1 : length(var.availability_zones)
   allocation_id = aws_eip.nat[count.index].id
-  subnet_id     = aws_subnet.public[count.index].id
+  subnet_id     = aws_subnet.public[var.single_nat_gateway ? 0 : count.index].id
 
   tags = merge(var.tags, {
     Name = "${var.name_prefix}-nat-${count.index + 1}"
@@ -103,12 +86,12 @@ resource "aws_route_table" "public" {
 }
 
 resource "aws_route_table" "private" {
-  count  = length(var.availability_zones)
+  count  = var.single_nat_gateway ? 1 : length(var.availability_zones)
   vpc_id = aws_vpc.main.id
 
   route {
     cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.main[count.index].id
+    nat_gateway_id = aws_nat_gateway.main[var.single_nat_gateway ? 0 : count.index].id
   }
 
   tags = merge(var.tags, {
@@ -126,18 +109,5 @@ resource "aws_route_table_association" "public" {
 resource "aws_route_table_association" "private" {
   count          = length(var.availability_zones)
   subnet_id      = aws_subnet.private[count.index].id
-  route_table_id = aws_route_table.private[count.index].id
-}
-
-# Outputs
-output "vpc_id" {
-  value = aws_vpc.main.id
-}
-
-output "public_subnet_ids" {
-  value = aws_subnet.public[*].id
-}
-
-output "private_subnet_ids" {
-  value = aws_subnet.private[*].id
+  route_table_id = aws_route_table.private[var.single_nat_gateway ? 0 : count.index].id
 }

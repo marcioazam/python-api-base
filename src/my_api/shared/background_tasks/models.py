@@ -1,12 +1,9 @@
 """background_tasks models."""
 
-import asyncio
-import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from enum import Enum
+from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable, Generic, TypeVar
-from pydantic import BaseModel
+
 from .enums import TaskPriority, TaskStatus
 
 T = TypeVar("T")
@@ -40,6 +37,8 @@ class TaskResult(Generic[T]):
         status: Execution status.
         result: Task result if successful.
         error: Error message if failed.
+        error_type: Exception class name if failed.
+        stack_trace: Full traceback if failed.
         attempts: Number of execution attempts.
         started_at: Execution start time.
         completed_at: Execution completion time.
@@ -50,6 +49,8 @@ class TaskResult(Generic[T]):
     status: TaskStatus
     result: T | None = None
     error: str | None = None
+    error_type: str | None = None
+    stack_trace: str | None = None
     attempts: int = 0
     started_at: datetime | None = None
     completed_at: datetime | None = None

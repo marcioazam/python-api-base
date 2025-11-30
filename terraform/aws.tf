@@ -1,12 +1,4 @@
-# AWS Provider Configuration and Module Calls
-
-provider "aws" {
-  region = var.region
-
-  default_tags {
-    tags = local.common_tags
-  }
-}
+# AWS Resources and Module Calls
 
 # VPC Module
 module "aws_vpc" {
@@ -16,6 +8,7 @@ module "aws_vpc" {
   name_prefix        = local.name_prefix
   vpc_cidr           = "10.0.0.0/16"
   availability_zones = ["${var.region}a", "${var.region}b", "${var.region}c"]
+  single_nat_gateway = var.single_nat_gateway
   tags               = local.common_tags
 }
 
@@ -31,7 +24,8 @@ module "aws_database" {
   allocated_storage     = 20
   max_allocated_storage = 100
   db_name               = "myapi"
-  db_username           = "myapi_user"
+  db_username           = var.db_username
+  db_password           = var.db_password
   multi_az              = var.environment == "prod"
   backup_retention_period = var.environment == "prod" ? 30 : 7
   tags                  = local.common_tags
@@ -64,32 +58,6 @@ module "aws_eks" {
   tags               = local.common_tags
 }
 
-# Kubernetes Provider (after EKS)
-provider "kubernetes" {
-  host                   = var.cloud_provider == "aws" ? module.aws_eks[0].endpoint : ""
-  cluster_ca_certificate = var.cloud_provider == "aws" ? base64decode(module.aws_eks[0].cluster_ca_certificate) : ""
-
-  exec {
-    api_version = "client.authentication.k8s.io/v1beta1"
-    command     = "aws"
-    args        = ["eks", "get-token", "--cluster-name", var.cloud_provider == "aws" ? module.aws_eks[0].cluster_name : ""]
-  }
-}
-
-# Helm Provider
-provider "helm" {
-  kubernetes {
-    host                   = var.cloud_provider == "aws" ? module.aws_eks[0].endpoint : ""
-    cluster_ca_certificate = var.cloud_provider == "aws" ? base64decode(module.aws_eks[0].cluster_ca_certificate) : ""
-
-    exec {
-      api_version = "client.authentication.k8s.io/v1beta1"
-      command     = "aws"
-      args        = ["eks", "get-token", "--cluster-name", var.cloud_provider == "aws" ? module.aws_eks[0].cluster_name : ""]
-    }
-  }
-}
-
 # Deploy Application via Helm
 resource "helm_release" "my_api" {
   count = var.cloud_provider == "aws" ? 1 : 0
@@ -104,7 +72,7 @@ resource "helm_release" "my_api" {
       
       image = {
         repository = "ghcr.io/myorg/my-api"
-        tag        = "latest"
+        tag        = var.image_tag
       }
 
       postgresql = {

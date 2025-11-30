@@ -457,3 +457,214 @@ class TestTaskResultProperties:
             assert result.duration_ms > 0
         finally:
             await queue.stop()
+
+
+# =============================================================================
+# Property Tests - Exception Handling (shared-modules-refactoring)
+# =============================================================================
+
+
+class TestExceptionHandlingProperties:
+    """Property tests for exception handling in background tasks.
+
+    **Feature: shared-modules-refactoring**
+    **Validates: Requirements 1.1, 1.2, 1.3, 1.4**
+    """
+
+    async def test_timeout_exception_isolation(self) -> None:
+        """**Feature: shared-modules-refactoring, Property 1: Timeout Exception Isolation**
+        **Validates: Requirements 1.1**
+
+        For any task that raises asyncio.TimeoutError, the error handling path
+        SHALL be distinct from generic exception handling, and the resulting
+        TaskResult SHALL have error_type equal to "TimeoutError".
+        """
+        queue = BackgroundTaskQueue()
+        await queue.start()
+
+        async def slow_task() -> int:
+            await asyncio.sleep(10)  # Will timeout
+            return 42
+
+        config = TaskConfig(timeout_ms=100, max_retries=1)
+
+        try:
+            task_id = await queue.submit(slow_task, config=config)
+            result = await queue.wait_for(task_id, timeout=5.0)
+
+            assert result is not None
+            assert result.status == TaskStatus.FAILED
+            assert result.error_type == "TimeoutError"
+        finally:
+            await queue.stop()
+
+    async def test_stack_trace_preservation(self) -> None:
+        """**Feature: shared-modules-refactoring, Property 3: Stack Trace Preservation**
+        **Validates: Requirements 1.3**
+
+        For any task that fails with an unexpected exception, the TaskResult
+        SHALL contain a non-empty stack_trace field that includes the original
+        exception's traceback.
+        """
+        queue = BackgroundTaskQueue()
+        await queue.start()
+
+        async def failing_task() -> int:
+            raise ValueError("Test error message")
+
+        config = TaskConfig(max_retries=1)
+
+        try:
+            task_id = await queue.submit(failing_task, config=config)
+            result = await queue.wait_for(task_id, timeout=5.0)
+
+            assert result is not None
+            assert result.status == TaskStatus.FAILED
+            assert result.error_type == "ValueError"
+            assert result.stack_trace is not None
+            assert len(result.stack_trace) > 0
+            assert "ValueError" in result.stack_trace
+            assert "Test error message" in result.stack_trace
+        finally:
+            await queue.stop()
+
+    async def test_error_type_preserved(self) -> None:
+        """**Feature: shared-modules-refactoring, Property 1: Timeout Exception Isolation**
+        **Validates: Requirements 1.1**
+
+        For any task failure, the error_type field SHALL contain the exception class name.
+        """
+        queue = BackgroundTaskQueue()
+        await queue.start()
+
+        async def type_error_task() -> int:
+            raise TypeError("Type mismatch")
+
+        config = TaskConfig(max_retries=1)
+
+        try:
+            task_id = await queue.submit(type_error_task, config=config)
+            result = await queue.wait_for(task_id, timeout=5.0)
+
+            assert result is not None
+            assert result.error_type == "TypeError"
+            assert "Type mismatch" in (result.error or "")
+        finally:
+            await queue.stop()
+
+    async def test_task_result_has_all_context_fields(self) -> None:
+        """**Feature: shared-modules-refactoring, Property 4: Log Context Completeness**
+        **Validates: Requirements 1.4**
+
+        For any logged task failure, the log record SHALL contain task_id,
+        attempt, and duration_ms fields with valid values.
+        """
+        queue = BackgroundTaskQueue()
+        await queue.start()
+
+        async def failing_task() -> int:
+            raise RuntimeError("Test failure")
+
+        config = TaskConfig(max_retries=1)
+
+        try:
+            task_id = await queue.submit(failing_task, config=config)
+            result = await queue.wait_for(task_id, timeout=5.0)
+
+            assert result is not None
+            assert result.task_id == task_id
+            assert result.attempts >= 1
+            assert result.duration_ms >= 0
+            assert result.started_at is not None
+            assert result.completed_at is not None
+        finally:
+            await queue.stop()
+
+
+# =============================================================================
+# Property Tests - Deprecation Warnings (shared-modules-refactoring)
+# =============================================================================
+
+
+class TestDeprecationWarningProperties:
+    """Property tests for asyncio deprecation warnings.
+
+    **Feature: shared-modules-refactoring, Property 8: No Deprecation Warnings**
+    **Validates: Requirements 3.1, 3.2, 3.3**
+    """
+
+    async def test_no_deprecation_warnings_on_task_execution(self) -> None:
+        """**Feature: shared-modules-refactoring, Property 8: No Deprecation Warnings**
+        **Validates: Requirements 3.1, 3.2, 3.3**
+
+        For any execution of background task operations in Python 3.10+,
+        zero deprecation warnings SHALL be emitted for asyncio API usage.
+        """
+        import warnings
+
+        queue = BackgroundTaskQueue()
+
+        with warnings.catch_warnings(record=True) as caught_warnings:
+            warnings.simplefilter("always", DeprecationWarning)
+
+            await queue.start()
+
+            async def simple_task() -> int:
+                return 42
+
+            try:
+                task_id = await queue.submit(simple_task)
+                result = await queue.wait_for(task_id, timeout=5.0)
+
+                assert result is not None
+                assert result.status == TaskStatus.COMPLETED
+            finally:
+                await queue.stop()
+
+            # Filter for asyncio-related deprecation warnings
+            asyncio_warnings = [
+                w for w in caught_warnings
+                if issubclass(w.category, DeprecationWarning)
+                and "asyncio" in str(w.message).lower()
+            ]
+
+            assert len(asyncio_warnings) == 0, (
+                f"Found asyncio deprecation warnings: {[str(w.message) for w in asyncio_warnings]}"
+            )
+
+    async def test_no_get_event_loop_deprecation(self) -> None:
+        """**Feature: shared-modules-refactoring, Property 8: No Deprecation Warnings**
+        **Validates: Requirements 3.1, 3.2, 3.3**
+
+        The BackgroundTaskQueue SHALL use asyncio.get_running_loop() instead of
+        the deprecated asyncio.get_event_loop() for time operations.
+        """
+        import warnings
+
+        queue = BackgroundTaskQueue()
+
+        with warnings.catch_warnings(record=True) as caught_warnings:
+            warnings.simplefilter("always", DeprecationWarning)
+
+            await queue.start()
+
+            async def timed_task() -> int:
+                await asyncio.sleep(0.05)
+                return 42
+
+            try:
+                task_id = await queue.submit(timed_task)
+                await queue.wait_for(task_id, timeout=5.0)
+            finally:
+                await queue.stop()
+
+            # Check for get_event_loop deprecation warnings
+            event_loop_warnings = [
+                w for w in caught_warnings
+                if issubclass(w.category, DeprecationWarning)
+                and "get_event_loop" in str(w.message)
+            ]
+
+            assert len(event_loop_warnings) == 0, (
+                f"Found get_event_loop deprecation warnings: {[str(w.message) for w in event_loop_warnings]}"
+            )

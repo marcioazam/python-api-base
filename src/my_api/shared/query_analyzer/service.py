@@ -1,15 +1,14 @@
 """query_analyzer service."""
 
 import re
-import time
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
 from typing import Any
+
 from pydantic import BaseModel
-from .enums import QueryType, OptimizationSuggestion
-from .models import QueryMetrics, IndexSuggestion
+
 from .config import AnalyzerConfig
+from .constants import ALLOWED_IDENTIFIER_PATTERN, MAX_QUERY_LENGTH
+from .enums import OptimizationSuggestion, QueryType
+from .models import IndexSuggestion, QueryMetrics
 
 
 class QueryAnalysis(BaseModel):
@@ -61,6 +60,31 @@ class QueryAnalyzer:
         self._queries: list[QueryMetrics] = []
         self._slow_queries: list[QueryMetrics] = []
 
+    def _validate_query(self, query: str) -> None:
+        """Validate query input for security.
+
+        Args:
+            query: SQL query to validate.
+
+        Raises:
+            ValueError: If query is invalid or too long.
+        """
+        if not query or not query.strip():
+            raise ValueError("Query cannot be empty")
+        if len(query) > MAX_QUERY_LENGTH:
+            raise ValueError(f"Query exceeds maximum length of {MAX_QUERY_LENGTH}")
+
+    def _validate_identifier(self, identifier: str) -> bool:
+        """Validate SQL identifier (table/column name).
+
+        Args:
+            identifier: Identifier to validate.
+
+        Returns:
+            True if valid, False otherwise.
+        """
+        return bool(ALLOWED_IDENTIFIER_PATTERN.match(identifier))
+
     def analyze_query(self, query: str) -> QueryAnalysis:
         """Analyze a SQL query.
 
@@ -69,7 +93,11 @@ class QueryAnalyzer:
 
         Returns:
             Query analysis result.
+
+        Raises:
+            ValueError: If query is invalid or too long.
         """
+        self._validate_query(query)
         query_upper = query.upper().strip()
         query_type = self._detect_query_type(query_upper)
 
@@ -140,7 +168,8 @@ class QueryAnalyzer:
         if insert_match:
             tables.append(insert_match.group(1))
 
-        return list(set(tables))
+        # Filter to valid identifiers only
+        return [t for t in set(tables) if self._validate_identifier(t)]
 
     def _extract_columns(self, query: str) -> list[str]:
         """Extract column names from query.
@@ -165,7 +194,8 @@ class QueryAnalyzer:
         group_matches = re.findall(r"\bGROUP\s+BY\s+(\w+)", query, re.IGNORECASE)
         columns.extend(group_matches)
 
-        return list(set(columns))
+        # Filter to valid identifiers only
+        return [c for c in set(columns) if self._validate_identifier(c)]
 
     def _generate_suggestions(self, analysis: QueryAnalysis) -> list[OptimizationSuggestion]:
         """Generate optimization suggestions.

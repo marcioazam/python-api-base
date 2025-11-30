@@ -1,15 +1,12 @@
-"""streaming configuration."""
+"""streaming configuration.
 
-import asyncio
-import json
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Any, AsyncIterator, Callable, Generic, TypeVar
-from pydantic import BaseModel
+**Feature: shared-modules-code-review-fixes, Task 10.2**
+**Validates: Requirements 3.4**
+"""
+
+from dataclasses import dataclass
+
 from .enums import StreamFormat
-from .models import SSEEvent
 
 
 @dataclass

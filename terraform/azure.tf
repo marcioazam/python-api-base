@@ -1,22 +1,4 @@
-# Azure Provider Configuration and Module Calls
-
-variable "azure_subscription_id" {
-  description = "Azure Subscription ID"
-  type        = string
-  default     = ""
-}
-
-variable "azure_tenant_id" {
-  description = "Azure Tenant ID"
-  type        = string
-  default     = ""
-}
-
-provider "azurerm" {
-  features {}
-  subscription_id = var.azure_subscription_id
-  tenant_id       = var.azure_tenant_id
-}
+# Azure Resources and Module Calls
 
 # Resource Group
 resource "azurerm_resource_group" "main" {

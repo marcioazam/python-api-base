@@ -176,7 +176,7 @@ class MigrationManager:
             await self._backend.begin_transaction()
 
             await self._backend.execute_sql(migration.up_sql)
-            migration.applied_at = datetime.utcnow()
+            migration.applied_at = datetime.now(timezone.utc)
             migration.status = MigrationStatus.APPLIED
             await self._backend.mark_applied(migration)
 
@@ -287,7 +287,7 @@ class MigrationManager:
     ) -> Migration:
         """Generate a migration from schema diff."""
         import time
-        version = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        version = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
 
         return Migration(
             version=version,

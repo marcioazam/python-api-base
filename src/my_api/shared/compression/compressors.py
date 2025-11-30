@@ -27,7 +27,11 @@ class GzipCompressor:
     """GZip compression implementation."""
 
     def __init__(self, level: int = 6) -> None:
-        self._level = min(max(level, 1), 9)
+        if not 1 <= level <= 9:
+            raise ValueError(
+                f"Invalid compression level {level}: must be between 1 and 9"
+            )
+        self._level = level
 
     def compress(self, data: bytes) -> bytes:
         """Compress data using gzip."""
@@ -50,7 +54,11 @@ class DeflateCompressor:
     """Deflate compression implementation."""
 
     def __init__(self, level: int = 6) -> None:
-        self._level = min(max(level, 1), 9)
+        if not 1 <= level <= 9:
+            raise ValueError(
+                f"Invalid compression level {level}: must be between 1 and 9"
+            )
+        self._level = level
 
     def compress(self, data: bytes) -> bytes:
         """Compress data using deflate."""
@@ -97,7 +105,11 @@ try:
         """Brotli compression implementation."""
 
         def __init__(self, level: int = 6) -> None:
-            self._level = min(max(level, 0), 11)
+            if not 0 <= level <= 11:
+                raise ValueError(
+                    f"Invalid compression level {level}: must be between 0 and 11"
+                )
+            self._level = level
 
         def compress(self, data: bytes) -> bytes:
             """Compress data using brotli."""

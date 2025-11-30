@@ -1,14 +1,21 @@
-"""request_signing service."""
+"""request_signing service.
+
+**Feature: shared-modules-code-review-fixes, Task 4, 8.3**
+**Validates: Requirements 6.1, 6.2, 6.3, 7.1, 7.2**
+"""
 
 import hashlib
 import hmac
+import secrets
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from enum import Enum
 from typing import Any
-from .enums import HashAlgorithm
+
 from .config import SignatureConfig
+from .enums import HashAlgorithm
+
+# Minimum secret key length in bytes (256 bits)
+MIN_SECRET_KEY_LENGTH = 32
 
 
 @dataclass(frozen=True)
@@ -123,10 +130,17 @@ class RequestSigner:
         Args:
             secret_key: Secret key for HMAC.
             config: Signature configuration.
+
+        Raises:
+            ValueError: If secret key is shorter than MIN_SECRET_KEY_LENGTH bytes.
         """
         self._secret_key = (
             secret_key.encode() if isinstance(secret_key, str) else secret_key
         )
+        if len(self._secret_key) < MIN_SECRET_KEY_LENGTH:
+            raise ValueError(
+                f"Secret key must be at least {MIN_SECRET_KEY_LENGTH} bytes"
+            )
         self._config = config or SignatureConfig()
 
     @property
@@ -196,8 +210,6 @@ class RequestSigner:
         Returns:
             Signed request data.
         """
-        import secrets
-
         timestamp = timestamp or int(time.time())
         nonce = nonce or secrets.token_hex(16)
 
@@ -256,7 +268,17 @@ class RequestVerifier:
             secret_key: Secret key for HMAC.
             config: Signature configuration.
             nonce_store: Optional nonce store for replay protection.
+
+        Raises:
+            ValueError: If secret key is shorter than MIN_SECRET_KEY_LENGTH bytes.
         """
+        encoded_key = (
+            secret_key.encode() if isinstance(secret_key, str) else secret_key
+        )
+        if len(encoded_key) < MIN_SECRET_KEY_LENGTH:
+            raise ValueError(
+                f"Secret key must be at least {MIN_SECRET_KEY_LENGTH} bytes"
+            )
         self._signer = RequestSigner(secret_key, config)
         self._config = config or SignatureConfig()
         self._nonce_store = nonce_store or NonceStore(self._config.timestamp_tolerance)

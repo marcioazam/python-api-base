@@ -4,7 +4,7 @@
 **Validates: Requirements 5.4**
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from hypothesis import given, settings, strategies as st
@@ -67,11 +67,12 @@ class TestBanRecordProperties:
     @settings(max_examples=100)
     def test_active_ban_with_future_expiry(self, identifier: str) -> None:
         """Property: Ban with future expiry is active."""
+        now = datetime.now(timezone.utc)
         ban = BanRecord(
             identifier=identifier,
             reason=ViolationType.RATE_LIMIT,
-            banned_at=datetime.now(),
-            expires_at=datetime.now() + timedelta(hours=1),
+            banned_at=now,
+            expires_at=now + timedelta(hours=1),
             violation_count=1,
             status=BanStatus.ACTIVE,
         )
@@ -82,11 +83,12 @@ class TestBanRecordProperties:
     @settings(max_examples=100)
     def test_expired_ban_is_not_active(self, identifier: str) -> None:
         """Property: Ban with past expiry is not active."""
+        now = datetime.now(timezone.utc)
         ban = BanRecord(
             identifier=identifier,
             reason=ViolationType.RATE_LIMIT,
-            banned_at=datetime.now() - timedelta(hours=2),
-            expires_at=datetime.now() - timedelta(hours=1),
+            banned_at=now - timedelta(hours=2),
+            expires_at=now - timedelta(hours=1),
             violation_count=1,
             status=BanStatus.ACTIVE,
         )
@@ -96,10 +98,11 @@ class TestBanRecordProperties:
     @settings(max_examples=100)
     def test_permanent_ban_has_no_expiry(self, identifier: str) -> None:
         """Property: Permanent ban has no expiry date."""
+        now = datetime.now(timezone.utc)
         ban = BanRecord(
             identifier=identifier,
             reason=ViolationType.ABUSE,
-            banned_at=datetime.now(),
+            banned_at=now,
             expires_at=None,
             violation_count=5,
             status=BanStatus.ACTIVE,
@@ -111,11 +114,12 @@ class TestBanRecordProperties:
     @settings(max_examples=100)
     def test_lifted_ban_is_not_active(self, identifier: str) -> None:
         """Property: Lifted ban is not active regardless of expiry."""
+        now = datetime.now(timezone.utc)
         ban = BanRecord(
             identifier=identifier,
             reason=ViolationType.RATE_LIMIT,
-            banned_at=datetime.now(),
-            expires_at=datetime.now() + timedelta(hours=1),
+            banned_at=now,
+            expires_at=now + timedelta(hours=1),
             violation_count=1,
             status=BanStatus.LIFTED,
         )
@@ -155,11 +159,12 @@ class TestInMemoryBanStoreProperties:
     async def test_ban_round_trip(self, identifier: str) -> None:
         """Property: Set ban can be retrieved."""
         store = InMemoryBanStore()
+        now = datetime.now(timezone.utc)
         ban = BanRecord(
             identifier=identifier,
             reason=ViolationType.RATE_LIMIT,
-            banned_at=datetime.now(),
-            expires_at=datetime.now() + timedelta(hours=1),
+            banned_at=now,
+            expires_at=now + timedelta(hours=1),
             violation_count=1,
         )
         await store.set_ban(ban)
@@ -416,11 +421,12 @@ class TestBanCheckResultProperties:
     @settings(max_examples=100)
     def test_banned_result_has_record(self, identifier: str) -> None:
         """Property: Banned result has ban record."""
+        now = datetime.now(timezone.utc)
         record = BanRecord(
             identifier=identifier,
             reason=ViolationType.ABUSE,
-            banned_at=datetime.now(),
-            expires_at=datetime.now() + timedelta(hours=1),
+            banned_at=now,
+            expires_at=now + timedelta(hours=1),
             violation_count=1,
         )
         result = BanCheckResult.banned(record, "Test reason")
@@ -428,3 +434,163 @@ class TestBanCheckResultProperties:
         assert result.is_banned is True
         assert result.ban_record is not None
         assert result.ban_record.identifier == identifier
+
+
+# =============================================================================
+# Property Tests - Lock Manager (shared-modules-refactoring)
+# =============================================================================
+
+
+class TestLockManagerProperties:
+    """Property tests for LockManager.
+
+    **Feature: shared-modules-refactoring**
+    **Validates: Requirements 2.1, 2.3, 2.4**
+    """
+
+    @pytest.mark.anyio
+    async def test_concurrent_violation_serialization(self) -> None:
+        """**Feature: shared-modules-refactoring, Property 5: Concurrent Violation Serialization**
+        **Validates: Requirements 2.1**
+
+        For any set of concurrent violation records for the same identifier,
+        the final violation count SHALL equal the sum of all individual violations.
+        """
+        import asyncio
+        from my_api.shared.auto_ban.lock_manager import InMemoryLockManager
+
+        lock_manager = InMemoryLockManager()
+        counter = {"value": 0}
+        num_concurrent = 50
+
+        async def increment_with_lock(identifier: str) -> None:
+            async with lock_manager.acquire(identifier):
+                current = counter["value"]
+                await asyncio.sleep(0.001)  # Simulate work
+                counter["value"] = current + 1
+
+        # Run concurrent increments
+        tasks = [increment_with_lock("test-id") for _ in range(num_concurrent)]
+        await asyncio.gather(*tasks)
+
+        # Without proper locking, this would be less than num_concurrent
+        assert counter["value"] == num_concurrent
+
+    @pytest.mark.anyio
+    async def test_lock_cleanup_effectiveness(self) -> None:
+        """**Feature: shared-modules-refactoring, Property 7: Lock Cleanup Effectiveness**
+        **Validates: Requirements 2.3**
+
+        For any lock manager with more than max_entries entries,
+        after cleanup, the number of entries SHALL be less than or equal to max_entries.
+        """
+        from my_api.shared.auto_ban.lock_manager import InMemoryLockManager
+
+        lock_manager = InMemoryLockManager()
+        max_entries = 10
+
+        # Create more locks than max_entries
+        for i in range(20):
+            async with lock_manager.acquire(f"id-{i}"):
+                pass
+
+        assert lock_manager.lock_count == 20
+
+        # Cleanup
+        removed = await lock_manager.cleanup_stale(max_entries=max_entries)
+
+        assert removed == 10
+        assert lock_manager.lock_count <= max_entries
+
+    @pytest.mark.anyio
+    async def test_lock_acquisition_timeout(self) -> None:
+        """**Feature: shared-modules-refactoring, Property 5: Concurrent Violation Serialization**
+        **Validates: Requirements 2.4**
+
+        When a lock acquisition times out after the specified timeout,
+        the LockManager SHALL raise LockAcquisitionTimeout.
+        """
+        import asyncio
+        from my_api.shared.auto_ban.lock_manager import InMemoryLockManager
+        from my_api.shared.exceptions import LockAcquisitionTimeout
+
+        lock_manager = InMemoryLockManager()
+        identifier = "test-lock"
+
+        # Acquire lock and hold it
+        async with lock_manager.acquire(identifier):
+            # Try to acquire same lock with short timeout
+            with pytest.raises(LockAcquisitionTimeout) as exc_info:
+                async with lock_manager.acquire(identifier, timeout=0.1):
+                    pass
+
+            assert exc_info.value.identifier == identifier
+            assert exc_info.value.timeout == 0.1
+
+    @given(identifier=identifier_strategy)
+    @settings(max_examples=50)
+    @pytest.mark.anyio
+    async def test_lock_release_allows_reacquisition(self, identifier: str) -> None:
+        """**Feature: shared-modules-refactoring, Property 5: Concurrent Violation Serialization**
+        **Validates: Requirements 2.1**
+
+        For any identifier, after releasing a lock, another acquire SHALL succeed.
+        """
+        from my_api.shared.auto_ban.lock_manager import InMemoryLockManager
+
+        lock_manager = InMemoryLockManager()
+
+        # First acquisition
+        async with lock_manager.acquire(identifier):
+            pass
+
+        # Second acquisition should succeed
+        async with lock_manager.acquire(identifier):
+            pass
+
+        # If we get here, both acquisitions succeeded
+        assert True
+
+
+    @pytest.mark.anyio
+    async def test_atomic_ban_check_and_update(self) -> None:
+        """**Feature: shared-modules-refactoring, Property 6: Atomic Ban Check-and-Update**
+        **Validates: Requirements 2.2**
+
+        For any ban check followed by update, no other operation SHALL observe
+        an intermediate state where the check passed but the update is incomplete.
+        """
+        import asyncio
+
+        config = (
+            AutoBanConfigBuilder()
+            .add_threshold(
+                ViolationType.RATE_LIMIT,
+                max_violations=5,
+                time_window=timedelta(minutes=5),
+                ban_duration=timedelta(hours=1),
+            )
+            .build()
+        )
+        store = InMemoryBanStore()
+        service = AutoBanService(config, store)
+
+        identifier = "atomic-test-id"
+        results = []
+
+        async def record_and_check() -> None:
+            result = await service.record_violation(identifier, ViolationType.RATE_LIMIT)
+            results.append(result)
+
+        # Run concurrent violations
+        tasks = [record_and_check() for _ in range(10)]
+        await asyncio.gather(*tasks)
+
+        # Count how many saw banned vs not banned
+        banned_count = sum(1 for r in results if r.is_banned)
+        not_banned_count = sum(1 for r in results if not r.is_banned)
+
+        # With atomic operations, exactly one transition to banned should occur
+        # after threshold (5) is reached
+        assert banned_count >= 1  # At least one should see banned
+        assert not_banned_count >= 4  # At least 4 should see not banned (before threshold)

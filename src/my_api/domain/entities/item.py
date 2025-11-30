@@ -5,7 +5,7 @@ For pure Pydantic models (non-database), use Annotated types from
 my_api.shared.types for cleaner inline validation.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from pydantic import computed_field
 from sqlalchemy import Column, DateTime
@@ -50,13 +50,13 @@ class Item(ItemBase, table=True):
         description="ULID identifier",
     )
     created_at: datetime = SQLField(
-        default_factory=lambda: datetime.now(),
-        sa_column=Column(DateTime, nullable=False),
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
         description="Creation timestamp",
     )
     updated_at: datetime = SQLField(
-        default_factory=lambda: datetime.now(),
-        sa_column=Column(DateTime, nullable=False),
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
         description="Last update timestamp",
     )
     is_deleted: bool = SQLField(default=False, description="Soft delete flag")

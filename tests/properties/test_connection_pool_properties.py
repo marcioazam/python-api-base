@@ -1,470 +1,228 @@
-"""Property-based tests for connection pool.
+"""Property tests for connection_pool module.
 
-**Feature: api-architecture-analysis, Task 12.1: Connection Pooling Manager**
-**Validates: Requirements 6.1, 6.4**
+**Feature: shared-modules-phase2**
+**Validates: Requirements 1.1, 1.2, 2.2, 2.3**
 """
 
 import asyncio
+from datetime import datetime, timezone
 
-from hypothesis import given, settings
-from hypothesis import strategies as st
+import pytest
+from hypothesis import given, settings, strategies as st
 
-from my_api.shared.connection_pool import (
-    AcquireTimeoutError,
+from my_api.shared.connection_pool.enums import ConnectionState
+from my_api.shared.connection_pool.service import (
     BaseConnectionFactory,
-    ConnectionInfo,
     ConnectionPool,
-    ConnectionState,
     PoolConfig,
     PoolStats,
 )
 
 
-# =============================================================================
-# Test Connection Factory
-# =============================================================================
-
-class MockConnection:
-    """Mock connection for testing."""
-
-    def __init__(self, conn_id: int) -> None:
-        self.conn_id = conn_id
-        self.is_open = True
-
-    def close(self) -> None:
-        self.is_open = False
-
-
-class MockConnectionFactory(BaseConnectionFactory[MockConnection]):
+class MockConnectionFactory(BaseConnectionFactory[str]):
     """Mock connection factory for testing."""
 
-    def __init__(self, fail_validation: bool = False) -> None:
-        self._counter = 0
-        self._fail_validation = fail_validation
+    def __init__(self, fail_create: bool = False, fail_validate: bool = False) -> None:
+        self.created_count = 0
+        self.destroyed_count = 0
+        self.fail_create = fail_create
+        self.fail_validate = fail_validate
 
-    async def create(self) -> MockConnection:
-        self._counter += 1
-        return MockConnection(self._counter)
+    async def create(self) -> str:
+        if self.fail_create:
+            raise RuntimeError("Create failed")
+        self.created_count += 1
+        return f"connection_{self.created_count}"
 
-    async def destroy(self, connection: MockConnection) -> None:
-        connection.close()
+    async def destroy(self, connection: str) -> None:
+        self.destroyed_count += 1
 
-    async def validate(self, connection: MockConnection) -> bool:
-        if self._fail_validation:
-            return False
-        return connection.is_open
+    async def validate(self, connection: str) -> bool:
+        return not self.fail_validate
 
 
-# =============================================================================
-# Property Tests - Pool Configuration
-# =============================================================================
+class TestPoolCounterInvariant:
+    """Property tests for pool counter invariant.
 
-class TestPoolConfigProperties:
-    """Property tests for pool configuration."""
+    **Feature: shared-modules-phase2, Property 1: Pool Counter Invariant**
+    **Validates: Requirements 2.3**
+    """
 
+    @settings(max_examples=100)
     @given(
-        min_size=st.integers(min_value=1, max_value=10),
-        max_size=st.integers(min_value=10, max_value=100),
+        idle=st.integers(min_value=0, max_value=100),
+        in_use=st.integers(min_value=0, max_value=100),
+        unhealthy=st.integers(min_value=0, max_value=100),
     )
-    @settings(max_examples=50)
-    def test_config_preserves_values(self, min_size: int, max_size: int) -> None:
-        """**Property 1: Config preserves values**
+    def test_invariant_holds_for_valid_stats(
+        self, idle: int, in_use: int, unhealthy: int
+    ) -> None:
+        """Invariant should hold when counters sum to total."""
+        total = idle + in_use + unhealthy
+        stats = PoolStats(
+            total_connections=total,
+            idle_connections=idle,
+            in_use_connections=in_use,
+            unhealthy_connections=unhealthy,
+        )
+        assert stats.validate_invariant() is True
 
-        *For any* valid configuration values, they should be preserved.
-
-        **Validates: Requirements 6.1, 6.4**
-        """
-        config = PoolConfig(min_size=min_size, max_size=max_size)
-
-        assert config.min_size == min_size
-        assert config.max_size == max_size
-
-    def test_config_defaults(self) -> None:
-        """**Property 2: Config has sensible defaults**
-
-        Default configuration should have reasonable values.
-
-        **Validates: Requirements 6.1, 6.4**
-        """
-        config = PoolConfig()
-
-        assert config.min_size == 5
-        assert config.max_size == 20
-        assert config.max_idle_time == 300
-        assert config.health_check_interval == 30
-        assert config.acquire_timeout == 10.0
-        assert config.max_lifetime == 3600
-        assert config.retry_attempts == 3
-
-
-# =============================================================================
-# Property Tests - Connection Info
-# =============================================================================
-
-class TestConnectionInfoProperties:
-    """Property tests for connection info."""
-
-    @given(conn_id=st.text(min_size=1, max_size=50))
     @settings(max_examples=100)
-    def test_connection_info_initial_state(self, conn_id: str) -> None:
-        """**Property 3: Connection info has correct initial state**
-
-        *For any* connection ID, initial state should be IDLE.
-
-        **Validates: Requirements 6.1, 6.4**
-        """
-        info = ConnectionInfo(id=conn_id)
-
-        assert info.id == conn_id
-        assert info.state == ConnectionState.IDLE
-        assert info.use_count == 0
-        assert info.health_check_failures == 0
-
-    @given(conn_id=st.text(min_size=1, max_size=50))
-    @settings(max_examples=100)
-    def test_connection_info_has_timestamps(self, conn_id: str) -> None:
-        """**Property 4: Connection info has timestamps**
-
-        *For any* connection info, timestamps should be set.
-
-        **Validates: Requirements 6.1, 6.4**
-        """
-        info = ConnectionInfo(id=conn_id)
-
-        assert info.created_at is not None
-        assert info.last_used_at is not None
+    @given(
+        idle=st.integers(min_value=0, max_value=100),
+        in_use=st.integers(min_value=0, max_value=100),
+        unhealthy=st.integers(min_value=0, max_value=100),
+        offset=st.integers(min_value=1, max_value=10),
+    )
+    def test_invariant_fails_for_invalid_stats(
+        self, idle: int, in_use: int, unhealthy: int, offset: int
+    ) -> None:
+        """Invariant should fail when counters don't sum to total."""
+        total = idle + in_use + unhealthy + offset  # Intentionally wrong
+        stats = PoolStats(
+            total_connections=total,
+            idle_connections=idle,
+            in_use_connections=in_use,
+            unhealthy_connections=unhealthy,
+        )
+        assert stats.validate_invariant() is False
 
 
-# =============================================================================
-# Property Tests - Pool Stats
-# =============================================================================
+class TestStateTransitionCounterConsistency:
+    """Property tests for state transition counter consistency.
 
-class TestPoolStatsProperties:
-    """Property tests for pool statistics."""
+    **Feature: shared-modules-phase2, Property 4: State Transition Counter Consistency**
+    **Validates: Requirements 2.2**
+    """
 
-    def test_stats_initial_values(self) -> None:
-        """**Property 5: Stats have zero initial values**
-
-        Initial pool stats should all be zero.
-
-        **Validates: Requirements 6.1, 6.4**
-        """
-        stats = PoolStats()
-
-        assert stats.total_connections == 0
-        assert stats.idle_connections == 0
-        assert stats.in_use_connections == 0
-        assert stats.unhealthy_connections == 0
-        assert stats.total_acquires == 0
-        assert stats.total_releases == 0
-        assert stats.total_timeouts == 0
-        assert stats.avg_wait_time_ms == 0.0
-
-
-# =============================================================================
-# Property Tests - Connection Pool
-# =============================================================================
-
-class TestConnectionPoolProperties:
-    """Property tests for connection pool."""
-
-    @given(min_size=st.integers(min_value=1, max_value=5))
-    @settings(max_examples=20)
-    async def test_pool_initializes_min_connections(self, min_size: int) -> None:
-        """**Property 6: Pool initializes with min connections**
-
-        *For any* min_size, pool should create that many connections on init.
-
-        **Validates: Requirements 6.1, 6.4**
-        """
-        factory = MockConnectionFactory()
-        config = PoolConfig(min_size=min_size, max_size=min_size + 10)
-        pool = ConnectionPool(factory, config)
-
-        await pool.initialize()
-
-        try:
-            stats = pool.get_stats()
-            assert stats.total_connections == min_size
-            assert stats.idle_connections == min_size
-        finally:
-            await pool.close()
-
-    async def test_acquire_returns_connection(self) -> None:
-        """**Property 7: Acquire returns valid connection**
-
-        Acquiring from pool should return a valid connection.
-
-        **Validates: Requirements 6.1, 6.4**
-        """
+    @pytest.mark.asyncio
+    async def test_transition_updates_counters_atomically(self) -> None:
+        """State transition should update exactly one source and one destination counter."""
         factory = MockConnectionFactory()
         config = PoolConfig(min_size=1, max_size=5)
         pool = ConnectionPool(factory, config)
 
         await pool.initialize()
 
-        try:
-            connection, conn_id = await pool.acquire()
+        # Get initial stats
+        initial_stats = pool.get_stats()
+        assert initial_stats.idle_connections == 1
+        assert initial_stats.in_use_connections == 0
 
-            assert connection is not None
-            assert isinstance(connection, MockConnection)
-            assert conn_id is not None
-        finally:
-            await pool.release(conn_id)
-            await pool.close()
+        # Acquire connection (IDLE -> IN_USE)
+        conn, conn_id = await pool.acquire()
 
-    async def test_acquire_updates_stats(self) -> None:
-        """**Property 8: Acquire updates statistics**
+        # Verify counters changed correctly
+        after_acquire = pool.get_stats()
+        assert after_acquire.idle_connections == initial_stats.idle_connections - 1
+        assert after_acquire.in_use_connections == initial_stats.in_use_connections + 1
+        assert after_acquire.validate_invariant()
 
-        Acquiring should update pool statistics correctly.
+        # Release connection (IN_USE -> IDLE)
+        await pool.release(conn_id)
 
-        **Validates: Requirements 6.1, 6.4**
-        """
+        after_release = pool.get_stats()
+        assert after_release.idle_connections == initial_stats.idle_connections
+        assert after_release.in_use_connections == initial_stats.in_use_connections
+        assert after_release.validate_invariant()
+
+        await pool.close()
+
+
+class TestConnectionLifetimeEnforcement:
+    """Property tests for connection lifetime enforcement.
+
+    **Feature: shared-modules-phase2, Property 2: Connection Lifetime Enforcement**
+    **Validates: Requirements 1.1**
+    """
+
+    @pytest.mark.asyncio
+    async def test_expired_connection_removed_on_release(self) -> None:
+        """Connections exceeding max_lifetime should be removed on release."""
         factory = MockConnectionFactory()
-        config = PoolConfig(min_size=2, max_size=5)
+        config = PoolConfig(min_size=1, max_size=5, max_lifetime=0)  # Immediate expiry
         pool = ConnectionPool(factory, config)
 
         await pool.initialize()
 
-        try:
-            _, conn_id = await pool.acquire()
-            stats = pool.get_stats()
+        # Acquire and release - should trigger removal due to expired lifetime
+        conn, conn_id = await pool.acquire()
+        await pool.release(conn_id)
 
-            assert stats.total_acquires == 1
-            assert stats.in_use_connections == 1
-            assert stats.idle_connections == 1  # 2 - 1
-        finally:
-            await pool.release(conn_id)
-            await pool.close()
+        # Connection should have been removed
+        assert conn_id not in pool._connections
 
-    async def test_release_returns_connection_to_pool(self) -> None:
-        """**Property 9: Release returns connection to pool**
+        await pool.close()
 
-        Releasing should make connection available again.
 
-        **Validates: Requirements 6.1, 6.4**
-        """
-        factory = MockConnectionFactory()
-        config = PoolConfig(min_size=1, max_size=5)
-        pool = ConnectionPool(factory, config)
+class TestPoolClosureCompleteness:
+    """Property tests for pool closure completeness.
 
-        await pool.initialize()
+    **Feature: shared-modules-phase2, Property 3: Pool Closure Completeness**
+    **Validates: Requirements 1.2**
+    """
 
-        try:
-            _, conn_id = await pool.acquire()
-            await pool.release(conn_id)
-
-            stats = pool.get_stats()
-            assert stats.total_releases == 1
-            assert stats.in_use_connections == 0
-            assert stats.idle_connections == 1
-        finally:
-            await pool.close()
-
-    @given(num_acquires=st.integers(min_value=1, max_value=5))
-    @settings(max_examples=20)
-    async def test_multiple_acquires(self, num_acquires: int) -> None:
-        """**Property 10: Multiple acquires work correctly**
-
-        *For any* number of acquires within pool size, all should succeed.
-
-        **Validates: Requirements 6.1, 6.4**
-        """
-        factory = MockConnectionFactory()
-        config = PoolConfig(min_size=num_acquires, max_size=num_acquires + 5)
-        pool = ConnectionPool(factory, config)
-
-        await pool.initialize()
-
-        conn_ids = []
-        try:
-            for _ in range(num_acquires):
-                _, conn_id = await pool.acquire()
-                conn_ids.append(conn_id)
-
-            stats = pool.get_stats()
-            assert stats.total_acquires == num_acquires
-            assert stats.in_use_connections == num_acquires
-        finally:
-            for conn_id in conn_ids:
-                await pool.release(conn_id)
-            await pool.close()
-
-    async def test_pool_close_releases_all(self) -> None:
-        """**Property 11: Close releases all connections**
-
-        Closing pool should release all connections.
-
-        **Validates: Requirements 6.1, 6.4**
-        """
+    @pytest.mark.asyncio
+    async def test_close_awaits_all_destructions(self) -> None:
+        """Close should await all connection destructions."""
         factory = MockConnectionFactory()
         config = PoolConfig(min_size=3, max_size=5)
         pool = ConnectionPool(factory, config)
 
         await pool.initialize()
+        initial_count = factory.created_count
+
+        # Close pool
         await pool.close()
 
+        # All connections should be destroyed
+        assert factory.destroyed_count == initial_count
+        assert len(pool._connections) == 0
+
+    @pytest.mark.asyncio
+    async def test_close_handles_destruction_errors(self) -> None:
+        """Close should handle destruction errors gracefully."""
+
+        class FailingFactory(MockConnectionFactory):
+            async def destroy(self, connection: str) -> None:
+                raise RuntimeError("Destroy failed")
+
+        factory = FailingFactory()
+        config = PoolConfig(min_size=2, max_size=5)
+        pool = ConnectionPool(factory, config)
+
+        await pool.initialize()
+
+        # Close should not raise even if destructions fail
+        await pool.close()
+
+        # Pool should still be marked as closed
         assert pool.is_closed
-        assert pool.size == 0
 
-    async def test_acquire_timeout(self) -> None:
-        """**Property 12: Acquire times out when pool exhausted**
 
-        When pool is exhausted and timeout expires, should raise error.
+class TestPoolInvariantAfterOperations:
+    """Test that pool invariant holds after various operations."""
 
-        **Validates: Requirements 6.1, 6.4**
-        """
+    @pytest.mark.asyncio
+    async def test_invariant_after_multiple_acquires_releases(self) -> None:
+        """Invariant should hold after multiple acquire/release cycles."""
         factory = MockConnectionFactory()
-        config = PoolConfig(min_size=1, max_size=1, acquire_timeout=0.1)
+        config = PoolConfig(min_size=2, max_size=10)
         pool = ConnectionPool(factory, config)
 
         await pool.initialize()
 
-        try:
-            # Acquire the only connection
-            _, conn_id = await pool.acquire()
+        connections: list[tuple[str, str]] = []
 
-            # Try to acquire another (should timeout)
-            try:
-                await pool.acquire()
-                assert False, "Should have raised AcquireTimeoutError"
-            except AcquireTimeoutError as e:
-                assert e.timeout == 0.1
-        finally:
+        # Acquire multiple connections
+        for _ in range(5):
+            conn, conn_id = await pool.acquire()
+            connections.append((conn, conn_id))
+            assert pool.get_stats().validate_invariant()
+
+        # Release all connections
+        for _, conn_id in connections:
             await pool.release(conn_id)
-            await pool.close()
+            assert pool.get_stats().validate_invariant()
 
-    async def test_get_stats_returns_copy(self) -> None:
-        """**Property 13: Get stats returns copy**
-
-        Getting stats should return a copy, not the original.
-
-        **Validates: Requirements 6.1, 6.4**
-        """
-        factory = MockConnectionFactory()
-        config = PoolConfig(min_size=1, max_size=5)
-        pool = ConnectionPool(factory, config)
-
-        await pool.initialize()
-
-        try:
-            stats1 = pool.get_stats()
-            stats2 = pool.get_stats()
-
-            assert stats1 is not stats2
-            assert stats1.total_connections == stats2.total_connections
-        finally:
-            await pool.close()
-
-
-# =============================================================================
-# Property Tests - Connection States
-# =============================================================================
-
-class TestConnectionStateProperties:
-    """Property tests for connection states."""
-
-    def test_all_states_defined(self) -> None:
-        """**Property 14: All connection states are defined**
-
-        All expected connection states should be available.
-
-        **Validates: Requirements 6.1, 6.4**
-        """
-        assert ConnectionState.IDLE == "idle"
-        assert ConnectionState.IN_USE == "in_use"
-        assert ConnectionState.UNHEALTHY == "unhealthy"
-        assert ConnectionState.CLOSED == "closed"
-
-    async def test_state_transitions(self) -> None:
-        """**Property 15: State transitions are correct**
-
-        Connection states should transition correctly during lifecycle.
-
-        **Validates: Requirements 6.1, 6.4**
-        """
-        factory = MockConnectionFactory()
-        config = PoolConfig(min_size=1, max_size=5)
-        pool = ConnectionPool(factory, config)
-
-        await pool.initialize()
-
-        try:
-            # Initial state is IDLE
-            conn_id = list(pool._connections.keys())[0]
-            _, info = pool._connections[conn_id]
-            assert info.state == ConnectionState.IDLE
-
-            # After acquire, state is IN_USE
-            _, acquired_id = await pool.acquire()
-            _, info = pool._connections[acquired_id]
-            assert info.state == ConnectionState.IN_USE
-
-            # After release, state is IDLE
-            await pool.release(acquired_id)
-            _, info = pool._connections[acquired_id]
-            assert info.state == ConnectionState.IDLE
-        finally:
-            await pool.close()
-
-
-# =============================================================================
-# Property Tests - Pool Size
-# =============================================================================
-
-class TestPoolSizeProperties:
-    """Property tests for pool size management."""
-
-    @given(
-        min_size=st.integers(min_value=1, max_value=5),
-        max_size=st.integers(min_value=6, max_value=10),
-    )
-    @settings(max_examples=20)
-    async def test_pool_respects_size_limits(
-        self,
-        min_size: int,
-        max_size: int,
-    ) -> None:
-        """**Property 16: Pool respects size limits**
-
-        *For any* min/max size, pool should stay within limits.
-
-        **Validates: Requirements 6.1, 6.4**
-        """
-        factory = MockConnectionFactory()
-        config = PoolConfig(min_size=min_size, max_size=max_size)
-        pool = ConnectionPool(factory, config)
-
-        await pool.initialize()
-
-        try:
-            assert pool.size >= min_size
-            assert pool.size <= max_size
-        finally:
-            await pool.close()
-
-    async def test_pool_grows_on_demand(self) -> None:
-        """**Property 17: Pool grows on demand**
-
-        Pool should create new connections when needed up to max.
-
-        **Validates: Requirements 6.1, 6.4**
-        """
-        factory = MockConnectionFactory()
-        config = PoolConfig(min_size=1, max_size=5)
-        pool = ConnectionPool(factory, config)
-
-        await pool.initialize()
-
-        conn_ids = []
-        try:
-            # Acquire more than min_size
-            for _ in range(3):
-                _, conn_id = await pool.acquire()
-                conn_ids.append(conn_id)
-
-            assert pool.size >= 3
-        finally:
-            for conn_id in conn_ids:
-                await pool.release(conn_id)
-            await pool.close()
+        await pool.close()

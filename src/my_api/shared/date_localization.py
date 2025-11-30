@@ -122,7 +122,7 @@ class DateTimeFormatter:
     def format_relative(self, dt: datetime, now: datetime | None = None) -> str:
         """Format as relative time (e.g., '2 hours ago')."""
         if now is None:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
         diff = now - dt
         seconds = diff.total_seconds()

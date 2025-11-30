@@ -1,14 +1,12 @@
-"""streaming models."""
+"""streaming models.
 
-import asyncio
+**Feature: shared-modules-code-review-fixes, Task 10.3**
+**Validates: Requirements 3.4**
+"""
+
 import json
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Any, AsyncIterator, Callable, Generic, TypeVar
-from pydantic import BaseModel
-from .enums import StreamFormat
+from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass

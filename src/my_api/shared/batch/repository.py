@@ -151,12 +151,22 @@ class BatchRepository[T: BaseModel, CreateT: BaseModel, UpdateT: BaseModel](
         config: BatchConfig | None = None,
         on_progress: ProgressCallback | None = None,
     ) -> BatchResult[T]:
-        """Create multiple entities in bulk."""
+        """Create multiple entities in bulk.
+
+        Supports ROLLBACK error strategy which reverts all changes on error.
+        """
         cfg = self._get_config(config)
         chunks = chunk_sequence(items, cfg.chunk_size)
         progress = BatchProgress(total_items=len(items), total_chunks=len(chunks))
         succeeded: list[T] = []
         failed: list[tuple[CreateT, Exception]] = []
+
+        # Snapshot for rollback
+        snapshot: dict[str, T] | None = None
+        if cfg.error_strategy == BatchErrorStrategy.ROLLBACK:
+            snapshot = dict(self._storage)
+
+        created_ids: list[str] = []  # Track created IDs for rollback
 
         for chunk in chunks:
             chunk_succeeded, chunk_failed = 0, 0
@@ -168,6 +178,7 @@ class BatchRepository[T: BaseModel, CreateT: BaseModel, UpdateT: BaseModel](
                     entity = self._entity_type.model_validate(entity_data)
                     entity_id = entity_data[self._id_field]
                     self._storage[entity_id] = entity
+                    created_ids.append(entity_id)
                     succeeded.append(entity)
                     chunk_succeeded += 1
                 except Exception as e:
@@ -175,6 +186,20 @@ class BatchRepository[T: BaseModel, CreateT: BaseModel, UpdateT: BaseModel](
                     chunk_failed += 1
                     if cfg.error_strategy == BatchErrorStrategy.FAIL_FAST:
                         break
+                    if cfg.error_strategy == BatchErrorStrategy.ROLLBACK:
+                        # Rollback all changes
+                        rollback_error = None
+                        try:
+                            if snapshot is not None:
+                                self._storage = snapshot
+                        except Exception as re:
+                            rollback_error = re
+                        return BatchResult(
+                            succeeded=[], failed=[(item, e)],
+                            total_processed=len(succeeded) + 1,
+                            total_succeeded=0, total_failed=len(succeeded) + 1,
+                            rolled_back=True, rollback_error=rollback_error,
+                        )
             self._update_progress(progress, chunk_succeeded, chunk_failed, on_progress)
             if cfg.error_strategy == BatchErrorStrategy.FAIL_FAST and failed:
                 break

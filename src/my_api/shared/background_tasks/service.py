@@ -1,16 +1,20 @@
 """background_tasks service."""
 
 import asyncio
+import logging
+import traceback
 import uuid
-from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from enum import Enum
-from typing import Any, Awaitable, Callable, Generic, TypeVar
+from typing import Any, Awaitable, Callable
+
 from pydantic import BaseModel
-from .enums import TaskPriority, TaskStatus
-from .models import TaskResult, Task
+
 from .config import TaskConfig
 from .constants import T
+from .enums import TaskStatus
+from .models import Task, TaskResult
+
+logger = logging.getLogger(__name__)
 
 
 class QueueStats(BaseModel):
@@ -210,7 +214,7 @@ class BackgroundTaskQueue:
         Returns:
             Task result or None if timeout.
         """
-        start = asyncio.get_event_loop().time()
+        start = asyncio.get_running_loop().time()
 
         while True:
             task = self._tasks.get(task_id)
@@ -220,7 +224,7 @@ class BackgroundTaskQueue:
             if task.status in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED):
                 return task.result
 
-            if timeout and (asyncio.get_event_loop().time() - start) > timeout:
+            if timeout and (asyncio.get_running_loop().time() - start) > timeout:
                 return None
 
             await asyncio.sleep(0.1)
@@ -292,37 +296,99 @@ class BackgroundTaskQueue:
                 sum(self._execution_times) / len(self._execution_times)
             )
 
+        except asyncio.CancelledError:
+            # Always re-raise CancelledError for proper cancellation propagation
+            self._stats.running_tasks -= 1
+            raise
+
+        except asyncio.TimeoutError as e:
+            # Handle timeout separately
+            completed_at = datetime.now(timezone.utc)
+            duration_ms = (completed_at - started_at).total_seconds() * 1000
+
+            logger.warning(
+                "Task timeout",
+                extra={
+                    "task_id": task.id,
+                    "attempt": task.attempts,
+                    "duration_ms": duration_ms,
+                    "timeout_ms": task.config.timeout_ms,
+                },
+            )
+
+            await self._handle_task_failure(
+                task, e, "TimeoutError", started_at, completed_at, duration_ms
+            )
+
         except Exception as e:
-            # Handle failure
-            if task.attempts < task.config.max_retries:
-                # Retry
-                task.status = TaskStatus.RETRYING
-                delay = task.config.retry_delay_ms * (
-                    task.config.retry_backoff ** (task.attempts - 1)
-                )
-                await asyncio.sleep(delay / 1000)
-                task.status = TaskStatus.PENDING
-                self._stats.running_tasks -= 1
-                self._stats.pending_tasks += 1
-                await self._queue.put(task)
-            else:
-                # Final failure
-                completed_at = datetime.now(timezone.utc)
-                duration_ms = (completed_at - started_at).total_seconds() * 1000
+            # Handle unexpected exceptions
+            completed_at = datetime.now(timezone.utc)
+            duration_ms = (completed_at - started_at).total_seconds() * 1000
+            stack_trace = traceback.format_exc()
 
-                task.status = TaskStatus.FAILED
-                task.result = TaskResult(
-                    task_id=task.id,
-                    status=TaskStatus.FAILED,
-                    error=str(e),
-                    attempts=task.attempts,
-                    started_at=started_at,
-                    completed_at=completed_at,
-                    duration_ms=duration_ms,
-                )
+            logger.exception(
+                "Task failed with unexpected error",
+                extra={
+                    "task_id": task.id,
+                    "attempt": task.attempts,
+                    "duration_ms": duration_ms,
+                    "error_type": type(e).__name__,
+                },
+            )
 
-                self._stats.running_tasks -= 1
-                self._stats.failed_tasks += 1
+            await self._handle_task_failure(
+                task, e, type(e).__name__, started_at, completed_at, duration_ms, stack_trace
+            )
+
+    async def _handle_task_failure(
+        self,
+        task: Task,
+        error: Exception,
+        error_type: str,
+        started_at: datetime,
+        completed_at: datetime,
+        duration_ms: float,
+        stack_trace: str | None = None,
+    ) -> None:
+        """Handle task failure with retry logic.
+
+        Args:
+            task: The failed task.
+            error: The exception that caused the failure.
+            error_type: Name of the exception class.
+            started_at: When task execution started.
+            completed_at: When task execution completed.
+            duration_ms: Execution duration in milliseconds.
+            stack_trace: Full traceback string.
+        """
+        if task.attempts < task.config.max_retries:
+            # Retry
+            task.status = TaskStatus.RETRYING
+            delay = task.config.retry_delay_ms * (
+                task.config.retry_backoff ** (task.attempts - 1)
+            )
+            await asyncio.sleep(delay / 1000)
+            task.status = TaskStatus.PENDING
+            self._stats.running_tasks -= 1
+            self._stats.pending_tasks += 1
+            await self._queue.put(task)
+        else:
+            # Final failure
+            task.status = TaskStatus.FAILED
+            task.result = TaskResult(
+                task_id=task.id,
+                status=TaskStatus.FAILED,
+                error=str(error),
+                error_type=error_type,
+                stack_trace=stack_trace,
+                attempts=task.attempts,
+                started_at=started_at,
+                completed_at=completed_at,
+                duration_ms=duration_ms,
+            )
+
+            self._stats.running_tasks -= 1
+            self._stats.failed_tasks += 1
 
     def get_stats(self) -> QueueStats:
         """Get queue statistics.

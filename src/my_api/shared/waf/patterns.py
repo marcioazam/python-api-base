@@ -5,17 +5,20 @@
 """
 
 # Default SQL Injection patterns
+# Note: Using bounded quantifiers (.{0,100}) to prevent ReDoS attacks
+# **Feature: shared-modules-code-review-fixes, Task 5.1**
+# **Validates: Requirements 5.1, 5.2**
 SQL_INJECTION_PATTERNS = [
-    r"(\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER)\b.*\b(FROM|INTO|SET|TABLE)\b)",
+    r"(\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER)\b.{0,100}\b(FROM|INTO|SET|TABLE)\b)",
     r"(\bOR\b\s+\d+\s*=\s*\d+)",
     r"(\bAND\b\s+\d+\s*=\s*\d+)",
     r"(--\s*$|;\s*--)",
     r"(\b(EXEC|EXECUTE)\s*\()",
-    r"(\/\*.*\*\/)",
+    r"(\/\*.{0,100}\*\/)",
     r"(\bWAITFOR\b\s+\bDELAY\b)",
     r"(\bBENCHMARK\b\s*\()",
     r"(\bSLEEP\b\s*\()",
-    r"('.*\bOR\b.*')",
+    r"('.{0,100}\bOR\b.{0,100}')",
 ]
 
 # Default XSS patterns

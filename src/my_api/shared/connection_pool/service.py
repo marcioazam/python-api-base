@@ -36,6 +36,19 @@ class PoolStats(BaseModel):
     total_timeouts: int = 0
     avg_wait_time_ms: float = 0.0
 
+    def validate_invariant(self) -> bool:
+        """Validate that counters are consistent.
+
+        **Feature: shared-modules-phase2, Property 1: Pool Counter Invariant**
+        **Validates: Requirements 2.3**
+
+        Returns:
+            True if invariant holds (idle + in_use + unhealthy == total).
+        """
+        return (
+            self.idle_connections + self.in_use_connections + self.unhealthy_connections
+        ) == self.total_connections
+
 class PoolError(Exception):
     """Base pool error."""
 
@@ -255,6 +268,52 @@ class ConnectionPool(Generic[T]):
 
         await self._idle_queue.put(conn_id)
 
+    async def _transition_state(
+        self,
+        conn_id: str,
+        from_state: ConnectionState,
+        to_state: ConnectionState,
+    ) -> bool:
+        """Atomically transition connection state and update counters.
+
+        **Feature: shared-modules-phase2, Property 4: State Transition Counter Consistency**
+        **Validates: Requirements 2.2**
+
+        Args:
+            conn_id: Connection ID.
+            from_state: Expected current state.
+            to_state: Target state.
+
+        Returns:
+            True if transition succeeded.
+        """
+        async with self._lock:
+            if conn_id not in self._connections:
+                return False
+
+            _, info = self._connections[conn_id]
+            if info.state != from_state:
+                return False
+
+            # Decrement source counter
+            if from_state == ConnectionState.IDLE:
+                self._stats.idle_connections -= 1
+            elif from_state == ConnectionState.IN_USE:
+                self._stats.in_use_connections -= 1
+            elif from_state == ConnectionState.UNHEALTHY:
+                self._stats.unhealthy_connections -= 1
+
+            # Increment destination counter
+            if to_state == ConnectionState.IDLE:
+                self._stats.idle_connections += 1
+            elif to_state == ConnectionState.IN_USE:
+                self._stats.in_use_connections += 1
+            elif to_state == ConnectionState.UNHEALTHY:
+                self._stats.unhealthy_connections += 1
+
+            info.state = to_state
+            return True
+
     async def _remove_connection(self, conn_id: str) -> None:
         """Remove a connection from the pool.
 
@@ -330,7 +389,13 @@ class ConnectionPool(Generic[T]):
         return self._stats.model_copy()
 
     async def close(self) -> None:
-        """Close the pool and all connections."""
+        """Close the pool and all connections.
+
+        **Feature: shared-modules-phase2, Property 3: Pool Closure Completeness**
+        **Validates: Requirements 1.2**
+
+        Awaits all pending destructions before returning.
+        """
         self._closed = True
 
         if self._health_check_task:
@@ -340,9 +405,17 @@ class ConnectionPool(Generic[T]):
             except asyncio.CancelledError:
                 pass
 
+        # Collect all destruction tasks
+        destruction_tasks: list[asyncio.Task[None]] = []
         conn_ids = list(self._connections.keys())
+
         for conn_id in conn_ids:
-            await self._remove_connection(conn_id)
+            task = asyncio.create_task(self._remove_connection(conn_id))
+            destruction_tasks.append(task)
+
+        # Await all destructions to complete
+        if destruction_tasks:
+            await asyncio.gather(*destruction_tasks, return_exceptions=True)
 
     @property
     def is_closed(self) -> bool:

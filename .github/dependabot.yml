@@ -6,7 +6,18 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    reviewers:
+      - "team-leads"
+    assignees:
+      - "security-team"
     groups:
+      production:
+        patterns:
+          - "fastapi*"
+          - "pydantic*"
+          - "sqlalchemy*"
+          - "uvicorn*"
+          - "alembic*"
       dev-dependencies:
         patterns:
           - "pytest*"

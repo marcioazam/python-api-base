@@ -113,6 +113,9 @@ def redact_pii(
 ) -> EventDict:
     """Redact PII from log events.
     
+    **Feature: infrastructure-code-review**
+    **Validates: Requirements 5.1, 5.2**
+    
     Args:
         logger: Logger instance.
         method_name: Logging method name.
@@ -123,7 +126,11 @@ def redact_pii(
     """
     def _redact_value(key: str, value: Any) -> Any:
         """Redact value if key matches PII pattern."""
-        key_lower = key.lower()
+        # Handle None and non-string keys
+        if value is None:
+            return value
+        
+        key_lower = str(key).lower()
         for pattern in PII_PATTERNS:
             if pattern in key_lower:
                 return "[REDACTED]"
@@ -132,6 +139,9 @@ def redact_pii(
             return {k: _redact_value(k, v) for k, v in value.items()}
         elif isinstance(value, list):
             return [_redact_value(str(i), v) for i, v in enumerate(value)]
+        elif isinstance(value, bytes):
+            # Don't log raw bytes, could contain sensitive data
+            return "[BINARY DATA]"
         
         return value
     
@@ -142,14 +152,30 @@ def configure_logging(
     log_level: str = "INFO",
     log_format: str = "json",
     development: bool = False,
+    additional_pii_patterns: set[str] | None = None,
 ) -> None:
     """Configure structured logging.
     
     Args:
-        log_level: Logging level (DEBUG, INFO, WARNING, ERROR).
+        log_level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL).
         log_format: Output format ("json" or "console").
         development: Enable development mode with pretty printing.
+        additional_pii_patterns: Additional patterns to redact as PII.
+        
+    Raises:
+        ValueError: If log_level is not a valid logging level.
     """
+    # Validate log_level
+    valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+    if log_level.upper() not in valid_levels:
+        raise ValueError(
+            f"Invalid log_level: {log_level}. "
+            f"Must be one of: {', '.join(sorted(valid_levels))}"
+        )
+    
+    # Add additional PII patterns if provided
+    if additional_pii_patterns:
+        PII_PATTERNS.update(additional_pii_patterns)
     # Shared processors
     shared_processors: list[Processor] = [
         structlog.contextvars.merge_contextvars,

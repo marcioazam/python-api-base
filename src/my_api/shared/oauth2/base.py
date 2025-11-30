@@ -102,7 +102,7 @@ class BaseOAuthProvider(ABC):
                     self._config.token_url,
                     data=data,
                     headers=headers,
-                    timeout=30.0,
+                    timeout=self._config.request_timeout,
                 )
                 response.raise_for_status()
                 return OAuthTokenResponse(**response.json())
@@ -149,7 +149,7 @@ class BaseOAuthProvider(ABC):
                 response = await client.post(
                     self._config.token_url,
                     data=data,
-                    timeout=30.0,
+                    timeout=self._config.request_timeout,
                 )
                 response.raise_for_status()
                 return OAuthTokenResponse(**response.json())

@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.shared.utils.datetime import from_iso8601, to_iso8601, utc_now
+from my_api.shared.utils.datetime import ensure_utc, from_iso8601, to_iso8601, utc_now
 
 
 # Strategy for generating timezone-aware datetimes
@@ -113,3 +113,130 @@ class TestDateTimeISO8601:
         assert parsed.hour == hour
         assert parsed.minute == minute
         assert parsed.second == second
+
+
+class TestEnsureUTC:
+    """Property tests for ensure_utc function.
+
+    **Feature: shared-modules-refactoring, Property 13: UTC Datetime Consistency**
+    **Feature: shared-modules-refactoring, Property 14: Naive Datetime UTC Treatment**
+    **Validates: Requirements 6.1, 6.2, 6.3**
+    """
+
+    @settings(max_examples=100)
+    @given(dt=aware_datetimes)
+    def test_ensure_utc_preserves_utc_datetimes(self, dt: datetime) -> None:
+        """
+        **Feature: shared-modules-refactoring, Property 13: UTC Datetime Consistency**
+        **Validates: Requirements 6.1, 6.2**
+
+        For any UTC datetime, ensure_utc SHALL return an equivalent datetime
+        with tzinfo equal to timezone.utc.
+        """
+        result = ensure_utc(dt)
+
+        # Result must be timezone-aware
+        assert result.tzinfo is not None
+
+        # Result must be in UTC
+        assert result.tzinfo == timezone.utc or result.utcoffset().total_seconds() == 0
+
+        # Timestamp must be preserved
+        assert abs(result.timestamp() - dt.timestamp()) < 0.001
+
+    @settings(max_examples=100)
+    @given(
+        year=st.integers(min_value=2000, max_value=2050),
+        month=st.integers(min_value=1, max_value=12),
+        day=st.integers(min_value=1, max_value=28),
+        hour=st.integers(min_value=0, max_value=23),
+        minute=st.integers(min_value=0, max_value=59),
+        second=st.integers(min_value=0, max_value=59),
+    )
+    def test_ensure_utc_treats_naive_as_utc(
+        self,
+        year: int,
+        month: int,
+        day: int,
+        hour: int,
+        minute: int,
+        second: int,
+    ) -> None:
+        """
+        **Feature: shared-modules-refactoring, Property 14: Naive Datetime UTC Treatment**
+        **Validates: Requirements 6.3**
+
+        For any naive datetime, ensure_utc SHALL treat it as UTC,
+        preserving the same date/time components.
+        """
+        naive_dt = datetime(year, month, day, hour, minute, second)
+        result = ensure_utc(naive_dt)
+
+        # Result must be timezone-aware
+        assert result.tzinfo is not None
+
+        # Result must be in UTC
+        assert result.tzinfo == timezone.utc
+
+        # Date/time components must be preserved (naive treated as UTC)
+        assert result.year == year
+        assert result.month == month
+        assert result.day == day
+        assert result.hour == hour
+        assert result.minute == minute
+        assert result.second == second
+
+    @settings(max_examples=100)
+    @given(
+        year=st.integers(min_value=2000, max_value=2050),
+        month=st.integers(min_value=1, max_value=12),
+        day=st.integers(min_value=1, max_value=28),
+        hour=st.integers(min_value=0, max_value=23),
+        minute=st.integers(min_value=0, max_value=59),
+        second=st.integers(min_value=0, max_value=59),
+    )
+    def test_naive_and_explicit_utc_produce_same_result(
+        self,
+        year: int,
+        month: int,
+        day: int,
+        hour: int,
+        minute: int,
+        second: int,
+    ) -> None:
+        """
+        **Feature: shared-modules-refactoring, Property 14: Naive Datetime UTC Treatment**
+        **Validates: Requirements 6.3**
+
+        For any datetime components, a naive datetime and an explicit UTC datetime
+        with the same components SHALL produce equivalent results from ensure_utc.
+        """
+        naive_dt = datetime(year, month, day, hour, minute, second)
+        explicit_utc_dt = datetime(year, month, day, hour, minute, second, tzinfo=timezone.utc)
+
+        naive_result = ensure_utc(naive_dt)
+        explicit_result = ensure_utc(explicit_utc_dt)
+
+        # Both should produce the same timestamp
+        assert abs(naive_result.timestamp() - explicit_result.timestamp()) < 0.001
+
+        # Both should have UTC timezone
+        assert naive_result.tzinfo == timezone.utc
+        assert explicit_result.tzinfo == timezone.utc or explicit_result.utcoffset().total_seconds() == 0
+
+    def test_utc_now_returns_utc_aware_datetime(self) -> None:
+        """
+        **Feature: shared-modules-refactoring, Property 13: UTC Datetime Consistency**
+        **Validates: Requirements 6.1, 6.2**
+
+        utc_now SHALL return a timezone-aware datetime in UTC.
+        """
+        now = utc_now()
+
+        # Must be timezone-aware
+        assert now.tzinfo is not None
+
+        # Must be UTC (offset of 0)
+        offset = now.utcoffset()
+        assert offset is not None
+        assert offset.total_seconds() == 0

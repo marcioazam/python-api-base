@@ -1,7 +1,12 @@
-"""telemetry service."""
+"""telemetry service.
+
+**Feature: infrastructure-code-review**
+**Validates: Requirements 4.2, 4.3**
+"""
 
 import functools
 import logging
+import threading
 from contextvars import ContextVar
 from typing import Any, Callable, ParamSpec, TypeVar
 from .constants import P, T
@@ -9,8 +14,9 @@ from .noop import _NoOpSpan, _NoOpTracer, _NoOpMeter, _NoOpCounter, _NoOpHistogr
 
 logger = logging.getLogger(__name__)
 
-# Global telemetry instance
+# Global telemetry instance with thread safety
 _telemetry: "TelemetryProvider | None" = None
+_telemetry_lock = threading.Lock()
 
 # Context variables for trace/span correlation
 _current_trace_id: ContextVar[str | None] = ContextVar("trace_id", default=None)
@@ -219,9 +225,10 @@ def get_telemetry() -> TelemetryProvider:
         TelemetryProvider instance.
     """
     global _telemetry
-    if _telemetry is None:
-        _telemetry = TelemetryProvider()
-    return _telemetry
+    with _telemetry_lock:
+        if _telemetry is None:
+            _telemetry = TelemetryProvider()
+        return _telemetry
 
 def init_telemetry(
     service_name: str = "my-api",
@@ -243,15 +250,16 @@ def init_telemetry(
         Initialized TelemetryProvider.
     """
     global _telemetry
-    _telemetry = TelemetryProvider(
-        service_name=service_name,
-        service_version=service_version,
-        otlp_endpoint=otlp_endpoint,
-        enable_tracing=enable_tracing,
-        enable_metrics=enable_metrics,
-    )
-    _telemetry.initialize()
-    return _telemetry
+    with _telemetry_lock:
+        _telemetry = TelemetryProvider(
+            service_name=service_name,
+            service_version=service_version,
+            otlp_endpoint=otlp_endpoint,
+            enable_tracing=enable_tracing,
+            enable_metrics=enable_metrics,
+        )
+        _telemetry.initialize()
+        return _telemetry
 
 def traced(
     name: str | None = None,

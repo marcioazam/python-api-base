@@ -42,6 +42,7 @@ class BatchLoader(Generic[T]):
     """Batch loader for preventing N+1 queries."""
 
     batch_resolver: Callable[[list[str]], Awaitable[dict[str, T]]]
+    max_cache_size: int = 10000
     _pending_ids: set[str] = field(default_factory=set, init=False)
     _cache: dict[str, T] = field(default_factory=dict, init=False)
 
@@ -55,6 +56,14 @@ class BatchLoader(Generic[T]):
         for entity_id in entity_ids:
             self.add(entity_id)
 
+    def _enforce_cache_limit(self) -> None:
+        """Evict oldest entries if cache exceeds max size."""
+        if len(self._cache) > self.max_cache_size:
+            excess = len(self._cache) - self.max_cache_size
+            keys_to_remove = list(self._cache.keys())[:excess]
+            for key in keys_to_remove:
+                del self._cache[key]
+
     async def load_all(self) -> dict[str, T]:
         """Load all pending entities in a single batch."""
         if self._pending_ids:
@@ -62,6 +71,7 @@ class BatchLoader(Generic[T]):
             loaded = await self.batch_resolver(ids_to_load)
             self._cache.update(loaded)
             self._pending_ids.clear()
+            self._enforce_cache_limit()
         return self._cache
 
     async def get(self, entity_id: str) -> T | None:

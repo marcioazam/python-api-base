@@ -1,5 +1,10 @@
-"""Async SQLAlchemy session factory with connection pooling."""
+"""Async SQLAlchemy session factory with connection pooling.
 
+**Feature: infrastructure-code-review**
+**Validates: Requirements 1.1, 1.2, 1.4**
+"""
+
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -10,6 +15,8 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlmodel import SQLModel
+
+logger = logging.getLogger(__name__)
 
 
 class DatabaseSession:
@@ -30,10 +37,23 @@ class DatabaseSession:
 
         Args:
             database_url: Database connection URL.
-            pool_size: Connection pool size.
-            max_overflow: Max overflow connections.
+            pool_size: Connection pool size (must be >= 1).
+            max_overflow: Max overflow connections (must be >= 0).
             echo: Echo SQL statements.
+
+        Raises:
+            ValueError: If database_url is empty or pool parameters are invalid.
         """
+        # Validate database_url
+        if not database_url or not database_url.strip():
+            raise ValueError("database_url cannot be empty or whitespace")
+
+        # Validate pool parameters
+        if pool_size < 1:
+            raise ValueError(f"pool_size must be >= 1, got {pool_size}")
+        if max_overflow < 0:
+            raise ValueError(f"max_overflow must be >= 0, got {max_overflow}")
+
         self._engine: AsyncEngine = create_async_engine(
             database_url,
             pool_size=pool_size,
@@ -76,13 +96,17 @@ class DatabaseSession:
             AsyncSession: Database session.
 
         Raises:
-            Exception: Re-raises any exception after rollback.
+            Exception: Re-raises any exception after rollback with preserved chain.
         """
         session = self._session_factory()
         try:
             yield session
             await session.commit()
-        except Exception:
+        except Exception as e:
+            logger.error(
+                "Database session error, rolling back",
+                extra={"error_type": type(e).__name__, "error_message": str(e)},
+            )
             await session.rollback()
             raise
         finally:

@@ -1,4 +1,7 @@
-"""Protocols base definitions.
+"""Repository and infrastructure protocol definitions.
+
+Defines protocols for data access patterns including repositories,
+caches, event handlers, CQRS commands/queries, and unit of work.
 
 Feature: file-size-compliance-phase2
 """

@@ -1,12 +1,10 @@
-"""request_signing enums."""
+"""request_signing enums.
 
-import hashlib
-import hmac
-import time
-from dataclasses import dataclass
-from datetime import datetime, timezone
+**Feature: shared-modules-code-review-fixes, Task 8.1**
+**Validates: Requirements 3.1**
+"""
+
 from enum import Enum
-from typing import Any
 
 
 class HashAlgorithm(str, Enum):

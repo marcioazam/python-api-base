@@ -157,14 +157,14 @@ class DeveloperPortal:
 
         expires_at = None
         if expires_in_days:
-            expires_at = datetime.utcnow() + timedelta(days=expires_in_days)
+            expires_at = datetime.now(timezone.utc) + timedelta(days=expires_in_days)
 
         key_info = APIKeyInfo(
             key_id=str(uuid.uuid4()),
             key_hash=key_hash,
             developer_id=developer_id,
             name=name,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             expires_at=expires_at,
             scopes=scopes or []
         )
@@ -179,7 +179,7 @@ class DeveloperPortal:
         if not key_info or not key_info.is_active:
             return None
 
-        if key_info.expires_at and key_info.expires_at < datetime.utcnow():
+        if key_info.expires_at and key_info.expires_at < datetime.now(timezone.utc):
             return None
 
         return key_info
@@ -197,7 +197,7 @@ class DeveloperPortal:
         days: int = 30
     ) -> UsageStats:
         """Get usage statistics for developer."""
-        end = datetime.utcnow()
+        end = datetime.now(timezone.utc)
         start = end - timedelta(days=days)
         return await self._usage.get_stats(developer_id, start, end)
 

@@ -1,12 +1,9 @@
-"""query_analyzer enums."""
+"""query_analyzer enums.
 
-import re
-import time
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+**Feature: shared-modules-phase3-fixes, Task 5.3**
+"""
+
 from enum import Enum
-from typing import Any
-from pydantic import BaseModel
 
 
 class QueryType(str, Enum):
@@ -17,6 +14,7 @@ class QueryType(str, Enum):
     UPDATE = "UPDATE"
     DELETE = "DELETE"
     OTHER = "OTHER"
+
 
 class OptimizationSuggestion(str, Enum):
     """Query optimization suggestions."""

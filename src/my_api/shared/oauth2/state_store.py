@@ -29,11 +29,17 @@ class StateStore(Protocol):
 class InMemoryStateStore:
     """In-memory OAuth state store for development/testing."""
 
+    # Auto-cleanup threshold
+    AUTO_CLEANUP_THRESHOLD = 100
+
     def __init__(self) -> None:
         self._states: dict[str, OAuthState] = {}
 
     async def save_state(self, state: OAuthState) -> None:
-        """Save OAuth state."""
+        """Save OAuth state with automatic cleanup when store grows large."""
+        # Auto-cleanup when threshold exceeded
+        if len(self._states) >= self.AUTO_CLEANUP_THRESHOLD:
+            self.clear_expired()
         self._states[state.state] = state
 
     async def get_state(self, state_id: str) -> OAuthState | None:

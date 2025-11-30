@@ -2,27 +2,73 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: my-api
+  namespace: my-api
   labels:
-    app: my-api
-    version: v1
+    app.kubernetes.io/name: my-api
+    app.kubernetes.io/instance: my-api-prod
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: my-api
+    app.kubernetes.io/managed-by: kubectl
 spec:
   replicas: 3
+  revisionHistoryLimit: 10
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
-      app: my-api
+      app.kubernetes.io/name: my-api
+      app.kubernetes.io/instance: my-api-prod
   template:
     metadata:
       labels:
-        app: my-api
-        version: v1
+        app.kubernetes.io/name: my-api
+        app.kubernetes.io/instance: my-api-prod
+        app.kubernetes.io/version: "1.0.0"
+        app.kubernetes.io/component: api
+        app.kubernetes.io/part-of: my-api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
     spec:
+      serviceAccountName: my-api
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: my-api
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: my-api
+                topologyKey: kubernetes.io/hostname
       containers:
         - name: my-api
-          image: my-api:latest
-          imagePullPolicy: IfNotPresent
+          image: my-api:1.0.0
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
               name: http
+              protocol: TCP
           env:
             - name: DATABASE_URL
               valueFrom:
@@ -34,11 +80,21 @@ spec:
                 secretKeyRef:
                   name: my-api-secrets
                   key: jwt-secret
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: my-api-secrets
+                  key: redis-url
             - name: ENVIRONMENT
               valueFrom:
                 configMapKeyRef:
                   name: my-api-config
                   key: environment
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: my-api-config
+                  key: log_level
           resources:
             requests:
               memory: "256Mi"
@@ -46,34 +102,43 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
-          livenessProbe:
-            httpGet:
-              path: /health/live
-              port: 8000
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            timeoutSeconds: 5
-          readinessProbe:
-            httpGet:
-              path: /health/ready
-              port: 8000
-            initialDelaySeconds: 5
-            periodSeconds: 5
-            timeoutSeconds: 3
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 100
-              podAffinityTerm:
-                labelSelector:
-                  matchExpressions:
-                    - key: app
-                      operator: In
-                      values:
-                        - my-api
-                topologyKey: kubernetes.io/hostname
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8000
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8000
+            initialDelaySeconds: 0
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
