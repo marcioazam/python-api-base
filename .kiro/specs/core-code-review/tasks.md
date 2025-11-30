@@ -8,7 +8,7 @@
   - Raise ValueError with clear message for insufficient entropy
   - _Requirements: 1.1_
 
-- [ ]* 1.2 Write property test for secret key entropy validation
+- [ ] 1.2 Write property test for secret key entropy validation
   - **Property 1: Secret Key Entropy Validation**
   - **Validates: Requirements 1.1**
 
@@ -22,7 +22,7 @@
   - Apply redaction in __repr__ and logging contexts
   - _Requirements: 1.3_
 
-- [ ]* 1.5 Write property test for database URL credential redaction
+- [ ] 1.5 Write property test for database URL credential redaction
   - **Property 2: Database URL Credential Redaction**
   - **Validates: Requirements 1.3**
 
@@ -31,7 +31,7 @@
   - Raise ValidationError with specific details for invalid formats
   - _Requirements: 1.4_
 
-- [ ]* 1.7 Write property test for rate limit validation
+- [ ] 1.7 Write property test for rate limit validation
   - Test various valid and invalid rate limit formats
   - **Validates: Requirements 1.4**
 
@@ -49,7 +49,7 @@
   - Update to_dict() to include new fields
   - _Requirements: 2.1, 2.2_
 
-- [ ]* 2.3 Write property test for exception serialization consistency
+- [ ] 2.3 Write property test for exception serialization consistency
   - **Property 3: Exception Serialization Consistency**
   - **Validates: Requirements 2.1, 2.2**
 
@@ -58,7 +58,7 @@
   - Normalize to consistent internal format
   - _Requirements: 2.3_
 
-- [ ]* 2.5 Write property test for ValidationError format handling
+- [ ] 2.5 Write property test for ValidationError format handling
   - Test both list and dict error formats
   - **Validates: Requirements 2.3**
 
@@ -80,7 +80,7 @@
   - Add hook priority support (optional)
   - _Requirements: 3.4_
 
-- [ ]* 3.3 Write property test for lifecycle hook execution order
+- [ ] 3.3 Write property test for lifecycle hook execution order
   - **Property 4: Lifecycle Hook Execution Order**
   - **Validates: Requirements 3.4**
 
@@ -90,7 +90,7 @@
   - Raise aggregated exception at end if any failed
   - _Requirements: 3.5_
 
-- [ ]* 3.5 Write property test for shutdown hook error aggregation
+- [ ] 3.5 Write property test for shutdown hook error aggregation
   - **Property 5: Lifecycle Hook Error Aggregation**
   - **Validates: Requirements 3.5**
 
@@ -116,7 +116,7 @@
   - Apply skew in expiration checks
   - _Requirements: 4.4_
 
-- [ ]* 5.3 Write property test for JWT required claims
+- [ ] 5.3 Write property test for JWT required claims
   - **Property 6: JWT Required Claims**
   - **Validates: Requirements 4.1**
 
@@ -125,7 +125,7 @@
   - Reject reused refresh tokens
   - _Requirements: 4.5_
 
-- [ ]* 5.5 Write property test for refresh token replay protection
+- [ ] 5.5 Write property test forr refresh token replay protection
   - **Validates: Requirements 4.5**
 
 ## Phase 5: JWT Validator Algorithm Restriction
