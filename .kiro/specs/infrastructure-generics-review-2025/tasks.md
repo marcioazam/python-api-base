@@ -1,0 +1,224 @@
+# Implementation Plan
+
+- [x] 1. Create Generic Base Protocols Module
+  - [x] 1.1 Create `src/infrastructure/generics/__init__.py` with module exports
+    - Create directory structure for generics module
+    - Export all protocols and utilities
+    - _Requirements: 1.1, 1.2, 1.3, 1.4_
+  - [x] 1.2 Implement `Repository[TEntity, TId]` protocol in `src/infrastructure/generics/protocols.py`
+    - Define generic repository protocol with CRUD operations
+    - Use PEP 695 syntax for type parameters
+    - Add `@runtime_checkable` decorator
+    - _Requirements: 1.1_
+  - [x] 1.3 Implement `Service[TInput, TOutput]` protocol
+    - Define generic service protocol with execute method
+    - Return Result type for error handling
+    - _Requirements: 1.2_
+  - [x] 1.4 Implement `Factory[TConfig, TInstance]` protocol
+    - Define generic factory protocol with create methods
+    - Support default instance creation
+    - _Requirements: 1.3_
+  - [x] 1.5 Implement `Store[TKey, TValue]` protocol
+    - Define generic key-value store protocol
+    - Support TTL for expiring entries
+    - _Requirements: 1.4_
+  - [x] 1.6 Write property test for protocol compliance
+    - **Property 1: Result Type Round-Trip**
+    - **Validates: Requirements 2.1, 2.3, 2.4**
+
+- [x] 2. Implement Centralized Error Messages
+  - [x] 2.1 Create `src/infrastructure/generics/errors.py` with ErrorMessages class
+    - Define all error message constants using Final[str]
+    - Organize by domain (AUTH, CACHE, DB, SECURITY)
+    - Support message formatting with parameters
+    - _Requirements: 3.1, 3.3, 3.4_
+  - [x] 2.2 Create typed error classes hierarchy
+    - InfrastructureError base class
+    - AuthenticationError, CacheError, PoolError, ValidationError
+    - Include error_code and message attributes
+    - _Requirements: 3.2_
+  - [x] 2.3 Write property test for error message formatting
+    - **Property 3: Result Error Propagation**
+    - **Validates: Requirements 2.2, 2.4**
+
+- [x] 3. Implement Standardized Status Enums
+  - [x] 3.1 Create `src/infrastructure/generics/status.py` with status enums
+    - BaseStatus with common states
+    - ConnectionStatus for pool states
+    - TaskStatus for task execution
+    - HealthStatus for health checks
+    - All enums use str mixin for JSON serialization
+    - _Requirements: 4.1, 4.2, 4.4_
+  - [x] 3.2 Write property test for status enum serialization
+    - **Property 18: Status Enum JSON Serialization**
+    - **Validates: Requirements 4.4**
+
+- [x] 4. Enhance Result Pattern
+  - [x] 4.1 Update `src/shared/result.py` with enhanced Result type
+    - Add map_err method to Err class
+    - Ensure frozen=True and slots=True for performance
+    - Add comprehensive docstrings with examples
+    - _Requirements: 2.1, 2.4_
+  - [x] 4.2 Write property test for Result map composition
+    - **Property 2: Result Map Composition**
+    - **Validates: Requirements 2.4**
+  - [x] 4.3 Implement catch_to_result utility function
+    - Convert exception-throwing functions to Result
+    - Support custom error mapping
+    - _Requirements: 2.5_
+
+- [x] 5. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 6. Refactor Cache Module with Generics
+  - [x] 6.1 Update `src/infrastructure/cache/providers.py` with enhanced generics
+    - Ensure CacheProvider[T] uses PEP 695 syntax
+    - Update CacheEntry[T] with tags support
+    - Add CacheKey[T] for type-safe keys
+    - _Requirements: 6.1, 6.2, 6.3_
+  - [x] 6.2 Write property test for cache type preservation
+    - **Property 4: Cache Type Preservation**
+    - **Validates: Requirements 6.2, 6.3, 6.4**
+  - [x] 6.3 Implement tag-based cache invalidation
+    - Add set_with_tags method
+    - Add invalidate_by_tag method
+    - Maintain tag index for efficient invalidation
+    - _Requirements: 6.5_
+  - [x] 6.4 Write property test for tag invalidation
+    - **Property 5: Cache Tag Invalidation**
+    - **Validates: Requirements 6.5**
+
+- [x] 7. Refactor Connection Pool with Generics
+  - [x] 7.1 Update `src/infrastructure/connection_pool/service.py` with enhanced generics
+    - Ensure ConnectionPool[T] uses PEP 695 syntax
+    - Update ConnectionInfo with generic connection type
+    - Ensure ConnectionPoolContext[T] preserves types
+    - _Requirements: 5.1, 5.3, 5.4_
+  - [x] 7.2 Write property test for pool counter invariant
+    - **Property 6: Pool Counter Invariant**
+    - **Validates: Requirements 5.5**
+  - [x] 7.3 Write property test for acquire-release round-trip
+    - **Property 7: Pool Acquire-Release Round-Trip**
+    - **Validates: Requirements 5.3, 5.4**
+
+- [x] 8. Refactor Token Store with Generics
+  - [x] 8.1 Update `src/infrastructure/auth/token_store/stores.py` with enhanced validation
+    - Ensure StoredToken uses frozen=True and slots=True
+    - Add comprehensive input validation
+    - Use centralized error messages
+    - _Requirements: 8.2, 8.3_
+  - [x] 8.2 Write property test for token immutability
+    - **Property 8: Token Store Immutability**
+    - **Validates: Requirements 8.2**
+  - [x] 8.3 Write property test for input validation
+    - **Property 9: Token Store Input Validation**
+    - **Validates: Requirements 8.3**
+  - [x] 8.4 Write property test for revocation atomicity
+    - **Property 10: Token Revocation Atomicity**
+    - **Validates: Requirements 8.5**
+
+- [x] 9. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 10. Refactor Compression Module
+  - [x] 10.1 Update `src/infrastructure/compression/compressors.py` with protocol compliance
+    - Ensure Compressor protocol is runtime_checkable
+    - Verify all compressors implement protocol correctly
+    - _Requirements: 9.1_
+  - [x] 10.2 Write property test for compression round-trip
+    - **Property 11: Compression Round-Trip**
+    - **Validates: Requirements 9.1, 9.4**
+  - [x] 10.3 Update algorithm selection logic
+    - Improve Accept-Encoding header parsing
+    - Ensure correct priority-based selection
+    - _Requirements: 9.3_
+  - [x] 10.4 Write property test for algorithm selection
+    - **Property 12: Compression Algorithm Selection**
+    - **Validates: Requirements 9.3**
+
+- [x] 11. Refactor Messaging Module with Generics
+  - [x] 11.1 Update `src/infrastructure/messaging/generics.py` with enhanced type safety
+    - Ensure EventBus[TEvent] uses PEP 695 syntax
+    - Update MessageHandler[TMessage, TResult] protocol
+    - Ensure DeadLetter[TMessage] preserves types
+    - _Requirements: 10.1, 10.2, 10.4_
+  - [x] 11.2 Write property test for event bus type safety
+    - **Property 13: Event Bus Type Safety**
+    - **Validates: Requirements 10.3**
+  - [x] 11.3 Write property test for topic routing
+    - **Property 14: Message Broker Topic Routing**
+    - **Validates: Requirements 10.5**
+
+- [x] 12. Refactor Observability Module with Generics
+  - [x] 12.1 Update `src/infrastructure/observability/generics.py` with enhanced metrics
+    - Ensure Counter[TLabels], Gauge[TLabels], Histogram[TLabels] use typed labels
+    - Update TypedSpan[TAttributes] for tracing
+    - Update LogEntry[TContext, TExtra] for logging
+    - _Requirements: 11.1, 11.2, 11.3_
+  - [x] 12.2 Update CompositeHealthCheck with proper status propagation
+    - Implement correct status aggregation logic
+    - UNHEALTHY if any component unhealthy
+    - DEGRADED if any degraded and none unhealthy
+    - _Requirements: 11.5_
+  - [x] 12.3 Write property test for health check status propagation
+    - **Property 15: Health Check Status Propagation**
+    - **Validates: Requirements 11.5**
+
+- [x] 13. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 14. Refactor Security Module with Generics
+  - [x] 14.1 Update `src/infrastructure/security/generics.py` with enhanced authorization
+    - Ensure AuthorizationContext[TResource, TAction] uses typed parameters
+    - Update RateLimiter[TKey] protocol
+    - Update EncryptedValue[T] wrapper
+    - Update AuditEntry[TEvent, TContext] for audit logging
+    - _Requirements: 12.1, 12.3, 12.4_
+  - [x] 14.2 Write property test for rate limiter consistency
+    - **Property 16: Rate Limiter Consistency**
+    - **Validates: Requirements 12.2**
+
+- [x] 15. Refactor Task Module with Generics
+  - [x] 15.1 Update `src/infrastructure/tasks/generics.py` with enhanced task handling
+    - Ensure Task[TInput, TOutput] protocol is correct
+    - Update TaskResult[TOutput] dataclass
+    - Update RetryableTask[TInput, TOutput, TException]
+    - _Requirements: 13.1, 13.2, 13.3_
+  - [x] 15.2 Update PriorityJobQueue with proper ordering
+    - Ensure jobs are dequeued in priority order
+    - Use heapq for efficient priority queue
+    - _Requirements: 13.5_
+  - [x] 15.3 Write property test for priority queue ordering
+    - **Property 17: Priority Queue Ordering**
+    - **Validates: Requirements 13.5**
+
+- [x] 16. Code Deduplication and Consolidation
+  - [x] 16.1 Extract shared validation utilities to `src/infrastructure/generics/validators.py`
+    - Create validate_non_empty function
+    - Create validate_range function
+    - Create validate_format function
+    - _Requirements: 14.3_
+  - [x] 16.2 Create shared configuration patterns in `src/infrastructure/generics/config.py`
+    - Create BaseConfig dataclass
+    - Create ConfigBuilder generic class
+    - _Requirements: 14.5_
+  - [x] 16.3 Update all modules to use shared utilities
+    - Replace duplicated validation logic
+    - Replace duplicated configuration patterns
+    - _Requirements: 14.1, 14.2_
+
+- [x] 17. Documentation and Type Annotations
+  - [x] 17.1 Add comprehensive docstrings to all generic protocols
+    - Document type parameters
+    - Add usage examples
+    - _Requirements: 15.2, 15.4, 15.5_
+  - [x] 17.2 Ensure all protocols are runtime_checkable
+    - Add @runtime_checkable decorator where needed
+    - _Requirements: 15.3_
+  - [x] 17.3 Update module __init__.py files with proper exports
+    - Export all public APIs
+    - Add __all__ lists
+    - _Requirements: 15.1_
+
+- [x] 18. Final Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.

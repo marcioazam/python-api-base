@@ -13,13 +13,15 @@ logger = logging.getLogger(__name__)
 
 def get_alembic_config() -> Config:
     """Get Alembic configuration.
-    
+
     Returns:
         Alembic Config object.
     """
     # Find project root (where alembic.ini is)
     current = Path(__file__).resolve()
-    root = current.parent.parent.parent.parent.parent  # src/my_app/infrastructure/database -> root
+    root = (
+        current.parent.parent.parent.parent.parent
+    )  # src/my_app/infrastructure/database -> root
 
     alembic_ini = root / "alembic.ini"
     if not alembic_ini.exists():
@@ -33,13 +35,14 @@ def get_alembic_config() -> Config:
 
 async def check_pending_migrations(engine: AsyncEngine) -> bool:
     """Check if there are pending migrations.
-    
+
     Args:
         engine: Async database engine.
-        
+
     Returns:
         True if there are pending migrations.
     """
+
     def _check(connection) -> bool:
         context = MigrationContext.configure(connection)
         current_rev = context.get_current_revision()
@@ -49,6 +52,7 @@ async def check_pending_migrations(engine: AsyncEngine) -> bool:
 
         # Get head revision from alembic
         from alembic.script import ScriptDirectory
+
         script_dir = ScriptDirectory.from_config(config)
         head_rev = script_dir.get_current_head()
 
@@ -60,13 +64,14 @@ async def check_pending_migrations(engine: AsyncEngine) -> bool:
 
 async def get_current_revision(engine: AsyncEngine) -> str | None:
     """Get current database revision.
-    
+
     Args:
         engine: Async database engine.
-        
+
     Returns:
         Current revision string or None.
     """
+
     def _get_revision(connection) -> str | None:
         context = MigrationContext.configure(connection)
         return context.get_current_revision()
@@ -77,9 +82,9 @@ async def get_current_revision(engine: AsyncEngine) -> str | None:
 
 def run_migrations_sync(database_url: str) -> None:
     """Run pending migrations synchronously.
-    
+
     This is useful for startup scripts or CLI tools.
-    
+
     Args:
         database_url: Database connection URL.
     """
@@ -93,10 +98,10 @@ def run_migrations_sync(database_url: str) -> None:
 
 async def ensure_database_ready(engine: AsyncEngine) -> None:
     """Ensure database is ready with all migrations applied.
-    
+
     Args:
         engine: Async database engine.
-        
+
     Raises:
         RuntimeError: If migrations are pending and auto-migrate is disabled.
     """

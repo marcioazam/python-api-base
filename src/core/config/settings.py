@@ -33,10 +33,10 @@ RATE_LIMIT_PATTERN: Final = re.compile(r"^\d+/(second|minute|hour|day)$")
 
 def redact_url_credentials(url: str) -> str:
     """Redact credentials from a URL for safe logging.
-    
+
     Args:
         url: URL that may contain credentials.
-        
+
     Returns:
         URL with password replaced by [REDACTED].
     """
@@ -74,12 +74,14 @@ class DatabaseSettings(BaseSettings):
 
     def __repr__(self) -> str:
         """Safe representation without credentials."""
-        return f"DatabaseSettings(url='{self.get_safe_url()}', pool_size={self.pool_size})"
+        return (
+            f"DatabaseSettings(url='{self.get_safe_url()}', pool_size={self.pool_size})"
+        )
 
 
 class SecuritySettings(BaseSettings):
     """Security configuration settings.
-    
+
     **Feature: core-code-review**
     **Validates: Requirements 1.1, 1.2, 1.4**
     """
@@ -117,7 +119,7 @@ class SecuritySettings(BaseSettings):
     @classmethod
     def validate_secret_entropy(cls, v: SecretStr) -> SecretStr:
         """Validate secret key has sufficient entropy (256 bits = 32 chars).
-        
+
         **Feature: core-code-review, Property 1: Secret Key Entropy Validation**
         **Validates: Requirements 1.1**
         """
@@ -132,7 +134,7 @@ class SecuritySettings(BaseSettings):
     @classmethod
     def warn_wildcard_cors(cls, v: list[str]) -> list[str]:
         """Warn about wildcard CORS in production.
-        
+
         **Feature: core-code-review**
         **Validates: Requirements 1.2**
         """
@@ -149,7 +151,7 @@ class SecuritySettings(BaseSettings):
     @classmethod
     def validate_rate_limit_format(cls, v: str) -> str:
         """Validate rate limit format.
-        
+
         **Feature: core-code-review**
         **Validates: Requirements 1.4**
         """

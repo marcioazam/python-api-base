@@ -10,7 +10,7 @@ Original: saga.py (493 lines)
 Refactored: saga/ package (7 files, ~40-180 lines each)
 
 Usage:
-    from my_app.infrastructure.db.saga import Saga, SagaStep, SagaBuilder
+    from infrastructure.db.saga import Saga, SagaStep, SagaBuilder
 
     saga = (
         SagaBuilder("create-order")

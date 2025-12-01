@@ -24,6 +24,7 @@ class Entity(Identifiable, Protocol):
 
     pass
 
+
 @runtime_checkable
 class TrackedEntity(Identifiable, Timestamped, Protocol):
     """Protocol for entities with ID and timestamp tracking.
@@ -43,6 +44,7 @@ class TrackedEntity(Identifiable, Timestamped, Protocol):
 
     pass
 
+
 @runtime_checkable
 class DeletableEntity(Identifiable, SoftDeletable, Protocol):
     """Protocol for entities with ID and soft delete support.
@@ -56,6 +58,7 @@ class DeletableEntity(Identifiable, SoftDeletable, Protocol):
     """
 
     pass
+
 
 @runtime_checkable
 class FullEntity(Identifiable, Timestamped, SoftDeletable, Protocol):
@@ -76,6 +79,7 @@ class FullEntity(Identifiable, Timestamped, SoftDeletable, Protocol):
 
     pass
 
+
 @runtime_checkable
 class Auditable(Identifiable, Timestamped, Protocol):
     """Protocol for auditable entities.
@@ -86,6 +90,7 @@ class Auditable(Identifiable, Timestamped, Protocol):
 
     pass
 
+
 @runtime_checkable
 class Versionable(Protocol):
     """Protocol for entities with optimistic locking.
@@ -95,6 +100,7 @@ class Versionable(Protocol):
     """
 
     version: int
+
 
 @runtime_checkable
 class VersionedEntity(Identifiable, Timestamped, Versionable, Protocol):

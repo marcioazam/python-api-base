@@ -6,7 +6,6 @@
 flowchart TB
     subgraph Interface["Interface Layer"]
         API[API Routers]
-        WH[Webhooks]
         Admin[Admin]
     end
     
@@ -50,7 +49,6 @@ flowchart TB
 
 ### Interface Layer
 - **API Routers**: FastAPI route handlers
-- **Webhooks**: Inbound/outbound webhook handlers
 - **Admin**: Administrative endpoints
 
 ### Application Layer

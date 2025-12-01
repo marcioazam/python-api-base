@@ -96,7 +96,9 @@ class EventStore[AggregateT: Aggregate[Any], EventT: SourcedEvent](ABC):
         ...
 
 
-class InMemoryEventStore[AggregateT: Aggregate[Any], EventT: SourcedEvent](EventStore[AggregateT, EventT]):
+class InMemoryEventStore[AggregateT: Aggregate[Any], EventT: SourcedEvent](
+    EventStore[AggregateT, EventT]
+):
     """In-memory event store implementation.
 
     Useful for testing and development. Not suitable for production

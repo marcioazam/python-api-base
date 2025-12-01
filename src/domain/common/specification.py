@@ -229,7 +229,9 @@ class AttributeSpecification[T, V](Specification[T]):
 
     Example:
         >>> age_spec = AttributeSpecification[User, int]("age", ComparisonOperator.GE, 18)
-        >>> name_spec = AttributeSpecification[User, str]("name", ComparisonOperator.STARTS_WITH, "J")
+        >>> name_spec = AttributeSpecification[User, str](
+        ...     "name", ComparisonOperator.STARTS_WITH, "J"
+        ... )
         >>> combined = age_spec & name_spec
     """
 
@@ -292,9 +294,13 @@ class AttributeSpecification[T, V](Specification[T]):
             case ComparisonOperator.CONTAINS:
                 return attr_value is not None and self._value in attr_value
             case ComparisonOperator.STARTS_WITH:
-                return attr_value is not None and str(attr_value).startswith(str(self._value))
+                return attr_value is not None and str(attr_value).startswith(
+                    str(self._value)
+                )
             case ComparisonOperator.ENDS_WITH:
-                return attr_value is not None and str(attr_value).endswith(str(self._value))
+                return attr_value is not None and str(attr_value).endswith(
+                    str(self._value)
+                )
             case ComparisonOperator.IN:
                 return attr_value in (self._value or [])
             case ComparisonOperator.IS_NULL:

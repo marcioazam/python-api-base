@@ -160,7 +160,9 @@ class TelemetryProvider:
                 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import (
                     OTLPMetricExporter,
                 )
-                from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+                from opentelemetry.sdk.metrics.export import (
+                    PeriodicExportingMetricReader,
+                )
 
                 otlp_exporter = OTLPMetricExporter(endpoint=self._otlp_endpoint)
                 reader = PeriodicExportingMetricReader(otlp_exporter)
@@ -216,9 +218,11 @@ def get_current_trace_id() -> str | None:
     """Get the current trace ID from context."""
     return _current_trace_id.get()
 
+
 def get_current_span_id() -> str | None:
     """Get the current span ID from context."""
     return _current_span_id.get()
+
 
 def get_telemetry() -> TelemetryProvider:
     """Get or create the global telemetry provider.
@@ -231,6 +235,7 @@ def get_telemetry() -> TelemetryProvider:
         if _telemetry is None:
             _telemetry = TelemetryProvider()
         return _telemetry
+
 
 def init_telemetry(
     service_name: str = "my-api",
@@ -262,6 +267,7 @@ def init_telemetry(
         )
         _telemetry.initialize()
         return _telemetry
+
 
 def traced[T](
     name: str | None = None,

@@ -94,7 +94,7 @@ logs/
 
 # uv
 .uv/
-uv.lock
+# Note: uv.lock is committed for reproducible builds
 
 # Terraform
 *.tfstate
@@ -109,3 +109,85 @@ override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
+.terraformrc
+terraform.rc
+
+# Helm
+*.tgz
+.helmignore
+charts/
+
+# Kubernetes
+kubeconfig
+*.kubeconfig
+*.key
+*.crt
+*.pem
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+.docker/
+
+# Secrets and Credentials
+*.secrets
+.secrets/
+credentials.json
+service-account.json
+*.env.local
+*.env.*.local
+
+# Uploads and temporary files
+uploads/
+tmp/
+temp/
+*.tmp
+
+# OS specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Backup files
+*.bak
+*.backup
+*~
+*.swp
+*.swo
+
+# Coverage and reports
+.coverage.*
+htmlcov/
+*.cover
+coverage/
+test-results/
+.pytest_cache/
+.hypothesis/
+
+# Documentation builds
+docs/_build/
+docs/.doctrees/
+site/
+
+# Profiling
+*.prof
+*.lprof
+prof/
+
+# IDEs
+.idea/
+*.iml
+.vscode/settings.json
+.vscode/launch.json
+*.code-workspace
+.fleet/
+.python-version
+
+# uv specific
+.uv/
+.uv.cache/

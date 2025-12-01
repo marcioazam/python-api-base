@@ -51,9 +51,8 @@ class InboxEntry:
             message_id=message_id,
             message_type=message_type,
             payload=payload,
-            idempotency_key=idempotency_key or cls._generate_idempotency_key(
-                message_id, message_type, payload
-            ),
+            idempotency_key=idempotency_key
+            or cls._generate_idempotency_key(message_id, message_type, payload),
         )
 
     @staticmethod
@@ -88,7 +87,9 @@ class InboxEntry:
             "payload": self.payload,
             "status": self.status.value,
             "received_at": self.received_at.isoformat(),
-            "processed_at": self.processed_at.isoformat() if self.processed_at else None,
+            "processed_at": self.processed_at.isoformat()
+            if self.processed_at
+            else None,
             "error_message": self.error_message,
             "idempotency_key": self.idempotency_key,
         }
@@ -159,7 +160,8 @@ class InMemoryInboxRepository:
     async def delete_processed(self, older_than: datetime) -> int:
         """Delete processed entries older than given date."""
         to_delete = [
-            e.message_id for e in self._entries.values()
+            e.message_id
+            for e in self._entries.values()
             if e.status == InboxStatus.PROCESSED
             and e.processed_at
             and e.processed_at < older_than

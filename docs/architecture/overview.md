@@ -76,37 +76,41 @@ sequenceDiagram
 ## Directory Structure
 
 ```
-src/my_api/
-├── core/                    # Application core
-│   ├── config.py           # Pydantic Settings
-│   ├── container.py        # DI Container
-│   └── exceptions.py       # Domain exceptions
+src/
+├── core/                    # Core Layer - Base classes, config, DI
+│   ├── base/               # Base classes and protocols
+│   ├── config/             # Pydantic Settings
+│   ├── di/                 # DI Container
+│   ├── errors/             # Error handling and constants
+│   ├── protocols/          # Core protocols
+│   └── types/              # Type definitions
 │
-├── shared/                  # Reusable generics
-│   ├── repository.py       # IRepository[T]
-│   ├── use_case.py         # BaseUseCase[T]
-│   ├── router.py           # GenericCRUDRouter[T]
-│   ├── dto.py              # ApiResponse, PaginatedResponse
-│   ├── mapper.py           # IMapper[T, DTO]
-│   └── entity.py           # BaseEntity
+├── domain/                  # Domain Layer - Business rules
+│   ├── common/             # Shared domain components
+│   ├── items/              # Items domain entities
+│   └── users/              # Users domain entities
 │
-├── domain/                  # Business domain
-│   └── entities/           # Domain entities
-│       └── item.py
+├── application/             # Application Layer - Use cases
+│   ├── _services/          # Shared application services
+│   ├── _shared/            # Shared application components
+│   ├── items/              # Items use cases
+│   └── users/              # Users use cases
 │
-├── application/             # Application logic
-│   ├── use_cases/          # Business operations
-│   └── mappers/            # Entity <-> DTO
+├── infrastructure/          # Infrastructure Layer - External services
+│   ├── auth/               # Authentication (JWT, token store)
+│   ├── cache/              # Cache providers (Redis, in-memory)
+│   ├── db/                 # Database session, repositories
+│   ├── observability/      # OpenTelemetry, logging
+│   ├── resilience/         # Circuit breaker, retry, rate limiting
+│   ├── security/           # Security utilities
+│   └── ...                 # Other infrastructure modules
 │
-├── adapters/                # External interfaces
-│   ├── api/
-│   │   ├── routes/         # FastAPI routers
-│   │   └── middleware/     # Request processing
-│   └── repositories/       # Data access
+├── interface/               # Interface Layer - API adapters
+│   └── api/                # REST API routes, middleware
 │
-└── infrastructure/          # Technical concerns
-    ├── database/           # DB session, migrations
-    └── logging/            # Structured logging
+└── shared/                  # Shared Kernel - Generic components
+    ├── caching/            # Cache utilities
+    └── utils/              # Shared utilities
 ```
 
 ## Key Design Decisions

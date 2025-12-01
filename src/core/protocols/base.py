@@ -19,6 +19,7 @@ class Identifiable(Protocol):
 
     id: Any
 
+
 @runtime_checkable
 class Timestamped(Protocol):
     """Protocol for entities with timestamp tracking.
@@ -28,6 +29,7 @@ class Timestamped(Protocol):
 
     created_at: datetime
     updated_at: datetime
+
 
 @runtime_checkable
 class SoftDeletable(Protocol):

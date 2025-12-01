@@ -8,7 +8,7 @@ import pytest
 from hypothesis import given, strategies as st, settings
 from datetime import datetime
 
-from src.my_app.shared.mutation_testing import (
+from my_app.shared.mutation_testing import (
     MutantStatus,
     MutantLocation,
     Mutant,

@@ -1,5 +1,9 @@
-"""DTOs for the Users application layer.
+"""Write Model DTOs for the Users bounded context.
 
+These DTOs are used for command operations (create, update, delete).
+For read/query operations, use read_model.users_read.dto instead.
+
+**Architecture: CQRS - Write Model**
 **Feature: architecture-restructuring-2025**
 **Validates: Requirements 3.6**
 """
@@ -10,11 +14,10 @@ from pydantic import BaseModel, Field, EmailStr, ConfigDict
 
 
 class UserDTO(BaseModel):
-    """User data transfer object."""
-    
+    """User data transfer object for API responses."""
+
     model_config = ConfigDict(frozen=True)
-    """User data transfer object."""
-    
+
     id: str
     email: str
     username: str | None = None
@@ -28,9 +31,9 @@ class UserDTO(BaseModel):
 
 class CreateUserDTO(BaseModel):
     """DTO for creating a new user."""
-    
+
     model_config = ConfigDict(frozen=True)
-    
+
     email: EmailStr = Field(..., description="User email address")
     password: str = Field(..., min_length=8, description="User password")
     username: str | None = Field(default=None, min_length=3, max_length=50)
@@ -39,36 +42,36 @@ class CreateUserDTO(BaseModel):
 
 class UpdateUserDTO(BaseModel):
     """DTO for updating a user."""
-    
+
     model_config = ConfigDict(frozen=True)
-    
+
     username: str | None = Field(default=None, min_length=3, max_length=50)
     display_name: str | None = Field(default=None, max_length=100)
 
 
 class ChangePasswordDTO(BaseModel):
     """DTO for changing password."""
-    
+
     model_config = ConfigDict(frozen=True)
-    
+
     current_password: str = Field(..., description="Current password")
     new_password: str = Field(..., min_length=8, description="New password")
 
 
 class ChangeEmailDTO(BaseModel):
     """DTO for changing email."""
-    
+
     model_config = ConfigDict(frozen=True)
-    
+
     new_email: EmailStr = Field(..., description="New email address")
     password: str = Field(..., description="Current password for verification")
 
 
 class UserListDTO(BaseModel):
     """DTO for user list item."""
-    
+
     model_config = ConfigDict(frozen=True)
-    
+
     id: str
     email: str
     username: str | None = None

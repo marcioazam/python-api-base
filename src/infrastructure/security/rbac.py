@@ -12,7 +12,7 @@ from functools import wraps
 from typing import Any, Protocol, runtime_checkable
 from collections.abc import Callable
 
-from my_app.core.exceptions import AuthorizationError
+from core.exceptions import AuthorizationError
 
 logger = logging.getLogger(__name__)
 
@@ -277,8 +277,7 @@ class RBACService:
         """
         if not self.check_permission(user, required):
             logger.warning(
-                f"Authorization failed: user={user.id}, "
-                f"required={required.value}"
+                f"Authorization failed: user={user.id}, required={required.value}"
             )
             raise AuthorizationError(
                 message=f"Permission '{required.value}' required",
@@ -293,9 +292,9 @@ _rbac_lock = threading.Lock()
 
 def get_rbac_service() -> RBACService:
     """Get the global RBAC service instance (thread-safe).
-    
+
     Uses double-check locking pattern for thread-safe lazy initialization.
-    
+
     **Feature: core-improvements-v2**
     **Validates: Requirements 1.1, 1.4, 1.5**
     """
@@ -307,7 +306,9 @@ def get_rbac_service() -> RBACService:
     return _rbac_service
 
 
-def require_permission[F: Callable[..., Any]](*permissions: Permission) -> Callable[[F], F]:
+def require_permission[F: Callable[..., Any]](
+    *permissions: Permission,
+) -> Callable[[F], F]:
     """Decorator to require permissions on a function/endpoint.
 
     Can be used with FastAPI dependencies or standalone functions.
@@ -323,6 +324,7 @@ def require_permission[F: Callable[..., Any]](*permissions: Permission) -> Calla
         async def update_item(item_id: str, user: User = Depends(get_current_user)):
             ...
     """
+
     def decorator(func: F) -> F:
         @wraps(func)
         async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -356,6 +358,7 @@ def require_permission[F: Callable[..., Any]](*permissions: Permission) -> Calla
             return func(*args, **kwargs)
 
         import asyncio
+
         if asyncio.iscoroutinefunction(func):
             return async_wrapper  # type: ignore
         return sync_wrapper  # type: ignore

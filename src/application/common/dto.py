@@ -17,14 +17,14 @@ class ApiResponse[T](BaseModel):
 
     data: T
     message: str = Field(default="Success", description="Response message")
-    status_code: int = Field(default=200, ge=100, le=599, description="HTTP status code")
+    status_code: int = Field(
+        default=200, ge=100, le=599, description="HTTP status code"
+    )
     timestamp: datetime = Field(
         default_factory=lambda: datetime.now(tz=UTC),
         description="Response timestamp in UTC",
     )
-    request_id: str | None = Field(
-        default=None, description="Request ID for tracing"
-    )
+    request_id: str | None = Field(default=None, description="Request ID for tracing")
 
     model_config = {"from_attributes": True}
 
@@ -78,7 +78,8 @@ class ProblemDetail(BaseModel):
     title: str = Field(description="Short, human-readable summary of the problem")
     status: int = Field(ge=100, le=599, description="HTTP status code")
     detail: str | None = Field(
-        default=None, description="Human-readable explanation specific to this occurrence"
+        default=None,
+        description="Human-readable explanation specific to this occurrence",
     )
     instance: str | None = Field(
         default=None, description="URI reference identifying the specific occurrence"

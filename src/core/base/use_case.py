@@ -2,63 +2,57 @@
 
 Uses PEP 695 type parameter syntax (Python 3.12+) for cleaner generic definitions.
 Uses @overload for type narrowing on methods with conditional return types.
+
+**Feature: core-improvements-2025**
 """
 
-from collections.abc import Sequence
+from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
-from typing import Any, Literal, overload
-from collections.abc import AsyncGenerator
+from typing import Any, Literal, Protocol, overload, runtime_checkable
 
 from pydantic import BaseModel
 
-try:
-    from my_app.core.errors.domain_errors import EntityNotFoundError
-except ImportError:
-    class EntityNotFoundError(Exception):
-        def __init__(self, entity_name: str, entity_id: str):
-            super().__init__(f"{entity_name} with id {entity_id} not found")
+from application.common.dto import PaginatedResponse
+from core.errors.domain_errors import EntityNotFoundError
+from core.protocols import UnitOfWork
 
-try:
-    from my_app.application.common.dto import PaginatedResponse
-except ImportError:
-    from dataclasses import dataclass
-    from typing import Generic, TypeVar
-    T = TypeVar("T")
-    @dataclass
-    class PaginatedResponse(Generic[T]):
-        items: list[T]
-        total: int
-        page: int
-        size: int
-
-# Protocol definitions for mapper and repository
-from typing import Protocol, runtime_checkable
 
 @runtime_checkable
 class IMapper[T, DTO](Protocol):
     def to_dto(self, entity: T) -> DTO: ...
     def to_dto_list(self, entities: list[T]) -> list[DTO]: ...
 
+
 @runtime_checkable
 class IRepository[T, CreateDTO, UpdateDTO](Protocol):
+    """Repository protocol for use case operations."""
+
     async def get_by_id(self, id: str) -> T | None: ...
-    async def get_all(self, skip: int, limit: int, filters: dict | None, sort_by: str | None, sort_order: str) -> tuple[list[T], int]: ...
+
+    async def get_all(
+        self,
+        skip: int,
+        limit: int,
+        filters: dict | None,
+        sort_by: str | None,
+        sort_order: str,
+    ) -> tuple[list[T], int]: ...
+
     async def create(self, data: CreateDTO) -> T: ...
     async def update(self, id: str, data: UpdateDTO) -> T | None: ...
     async def delete(self, id: str) -> bool: ...
     async def exists(self, id: str) -> bool: ...
     async def create_many(self, data: list[CreateDTO]) -> list[T]: ...
 
-@runtime_checkable
-class IUnitOfWork(Protocol):
-    async def commit(self) -> None: ...
-    async def rollback(self) -> None: ...
-    async def __aenter__(self): ...
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None: ...
+
+# UnitOfWork imported from core.protocols
 
 
 class BaseUseCase[
-    T: BaseModel, CreateDTO: BaseModel, UpdateDTO: BaseModel, ResponseDTO: BaseModel
+    T: BaseModel,
+    CreateDTO: BaseModel,
+    UpdateDTO: BaseModel,
+    ResponseDTO: BaseModel,
 ]:
     """Generic use case with CRUD operations.
 
@@ -77,7 +71,7 @@ class BaseUseCase[
         repository: IRepository[T, CreateDTO, UpdateDTO],
         mapper: IMapper[T, ResponseDTO],
         entity_name: str = "Entity",
-        unit_of_work: IUnitOfWork | None = None,
+        unit_of_work: UnitOfWork | None = None,
     ) -> None:
         """Initialize use case.
 

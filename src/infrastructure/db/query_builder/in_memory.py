@@ -6,8 +6,8 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from my_app.infrastructure.db.query_builder.builder import QueryBuilder, QueryResult
-from my_app.infrastructure.db.query_builder.conditions import (
+from infrastructure.db.query_builder.builder import QueryBuilder, QueryResult
+from infrastructure.db.query_builder.conditions import (
     ComparisonOperator,
     ConditionGroup,
     LogicalOperator,
@@ -79,7 +79,7 @@ class InMemoryQueryBuilder[T: BaseModel](QueryBuilder[T]):
 
     def _match_pattern(self, value: str, pattern: str) -> bool:
         """Match SQL LIKE pattern (% = any, _ = single char).
-        
+
         Special regex characters are escaped to match literally,
         except for SQL wildcards % and _.
         """
@@ -88,13 +88,17 @@ class InMemoryQueryBuilder[T: BaseModel](QueryBuilder[T]):
         placeholder_underscore = "\x00UNDERSCORE\x00"
 
         # Replace SQL wildcards with placeholders
-        temp = pattern.replace("%", placeholder_percent).replace("_", placeholder_underscore)
+        temp = pattern.replace("%", placeholder_percent).replace(
+            "_", placeholder_underscore
+        )
 
         # Escape all special regex characters
         escaped = re.escape(temp)
 
         # Convert placeholders back to regex patterns
-        regex = escaped.replace(placeholder_percent, ".*").replace(placeholder_underscore, ".")
+        regex = escaped.replace(placeholder_percent, ".*").replace(
+            placeholder_underscore, "."
+        )
         return bool(re.match(f"^{regex}$", value))
 
     def _evaluate_group(self, item: T, group: ConditionGroup) -> bool:
@@ -122,15 +126,16 @@ class InMemoryQueryBuilder[T: BaseModel](QueryBuilder[T]):
         filtered = list(items)
 
         if not self._conditions.is_empty():
-            filtered = [i for i in filtered if self._evaluate_group(i, self._conditions)]
+            filtered = [
+                i for i in filtered if self._evaluate_group(i, self._conditions)
+            ]
 
         if self._specification:
             filtered = [i for i in filtered if self._specification.is_satisfied_by(i)]
 
         if not self._options.include_deleted:
             filtered = [
-                i for i in filtered
-                if not (hasattr(i, "is_deleted") and i.is_deleted)
+                i for i in filtered if not (hasattr(i, "is_deleted") and i.is_deleted)
             ]
 
         return filtered
@@ -155,7 +160,9 @@ class InMemoryQueryBuilder[T: BaseModel](QueryBuilder[T]):
         total = len(filtered)
 
         sorted_items = self._sort_items(filtered)
-        paginated = sorted_items[self._options.skip : self._options.skip + self._options.limit]
+        paginated = sorted_items[
+            self._options.skip : self._options.skip + self._options.limit
+        ]
 
         has_more = self._options.skip + len(paginated) < total
 

@@ -4,7 +4,7 @@
 **Validates: Requirements 6.2**
 """
 
-from my_app.infrastructure.db.repositories.user_repository import (
+from infrastructure.db.repositories.user_repository import (
     SQLAlchemyUserRepository,
 )
 

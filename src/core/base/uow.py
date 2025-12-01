@@ -8,30 +8,29 @@ business transaction and coordinates the writing out of changes.
 """
 
 from abc import ABC, abstractmethod
-from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator, Self
+from typing import Any, Self
 
 
 class UnitOfWork(ABC):
     """Abstract Unit of Work interface.
-    
+
     The Unit of Work pattern:
     - Maintains a list of objects affected by a business transaction
     - Coordinates writing out changes
     - Ensures atomicity of operations
-    
+
     Usage:
         async with uow:
             user = await uow.users.get(user_id)
             user.update_email(new_email)
             await uow.commit()
     """
-    
+
     @abstractmethod
     async def __aenter__(self) -> Self:
         """Enter the unit of work context."""
         ...
-    
+
     @abstractmethod
     async def __aexit__(
         self,
@@ -41,17 +40,17 @@ class UnitOfWork(ABC):
     ) -> None:
         """Exit the unit of work context."""
         ...
-    
+
     @abstractmethod
     async def commit(self) -> None:
         """Commit the current transaction."""
         ...
-    
+
     @abstractmethod
     async def rollback(self) -> None:
         """Rollback the current transaction."""
         ...
-    
+
     @abstractmethod
     async def flush(self) -> None:
         """Flush pending changes without committing."""

@@ -46,7 +46,6 @@ class ShutdownHandler:
         >>> handler = ShutdownHandler()
         >>> handler.add_hook("database", close_database)
         >>> handler.add_hook("cache", close_cache)
-        >>> 
         >>> # In FastAPI lifespan
         >>> @asynccontextmanager
         >>> async def lifespan(app):
@@ -200,7 +199,9 @@ class ShutdownHandler:
                 logger.info(f"Running shutdown hook: {name}")
                 await asyncio.wait_for(
                     hook(),
-                    timeout=self._config.timeout / len(self._hooks) if self._hooks else self._config.timeout,
+                    timeout=self._config.timeout / len(self._hooks)
+                    if self._hooks
+                    else self._config.timeout,
                 )
                 logger.info(f"Shutdown hook completed: {name}")
             except asyncio.TimeoutError:
@@ -291,7 +292,6 @@ async def graceful_shutdown_lifespan(
     Example:
         >>> handler = ShutdownHandler()
         >>> handler.add_hook("database", close_database)
-        >>> 
         >>> app = FastAPI(lifespan=lambda app: graceful_shutdown_lifespan(app, handler))
     """
     handler = shutdown_handler or ShutdownHandler()

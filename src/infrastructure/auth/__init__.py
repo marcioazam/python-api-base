@@ -1,11 +1,30 @@
-"""Authentication infrastructure modules."""
+"""Authentication infrastructure modules.
 
-from my_app.infrastructure.auth.token_store import (
-    RefreshTokenStore,
+**Feature: architecture-restructuring-2025**
+"""
+
+from infrastructure.auth.jwt import (
+    JWTService,
+    TokenPair,
+    TokenPayload,
+    TokenExpiredError,
+    TokenInvalidError,
+    TokenRevokedError,
+)
+from infrastructure.auth.token_store import (
     InMemoryTokenStore,
+    RefreshTokenStore,
 )
 
 __all__ = [
-    "RefreshTokenStore",
+    # JWT Service
+    "JWTService",
+    "TokenExpiredError",
+    "TokenInvalidError",
+    "TokenPair",
+    "TokenPayload",
+    "TokenRevokedError",
+    # Token Store
     "InMemoryTokenStore",
+    "RefreshTokenStore",
 ]

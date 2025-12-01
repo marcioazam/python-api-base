@@ -1,6 +1,6 @@
 """Application exception hierarchy.
 
-**Feature: core-code-review**
+**Feature: core-code-review, ultimate-generics-code-review-2025**
 **Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5**
 """
 
@@ -8,7 +8,9 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
-from my_app.shared.utils.ids import generate_ulid
+from core.shared.utils.ids import generate_ulid
+
+from core.errors.constants import ErrorCodes, ErrorMessages, HttpStatus
 
 __all__ = [
     "AppException",
@@ -26,12 +28,12 @@ __all__ = [
 @dataclass(frozen=True, slots=True)
 class ErrorContext:
     """Immutable error context for request tracing.
-    
+
     **Feature: core-code-review, deep-code-quality-generics-review**
     **Validates: Requirements 2.1, 8.1, 12.1, 14.6**
-    
+
     Uses slots=True for memory optimization (20% reduction per Real Python benchmarks).
-    
+
     Attributes:
         correlation_id: Unique identifier for request tracing.
         timestamp: When the error occurred.
@@ -56,7 +58,7 @@ class AppException(Exception):
 
     All application-specific exceptions should inherit from this class.
     Provides structured error information for consistent error handling.
-    
+
     **Feature: core-code-review, Property 3: Exception Serialization Consistency**
     **Validates: Requirements 2.1, 2.2**
     """
@@ -97,7 +99,7 @@ class AppException(Exception):
 
     def to_dict(self) -> dict[str, Any]:
         """Convert exception to dictionary for serialization.
-        
+
         **Feature: core-code-review, Property 3: Exception Serialization Consistency**
         **Validates: Requirements 2.2**
 
@@ -137,46 +139,47 @@ class EntityNotFoundError(AppException):
             entity_id: ID of the entity that was not found.
         """
         super().__init__(
-            message=f"{entity_type} with id '{entity_id}' not found",
-            error_code="ENTITY_NOT_FOUND",
-            status_code=404,
+            message=ErrorMessages.ENTITY_NOT_FOUND.format(
+                entity_type=entity_type, entity_id=entity_id
+            ),
+            error_code=ErrorCodes.ENTITY_NOT_FOUND,
+            status_code=HttpStatus.NOT_FOUND,
             details={"entity_type": entity_type, "entity_id": str(entity_id)},
         )
 
 
 class ValidationError(AppException):
     """Raised when validation fails.
-    
-    **Feature: core-code-review**
+
+    **Feature: core-code-review, ultimate-generics-code-review-2025**
     **Validates: Requirements 2.3**
     """
 
     def __init__(
         self,
         errors: list[dict[str, Any]] | dict[str, Any],
-        message: str = "Validation failed",
+        message: str | None = None,
         context: ErrorContext | None = None,
     ) -> None:
         """Initialize validation error.
 
         Args:
             errors: Validation errors - can be list or dict format.
-            message: Overall error message.
+            message: Overall error message. Defaults to ErrorMessages.VALIDATION_FAILED.
             context: Error context for tracing.
         """
         # Normalize errors to list format for consistency
         if isinstance(errors, dict):
             normalized_errors = [
-                {"field": field, "message": msg}
-                for field, msg in errors.items()
+                {"field": field, "message": msg} for field, msg in errors.items()
             ]
         else:
             normalized_errors = errors
 
         super().__init__(
-            message=message,
-            error_code="VALIDATION_ERROR",
-            status_code=422,
+            message=message or ErrorMessages.VALIDATION_FAILED,
+            error_code=ErrorCodes.VALIDATION_ERROR,
+            status_code=HttpStatus.UNPROCESSABLE_ENTITY,
             details={"errors": normalized_errors},
             context=context,
         )
@@ -193,9 +196,11 @@ class BusinessRuleViolationError(AppException):
             message: Description of the violation.
         """
         super().__init__(
-            message=message,
-            error_code=f"BUSINESS_RULE_{rule.upper()}",
-            status_code=400,
+            message=ErrorMessages.BUSINESS_RULE_VIOLATED.format(
+                rule=rule, message=message
+            ),
+            error_code=f"{ErrorCodes.BUSINESS_RULE_VIOLATION}_{rule.upper()}",
+            status_code=HttpStatus.BAD_REQUEST,
             details={"rule": rule},
         )
 
@@ -205,19 +210,19 @@ class AuthenticationError(AppException):
 
     def __init__(
         self,
-        message: str = "Authentication required",
+        message: str | None = None,
         scheme: str = "Bearer",
     ) -> None:
         """Initialize authentication error.
 
         Args:
-            message: Error message.
+            message: Error message. Defaults to ErrorMessages.AUTHENTICATION_REQUIRED.
             scheme: Authentication scheme for WWW-Authenticate header.
         """
         super().__init__(
-            message=message,
-            error_code="AUTHENTICATION_ERROR",
-            status_code=401,
+            message=message or ErrorMessages.AUTHENTICATION_REQUIRED,
+            error_code=ErrorCodes.AUTHENTICATION_ERROR,
+            status_code=HttpStatus.UNAUTHORIZED,
             details={"scheme": scheme},
         )
 
@@ -227,23 +232,28 @@ class AuthorizationError(AppException):
 
     def __init__(
         self,
-        message: str = "Permission denied",
+        message: str | None = None,
         required_permission: str | None = None,
     ) -> None:
         """Initialize authorization error.
 
         Args:
-            message: Error message.
+            message: Error message. Defaults to ErrorMessages.PERMISSION_DENIED.
             required_permission: The permission that was required.
         """
         details = {}
         if required_permission:
             details["required_permission"] = required_permission
+            msg = ErrorMessages.PERMISSION_REQUIRED.format(
+                permission=required_permission
+            )
+        else:
+            msg = message or ErrorMessages.PERMISSION_DENIED
 
         super().__init__(
-            message=message,
-            error_code="AUTHORIZATION_ERROR",
-            status_code=403,
+            message=msg,
+            error_code=ErrorCodes.AUTHORIZATION_ERROR,
+            status_code=HttpStatus.FORBIDDEN,
             details=details,
         )
 
@@ -254,18 +264,19 @@ class RateLimitExceededError(AppException):
     def __init__(
         self,
         retry_after: int,
-        message: str = "Rate limit exceeded",
+        message: str | None = None,
     ) -> None:
         """Initialize rate limit exceeded error.
 
         Args:
             retry_after: Seconds until the client can retry.
-            message: Error message.
+            message: Error message. Defaults to ErrorMessages.RATE_LIMIT_EXCEEDED.
         """
         super().__init__(
-            message=message,
-            error_code="RATE_LIMIT_EXCEEDED",
-            status_code=429,
+            message=message
+            or ErrorMessages.RATE_LIMIT_EXCEEDED.format(retry_after=retry_after),
+            error_code=ErrorCodes.RATE_LIMIT_EXCEEDED,
+            status_code=HttpStatus.TOO_MANY_REQUESTS,
             details={"retry_after": retry_after},
         )
 
@@ -275,14 +286,14 @@ class ConflictError(AppException):
 
     def __init__(
         self,
-        message: str,
+        message: str | None = None,
         resource_type: str | None = None,
         resource_id: str | None = None,
     ) -> None:
         """Initialize conflict error.
 
         Args:
-            message: Error message.
+            message: Error message. Auto-generated if resource_type and resource_id provided.
             resource_type: Type of the conflicting resource.
             resource_id: ID of the conflicting resource.
         """
@@ -292,9 +303,16 @@ class ConflictError(AppException):
         if resource_id:
             details["resource_id"] = resource_id
 
+        if message is None and resource_type and resource_id:
+            message = ErrorMessages.CONFLICT_RESOURCE.format(
+                resource_type=resource_type, resource_id=resource_id
+            )
+        elif message is None:
+            message = "Resource conflict"
+
         super().__init__(
             message=message,
-            error_code="CONFLICT",
-            status_code=409,
+            error_code=ErrorCodes.CONFLICT,
+            status_code=HttpStatus.CONFLICT,
             details=details,
         )

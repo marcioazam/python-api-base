@@ -9,6 +9,7 @@ from collections.abc import Callable, Awaitable
 @dataclass
 class SoftDeleteConfig:
     """Soft delete configuration."""
+
     cascade_relations: list[str] = field(default_factory=list)
     restore_cascade: bool = True
     permanent_delete_after_days: int | None = None
@@ -18,6 +19,7 @@ class SoftDeleteConfig:
 @dataclass
 class DeletedRecord[T]:
     """Wrapper for soft-deleted records."""
+
     id: str
     entity_type: str
     original_id: str
@@ -54,7 +56,7 @@ class SoftDeleteService[T]:
     def __init__(
         self,
         backend: SoftDeleteBackend[T],
-        relation_resolver: RelationResolver | None = None
+        relation_resolver: RelationResolver | None = None,
     ) -> None:
         self._backend = backend
         self._resolver = relation_resolver
@@ -71,26 +73,18 @@ class SoftDeleteService[T]:
         self._configs[entity_type] = config
 
     def register_hook(
-        self,
-        event: str,
-        callback: Callable[[str, str], Awaitable[None]]
+        self, event: str, callback: Callable[[str, str], Awaitable[None]]
     ) -> None:
         """Register a hook for delete/restore events."""
         if event in self._hooks:
             self._hooks[event].append(callback)
 
-    async def _run_hooks(
-        self, event: str, entity_type: str, entity_id: str
-    ) -> None:
+    async def _run_hooks(self, event: str, entity_type: str, entity_id: str) -> None:
         for hook in self._hooks.get(event, []):
             await hook(entity_type, entity_id)
 
-
     async def delete(
-        self,
-        entity_type: str,
-        entity_id: str,
-        deleted_by: str | None = None
+        self, entity_type: str, entity_id: str, deleted_by: str | None = None
     ) -> list[tuple[str, str]]:
         """Soft delete an entity with cascade."""
         await self._run_hooks("before_delete", entity_type, entity_id)
@@ -113,11 +107,7 @@ class SoftDeleteService[T]:
 
         return deleted_entities
 
-    async def restore(
-        self,
-        entity_type: str,
-        entity_id: str
-    ) -> list[tuple[str, str]]:
+    async def restore(self, entity_type: str, entity_id: str) -> list[tuple[str, str]]:
         """Restore a soft-deleted entity with cascade."""
         await self._run_hooks("before_restore", entity_type, entity_id)
 
@@ -144,31 +134,22 @@ class SoftDeleteService[T]:
         """Check if an entity is soft-deleted."""
         return await self._backend.is_deleted(entity_type, entity_id)
 
-    async def get_deleted_records(
-        self,
-        entity_type: str
-    ) -> list[DeletedRecord[T]]:
+    async def get_deleted_records(self, entity_type: str) -> list[DeletedRecord[T]]:
         """Get all soft-deleted records of a type."""
         return await self._backend.get_deleted(entity_type)
 
-    async def permanent_delete(
-        self,
-        entity_type: str,
-        entity_id: str
-    ) -> bool:
+    async def permanent_delete(self, entity_type: str, entity_id: str) -> bool:
         """Permanently delete a soft-deleted entity."""
         return await self._backend.permanent_delete(entity_type, entity_id)
 
-    async def cleanup_expired(
-        self,
-        entity_type: str
-    ) -> int:
+    async def cleanup_expired(self, entity_type: str) -> int:
         """Permanently delete records past retention period."""
         config = self._configs.get(entity_type)
         if not config or not config.permanent_delete_after_days:
             return 0
 
         from datetime import timedelta
+
         cutoff = datetime.now(UTC) - timedelta(days=config.permanent_delete_after_days)
         deleted_count = 0
 
@@ -191,6 +172,7 @@ class InMemorySoftDeleteBackend[T]:
         self, entity_type: str, entity_id: str, deleted_by: str | None
     ) -> None:
         import uuid
+
         key = (entity_type, entity_id)
         self._deleted[key] = DeletedRecord(
             id=str(uuid.uuid4()),
@@ -198,7 +180,7 @@ class InMemorySoftDeleteBackend[T]:
             original_id=entity_id,
             data=None,  # type: ignore
             deleted_at=datetime.now(UTC),
-            deleted_by=deleted_by
+            deleted_by=deleted_by,
         )
 
     async def restore(self, entity_type: str, entity_id: str) -> bool:
@@ -212,10 +194,7 @@ class InMemorySoftDeleteBackend[T]:
         return (entity_type, entity_id) in self._deleted
 
     async def get_deleted(self, entity_type: str) -> list[DeletedRecord[T]]:
-        return [
-            r for r in self._deleted.values()
-            if r.entity_type == entity_type
-        ]
+        return [r for r in self._deleted.values() if r.entity_type == entity_type]
 
     async def permanent_delete(self, entity_type: str, entity_id: str) -> bool:
         key = (entity_type, entity_id)

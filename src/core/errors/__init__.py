@@ -1,9 +1,10 @@
 """Core error hierarchy.
 
 **Feature: architecture-restructuring-2025**
+**Feature: interface-layer-generics-review**
 """
 
-from my_app.core.errors.domain_errors import (
+from core.errors.domain_errors import (
     AppException,
     AuthenticationError,
     AuthorizationError,
@@ -14,7 +15,7 @@ from my_app.core.errors.domain_errors import (
     RateLimitExceededError,
     ValidationError,
 )
-from my_app.core.errors.application_errors import (
+from core.errors.application_errors import (
     ApplicationError,
     CommandHandlerError,
     ConcurrencyError,
@@ -25,10 +26,23 @@ from my_app.core.errors.application_errors import (
     TransactionError,
     UseCaseError,
 )
-from my_app.core.errors.infrastructure_errors import (
+from core.errors.infrastructure_errors import (
     InfrastructureError,
     DatabaseError,
     ExternalServiceError,
+)
+from core.errors.constants import (
+    HttpStatus,
+    ErrorCode,
+    ErrorCodes,
+    ErrorMessages,
+)
+from core.errors.status import (
+    OperationStatus,
+    ValidationStatus,
+    EntityStatus,
+    UserStatus,
+    TaskStatus,
 )
 
 __all__ = [
@@ -42,15 +56,24 @@ __all__ = [
     "ConflictError",
     "DatabaseError",
     "EntityNotFoundError",
+    "EntityStatus",
+    "ErrorCode",
+    "ErrorCodes",
     "ErrorContext",
+    "ErrorMessages",
     "ExternalServiceError",
     "HandlerNotFoundError",
+    "HttpStatus",
     "InfrastructureError",
     "InvalidCommandError",
     "InvalidQueryError",
+    "OperationStatus",
     "QueryHandlerError",
     "RateLimitExceededError",
+    "TaskStatus",
     "TransactionError",
     "UseCaseError",
+    "UserStatus",
     "ValidationError",
+    "ValidationStatus",
 ]

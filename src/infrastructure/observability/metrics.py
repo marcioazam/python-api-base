@@ -6,7 +6,7 @@
 """
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -235,7 +235,7 @@ class MetricsAwareCacheWrapper[T]:
     Wraps a cache provider to automatically track hits, misses, and evictions.
 
     Example:
-        >>> from my_app.shared.caching.providers import InMemoryCacheProvider
+        >>> from core.shared.caching.providers import InMemoryCacheProvider
         >>> cache = InMemoryCacheProvider[dict]()
         >>> metrics_cache = MetricsAwareCacheWrapper(cache)
         >>> await metrics_cache.set("key", {"value": 1})
@@ -301,9 +301,13 @@ class MetricsAwareCacheWrapper[T]:
         **Feature: api-base-score-100, Property 10: Cache Eviction Counter**
         **Validates: Requirements 3.5**
         """
-        size_before = await self._provider.size() if hasattr(self._provider, "size") else 0
+        size_before = (
+            await self._provider.size() if hasattr(self._provider, "size") else 0
+        )
         await self._provider.set(key, value, ttl)
-        size_after = await self._provider.size() if hasattr(self._provider, "size") else 0
+        size_after = (
+            await self._provider.size() if hasattr(self._provider, "size") else 0
+        )
 
         if hasattr(self._provider, "_config"):
             max_size = self._provider._config.max_size

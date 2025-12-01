@@ -10,6 +10,7 @@ import hashlib
 
 class MigrationStatus(Enum):
     """Migration execution status."""
+
     PENDING = "pending"
     APPLIED = "applied"
     ROLLED_BACK = "rolled_back"
@@ -19,6 +20,7 @@ class MigrationStatus(Enum):
 @dataclass
 class Migration:
     """Migration definition."""
+
     version: str
     name: str
     up_sql: str
@@ -39,6 +41,7 @@ class Migration:
 @dataclass
 class MigrationResult:
     """Result of migration execution."""
+
     migration: Migration
     success: bool
     error: str | None = None
@@ -60,6 +63,7 @@ class MigrationBackend(Protocol):
 @dataclass
 class SchemaDiff:
     """Schema difference between two states."""
+
     added_tables: list[str] = field(default_factory=list)
     removed_tables: list[str] = field(default_factory=list)
     added_columns: dict[str, list[str]] = field(default_factory=dict)
@@ -71,10 +75,13 @@ class SchemaDiff:
     @property
     def has_changes(self) -> bool:
         return bool(
-            self.added_tables or self.removed_tables or
-            self.added_columns or self.removed_columns or
-            self.modified_columns or self.added_indexes or
-            self.removed_indexes
+            self.added_tables
+            or self.removed_tables
+            or self.added_columns
+            or self.removed_columns
+            or self.modified_columns
+            or self.added_indexes
+            or self.removed_indexes
         )
 
     def generate_up_sql(self) -> str:
@@ -121,9 +128,7 @@ class MigrationManager:
         self._migrations[migration.version] = migration
 
     def register_hook(
-        self,
-        event: str,
-        callback: Callable[[Migration], Awaitable[None]]
+        self, event: str, callback: Callable[[Migration], Awaitable[None]]
     ) -> None:
         """Register a hook for migration events."""
         if event in self._hooks:
@@ -133,22 +138,15 @@ class MigrationManager:
         for hook in self._hooks.get(event, []):
             await hook(migration)
 
-    def get_pending_migrations(
-        self,
-        applied: list[Migration]
-    ) -> list[Migration]:
+    def get_pending_migrations(self, applied: list[Migration]) -> list[Migration]:
         """Get migrations that haven't been applied."""
         applied_versions = {m.version for m in applied}
         pending = [
-            m for v, m in sorted(self._migrations.items())
-            if v not in applied_versions
+            m for v, m in sorted(self._migrations.items()) if v not in applied_versions
         ]
         return pending
 
-    async def migrate(
-        self,
-        target_version: str | None = None
-    ) -> list[MigrationResult]:
+    async def migrate(self, target_version: str | None = None) -> list[MigrationResult]:
         """Apply pending migrations up to target version."""
         results: list[MigrationResult] = []
         applied = await self._backend.get_applied_migrations()
@@ -169,6 +167,7 @@ class MigrationManager:
     async def _apply_migration(self, migration: Migration) -> MigrationResult:
         """Apply a single migration."""
         import time
+
         start = time.perf_counter()
 
         try:
@@ -192,10 +191,7 @@ class MigrationManager:
             duration = (time.perf_counter() - start) * 1000
             return MigrationResult(migration, False, str(e), duration)
 
-    async def rollback(
-        self,
-        steps: int = 1
-    ) -> list[MigrationResult]:
+    async def rollback(self, steps: int = 1) -> list[MigrationResult]:
         """Rollback the last N migrations."""
         results: list[MigrationResult] = []
         applied = await self._backend.get_applied_migrations()
@@ -214,12 +210,10 @@ class MigrationManager:
 
         return results
 
-    async def _rollback_migration(
-        self,
-        migration: Migration
-    ) -> MigrationResult:
+    async def _rollback_migration(self, migration: Migration) -> MigrationResult:
         """Rollback a single migration."""
         import time
+
         start = time.perf_counter()
 
         try:
@@ -253,9 +247,7 @@ class MigrationManager:
         return status
 
     def diff_schemas(
-        self,
-        current_schema: dict[str, list[str]],
-        target_schema: dict[str, list[str]]
+        self, current_schema: dict[str, list[str]], target_schema: dict[str, list[str]]
     ) -> SchemaDiff:
         """Compare two schemas and generate diff."""
         diff = SchemaDiff()
@@ -280,11 +272,7 @@ class MigrationManager:
 
         return diff
 
-    def generate_migration(
-        self,
-        name: str,
-        diff: SchemaDiff
-    ) -> Migration:
+    def generate_migration(self, name: str, diff: SchemaDiff) -> Migration:
         """Generate a migration from schema diff."""
         version = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
 
@@ -292,7 +280,7 @@ class MigrationManager:
             version=version,
             name=name,
             up_sql=diff.generate_up_sql(),
-            down_sql=diff.generate_down_sql()
+            down_sql=diff.generate_down_sql(),
         )
 
 

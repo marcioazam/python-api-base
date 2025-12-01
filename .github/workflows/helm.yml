@@ -1,0 +1,210 @@
+name: Helm Charts
+
+on:
+  pull_request:
+    paths:
+      - 'deployments/helm/**'
+      - 'deployments/k8s/**'
+      - '.github/workflows/helm.yml'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'deployments/helm/**'
+      - 'deployments/k8s/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  HELM_VERSION: "v3.14.0"
+  KUBECONFORM_VERSION: "0.6.4"
+
+jobs:
+  lint:
+    name: Helm Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Helm Lint
+        run: helm lint deployments/helm/api/ --strict
+
+      - name: Helm Template
+        run: |
+          helm template my-api deployments/helm/api/ \
+            --values deployments/helm/api/values.yaml \
+            --set image.tag=v1.0.0 \
+            --debug > /tmp/helm-template-output.yaml
+
+      - name: Upload template output
+        uses: actions/upload-artifact@v4
+        with:
+          name: helm-template-output
+          path: /tmp/helm-template-output.yaml
+          retention-days: 5
+
+  validate:
+    name: Kubernetes Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: lint
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Setup Kubeconform
+        run: |
+          wget https://github.com/yannh/kubeconform/releases/download/v${{ env.KUBECONFORM_VERSION }}/kubeconform-linux-amd64.tar.gz
+          tar xf kubeconform-linux-amd64.tar.gz
+          sudo mv kubeconform /usr/local/bin/
+
+      - name: Validate Helm Chart
+        run: |
+          helm template my-api deployments/helm/api/ \
+            --values deployments/helm/api/values.yaml \
+            --set image.tag=v1.0.0 | \
+          kubeconform \
+            -strict \
+            -ignore-missing-schemas \
+            -kubernetes-version 1.29.0 \
+            -schema-location default \
+            -summary \
+            -output json
+
+      - name: Validate K8s Base Manifests
+        run: |
+          kubeconform \
+            -strict \
+            -ignore-missing-schemas \
+            -kubernetes-version 1.29.0 \
+            deployments/k8s/base/*.yaml
+
+  security:
+    name: Helm Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Helm Template for Scanning
+        run: |
+          helm template my-api deployments/helm/api/ \
+            --values deployments/helm/api/values.yaml \
+            --set image.tag=v1.0.0 > /tmp/helm-manifests.yaml
+
+      - name: Run Trivy on Helm manifests
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'config'
+          scan-ref: '/tmp/helm-manifests.yaml'
+          format: 'sarif'
+          output: 'trivy-helm-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          exit-code: '0'
+
+      - name: Upload Trivy results to Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-helm-results.sarif'
+
+  test:
+    name: Helm Chart Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [lint, validate]
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1.9.0
+        with:
+          cluster_name: test-cluster
+          wait: 60s
+
+      - name: Install chart
+        run: |
+          helm install my-api deployments/helm/api/ \
+            --set image.tag=nginx:latest \
+            --set postgresql.enabled=false \
+            --set redis.enabled=false \
+            --set ingress.enabled=false \
+            --wait \
+            --timeout 5m
+
+      - name: Run chart tests
+        run: helm test my-api --logs
+
+      - name: Uninstall chart
+        if: always()
+        run: helm uninstall my-api
+
+  package:
+    name: Helm Package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [lint, validate, security]
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Package Helm Chart
+        run: |
+          helm package deployments/helm/api/ \
+            --destination /tmp/charts \
+            --version $(git describe --tags --abbrev=0 || echo "0.1.0")
+
+      - name: Upload Helm Chart
+        uses: actions/upload-artifact@v4
+        with:
+          name: helm-chart
+          path: /tmp/charts/*.tgz
+          retention-days: 30

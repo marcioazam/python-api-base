@@ -10,12 +10,20 @@ import pytest
 from hypothesis import given, settings, assume
 from hypothesis import strategies as st
 
-from my_app.shared.circuit_breaker import (
+from my_app.infrastructure.resilience.circuit_breaker import (
     CircuitBreaker,
-    CircuitBreakerConfig,
-    CircuitBreakerError,
     CircuitState,
 )
+from dataclasses import dataclass
+from datetime import timedelta
+
+@dataclass
+class CircuitBreakerConfig:
+    """Config for circuit breaker tests."""
+    failure_threshold: int = 5
+    success_threshold: int = 2
+    timeout: timedelta = timedelta(seconds=30)
+    half_open_max_calls: int = 3
 
 
 # Generators for CircuitBreakerConfig

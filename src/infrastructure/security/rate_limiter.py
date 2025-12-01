@@ -13,12 +13,11 @@ from slowapi.util import get_remote_address
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from my_app.core.config import get_settings
-from my_app.application.common.dto import ProblemDetail
+from core.config import get_settings
+from application.common.dto import ProblemDetail
 
 from .sliding_window import (
     RateLimitResult,
-    SlidingWindowConfig,
     SlidingWindowRateLimiter,
     parse_rate_limit,
 )
@@ -163,6 +162,7 @@ async def rate_limit_exceeded_handler(
         state = await limiter.get_state(client_ip)
         if state:
             import time
+
             config = parse_rate_limit(get_rate_limit())
             window_end = state.window_start + config.window_size_seconds
             retry_after = max(1, int(window_end - time.time()))
@@ -221,17 +221,16 @@ async def sliding_rate_limit_response(
     )
 
 
-
 class InMemoryRateLimiter:
     """Simple in-memory rate limiter for testing.
-    
+
     **Feature: python-api-architecture-2025**
     **Validates: Requirements 14.2**
     """
-    
+
     def __init__(self, limit: int = 100, window_seconds: int = 60) -> None:
         """Initialize rate limiter.
-        
+
         Args:
             limit: Maximum requests per window.
             window_seconds: Window duration in seconds.
@@ -239,64 +238,64 @@ class InMemoryRateLimiter:
         self._limit = limit
         self._window_seconds = window_seconds
         self._requests: dict[str, list[float]] = {}
-    
+
     async def is_allowed(self, client_id: str) -> bool:
         """Check if request is allowed.
-        
+
         Args:
             client_id: Client identifier.
-            
+
         Returns:
             True if request is allowed, False if rate limited.
         """
         import time
-        
+
         now = time.time()
         window_start = now - self._window_seconds
-        
+
         # Get or create request list for client
         if client_id not in self._requests:
             self._requests[client_id] = []
-        
+
         # Remove expired requests
         self._requests[client_id] = [
             ts for ts in self._requests[client_id] if ts > window_start
         ]
-        
+
         # Check if under limit
         if len(self._requests[client_id]) < self._limit:
             self._requests[client_id].append(now)
             return True
-        
+
         return False
-    
+
     async def get_remaining(self, client_id: str) -> int:
         """Get remaining requests for client.
-        
+
         Args:
             client_id: Client identifier.
-            
+
         Returns:
             Number of remaining requests in current window.
         """
         import time
-        
+
         now = time.time()
         window_start = now - self._window_seconds
-        
+
         if client_id not in self._requests:
             return self._limit
-        
+
         # Count requests in current window
         current_requests = len([
             ts for ts in self._requests[client_id] if ts > window_start
         ])
-        
+
         return max(0, self._limit - current_requests)
-    
+
     def reset(self, client_id: str | None = None) -> None:
         """Reset rate limiter state.
-        
+
         Args:
             client_id: Client to reset, or None to reset all.
         """

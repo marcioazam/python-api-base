@@ -35,22 +35,30 @@
 A implementação segue corretamente os princípios de Clean Architecture:
 
 ```
-src/my_api/
-├── core/           # Domain Layer - Business rules
-│   ├── auth/       # Authentication domain
-│   ├── config.py   # Configuration (Pydantic Settings)
-│   └── exceptions.py
-├── shared/         # Shared Kernel - Generic components
-│   ├── repository.py   # IRepository[T, CreateT, UpdateT]
-│   ├── entity.py       # BaseEntity[IdType]
-│   ├── use_case.py     # BaseUseCase[T, CreateDTO, UpdateDTO, ResponseDTO]
-│   └── caching/        # Cache providers
-├── adapters/       # Adapters Layer - External interfaces
-│   └── api/
-│       ├── middleware/
-│       └── routes/
-└── infrastructure/ # Infrastructure Layer - External services
-    └── database/
+src/
+├── core/           # Core Layer - Base classes, config, DI
+│   ├── base/       # Base classes and protocols
+│   ├── config/     # Configuration (Pydantic Settings)
+│   ├── di/         # Dependency Injection
+│   ├── errors/     # Error handling
+│   └── types/      # Type definitions
+├── domain/         # Domain Layer - Business rules
+│   ├── common/     # Shared domain components
+│   ├── items/      # Items domain
+│   └── users/      # Users domain
+├── application/    # Application Layer - Use cases
+│   ├── items/      # Items use cases
+│   └── users/      # Users use cases
+├── infrastructure/ # Infrastructure Layer - External services
+│   ├── auth/       # Authentication (JWT, token store)
+│   ├── cache/      # Cache providers
+│   ├── db/         # Database
+│   └── ...         # Other infrastructure
+├── interface/      # Interface Layer - API adapters
+│   └── api/        # REST API routes
+└── shared/         # Shared Kernel - Generic components
+    ├── caching/    # Cache utilities
+    └── utils/      # Shared utilities
 ```
 
 **Conformidade com Padrões:**
@@ -138,6 +146,8 @@ class WebhookPayload[TEvent]:
 
 **Pesquisa Web:** JWT Security Best Practices 2025
 
+Localização: `src/infrastructure/auth/`
+
 ```python
 class JWTValidator:
     ALLOWED_ALGORITHMS = frozenset(["RS256", "ES256", "HS256"])
@@ -168,6 +178,8 @@ class JWTValidator:
 
 **Pesquisa Web:** OWASP Password Storage Cheat Sheet 2024
 
+Localização: `src/infrastructure/security/`
+
 ```python
 @dataclass(frozen=True, slots=True)
 class PasswordPolicy:
@@ -195,6 +207,8 @@ class PasswordPolicy:
 ### 6.1 Implementação - PERFEITO ✅
 
 **Pesquisa Web:** HTTP Security Headers 2024
+
+Localização: `src/interface/api/middleware/`
 
 ```python
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -224,6 +238,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 **Pesquisa Web:** API Rate Limiting Best Practices 2024
 
+Localização: `src/infrastructure/resilience/`
+
 ```python
 def _is_valid_ip(ip: str) -> bool:
     """Validate IP address format to prevent header spoofing."""
@@ -252,6 +268,8 @@ def _is_valid_ip(ip: str) -> bool:
 
 ### 8.1 Implementação - EXCELENTE ✅
 
+Localização: `src/infrastructure/cache/`
+
 ```python
 class InMemoryCacheProvider[T]:
     """In-memory cache with LRU eviction and TTL support."""
@@ -275,6 +293,8 @@ class InMemoryCacheProvider[T]:
 ## 9. Webhook Security (98/100)
 
 ### 9.1 Implementação - EXCELENTE ✅
+
+Localização: `src/interface/webhooks/`
 
 ```python
 def verify_signature(
@@ -301,6 +321,8 @@ def verify_signature(
 ## 10. File Upload Security (96/100)
 
 ### 10.1 Implementação - EXCELENTE ✅
+
+Localização: `src/infrastructure/storage/`
 
 ```python
 def get_safe_filename(filename: str) -> str:
@@ -357,7 +379,7 @@ class TestWebhookSignatureRoundTrip:
 **Pesquisa Web:** OpenTelemetry FastAPI 2024
 
 **Features Implementados:**
-- ✅ OpenTelemetry integration
+- ✅ OpenTelemetry integration (`src/infrastructure/observability/`)
 - ✅ Structlog JSON logging
 - ✅ Correlation IDs
 - ✅ Cache hit rate metrics
@@ -373,6 +395,8 @@ class TestWebhookSignatureRoundTrip:
 ### 13.1 Implementação - EXCELENTE ✅
 
 **Pesquisa Web:** Python Dependency Injection 2024
+
+Localização: `src/core/config/` e `src/core/di/`
 
 ```python
 class Settings(BaseSettings):

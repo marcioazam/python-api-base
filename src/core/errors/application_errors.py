@@ -6,10 +6,9 @@ These errors are specific to the application layer (CQRS handlers, use cases).
 **Validates: Requirements 1.7**
 """
 
-from dataclasses import dataclass
 from typing import Any
 
-from my_app.core.errors.domain_errors import AppException, ErrorContext
+from core.errors.domain_errors import AppException, ErrorContext
 
 __all__ = [
     "ApplicationError",
@@ -26,7 +25,7 @@ __all__ = [
 
 class ApplicationError(AppException):
     """Base class for application layer errors."""
-    
+
     def __init__(
         self,
         message: str,
@@ -46,7 +45,7 @@ class ApplicationError(AppException):
 
 class CommandHandlerError(ApplicationError):
     """Raised when a command handler fails."""
-    
+
     def __init__(
         self,
         command_type: str,
@@ -61,10 +60,9 @@ class CommandHandlerError(ApplicationError):
         )
 
 
-
 class QueryHandlerError(ApplicationError):
     """Raised when a query handler fails."""
-    
+
     def __init__(
         self,
         query_type: str,
@@ -81,7 +79,7 @@ class QueryHandlerError(ApplicationError):
 
 class UseCaseError(ApplicationError):
     """Raised when a use case fails."""
-    
+
     def __init__(
         self,
         use_case: str,
@@ -98,7 +96,7 @@ class UseCaseError(ApplicationError):
 
 class InvalidCommandError(ApplicationError):
     """Raised when a command is invalid."""
-    
+
     def __init__(
         self,
         command_type: str,
@@ -114,7 +112,7 @@ class InvalidCommandError(ApplicationError):
 
 class InvalidQueryError(ApplicationError):
     """Raised when a query is invalid."""
-    
+
     def __init__(
         self,
         query_type: str,
@@ -130,7 +128,7 @@ class InvalidQueryError(ApplicationError):
 
 class HandlerNotFoundError(ApplicationError):
     """Raised when no handler is registered for a command/query."""
-    
+
     def __init__(
         self,
         handler_type: str,
@@ -146,7 +144,7 @@ class HandlerNotFoundError(ApplicationError):
 
 class ConcurrencyError(ApplicationError):
     """Raised when optimistic concurrency check fails."""
-    
+
     def __init__(
         self,
         entity_type: str,
@@ -169,7 +167,7 @@ class ConcurrencyError(ApplicationError):
 
 class TransactionError(ApplicationError):
     """Raised when a transaction fails."""
-    
+
     def __init__(
         self,
         operation: str,

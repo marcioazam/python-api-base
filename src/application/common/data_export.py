@@ -1,16 +1,23 @@
-"""Generic Data Export/Import Service."""
+"""Generic Data Export/Import Service.
 
+**Feature: enterprise-features-2025**
+**Validates: Requirements 8.1, 8.2, 8.3**
+"""
+
+import csv
+import hashlib
+import io
+import json
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, UTC
 from enum import Enum
-from typing import Protocol, Any
-import json
-import csv
-import io
+from typing import Any, Protocol
 
 
 class ExportFormat(Enum):
     """Supported export formats."""
+
     JSON = "json"
     CSV = "csv"
     JSONL = "jsonl"
@@ -20,6 +27,7 @@ class ExportFormat(Enum):
 @dataclass
 class ExportConfig:
     """Export configuration."""
+
     format: ExportFormat = ExportFormat.JSON
     include_fields: list[str] | None = None
     exclude_fields: list[str] | None = None
@@ -31,6 +39,7 @@ class ExportConfig:
 @dataclass
 class ExportResult:
     """Export operation result."""
+
     format: ExportFormat
     record_count: int
     file_size_bytes: int
@@ -42,6 +51,7 @@ class ExportResult:
 @dataclass
 class ImportResult:
     """Import operation result."""
+
     records_processed: int
     records_imported: int
     records_skipped: int
@@ -64,9 +74,7 @@ class DataExporter[T]:
         self._serializer = serializer
 
     def _filter_fields(
-        self,
-        data: dict[str, Any],
-        config: ExportConfig
+        self, data: dict[str, Any], config: ExportConfig
     ) -> dict[str, Any]:
         if config.include_fields:
             return {k: v for k, v in data.items() if k in config.include_fields}
@@ -75,21 +83,17 @@ class DataExporter[T]:
         return data
 
     def _compute_checksum(self, content: bytes) -> str:
-        import hashlib
+        """Compute SHA-256 checksum (truncated to 16 chars)."""
         return hashlib.sha256(content).hexdigest()[:16]
 
     def export_json(
-        self,
-        records: list[T],
-        config: ExportConfig
+        self, records: list[T], config: ExportConfig
     ) -> tuple[bytes, ExportResult]:
         """Export records to JSON."""
-        import time
         start = time.perf_counter()
 
         data = [
-            self._filter_fields(self._serializer.to_dict(r), config)
-            for r in records
+            self._filter_fields(self._serializer.to_dict(r), config) for r in records
         ]
 
         if config.include_metadata:
@@ -97,9 +101,9 @@ class DataExporter[T]:
                 "metadata": {
                     "exported_at": datetime.now(UTC).isoformat(),
                     "record_count": len(data),
-                    "format": "json"
+                    "format": "json",
                 },
-                "data": data
+                "data": data,
             }
         else:
             output = data
@@ -112,17 +116,13 @@ class DataExporter[T]:
             record_count=len(records),
             file_size_bytes=len(content),
             duration_ms=duration,
-            checksum=self._compute_checksum(content)
+            checksum=self._compute_checksum(content),
         )
 
-
     def export_csv(
-        self,
-        records: list[T],
-        config: ExportConfig
+        self, records: list[T], config: ExportConfig
     ) -> tuple[bytes, ExportResult]:
         """Export records to CSV."""
-        import time
         start = time.perf_counter()
 
         if not records:
@@ -131,12 +131,11 @@ class DataExporter[T]:
                 record_count=0,
                 file_size_bytes=0,
                 duration_ms=0,
-                checksum=""
+                checksum="",
             )
 
         data = [
-            self._filter_fields(self._serializer.to_dict(r), config)
-            for r in records
+            self._filter_fields(self._serializer.to_dict(r), config) for r in records
         ]
 
         output = io.StringIO()
@@ -153,16 +152,13 @@ class DataExporter[T]:
             record_count=len(records),
             file_size_bytes=len(content),
             duration_ms=duration,
-            checksum=self._compute_checksum(content)
+            checksum=self._compute_checksum(content),
         )
 
     def export_jsonl(
-        self,
-        records: list[T],
-        config: ExportConfig
+        self, records: list[T], config: ExportConfig
     ) -> tuple[bytes, ExportResult]:
         """Export records to JSON Lines."""
-        import time
         start = time.perf_counter()
 
         lines = []
@@ -178,13 +174,11 @@ class DataExporter[T]:
             record_count=len(records),
             file_size_bytes=len(content),
             duration_ms=duration,
-            checksum=self._compute_checksum(content)
+            checksum=self._compute_checksum(content),
         )
 
     def export(
-        self,
-        records: list[T],
-        config: ExportConfig
+        self, records: list[T], config: ExportConfig
     ) -> tuple[bytes, ExportResult]:
         """Export records in specified format."""
         if config.format == ExportFormat.JSON:
@@ -205,14 +199,10 @@ class DataImporter[T]:
 
     def import_json(self, content: bytes) -> tuple[list[T], ImportResult]:
         """Import records from JSON."""
-        import time
         start = time.perf_counter()
 
         result = ImportResult(
-            records_processed=0,
-            records_imported=0,
-            records_skipped=0,
-            records_failed=0
+            records_processed=0, records_imported=0, records_skipped=0, records_failed=0
         )
 
         records: list[T] = []
@@ -239,14 +229,10 @@ class DataImporter[T]:
 
     def import_csv(self, content: bytes) -> tuple[list[T], ImportResult]:
         """Import records from CSV."""
-        import time
         start = time.perf_counter()
 
         result = ImportResult(
-            records_processed=0,
-            records_imported=0,
-            records_skipped=0,
-            records_failed=0
+            records_processed=0, records_imported=0, records_skipped=0, records_failed=0
         )
 
         records: list[T] = []
@@ -270,14 +256,10 @@ class DataImporter[T]:
 
     def import_jsonl(self, content: bytes) -> tuple[list[T], ImportResult]:
         """Import records from JSON Lines."""
-        import time
         start = time.perf_counter()
 
         result = ImportResult(
-            records_processed=0,
-            records_imported=0,
-            records_skipped=0,
-            records_failed=0
+            records_processed=0, records_imported=0, records_skipped=0, records_failed=0
         )
 
         records: list[T] = []
@@ -298,9 +280,7 @@ class DataImporter[T]:
         return records, result
 
     def import_data(
-        self,
-        content: bytes,
-        format: ExportFormat
+        self, content: bytes, format: ExportFormat
     ) -> tuple[list[T], ImportResult]:
         """Import records from specified format."""
         if format == ExportFormat.JSON:

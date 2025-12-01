@@ -7,7 +7,7 @@
 import json
 import logging
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class KafkaConfig:
     """Kafka broker configuration."""
+
     bootstrap_servers: str = "localhost:9092"
     client_id: str = "my_app"
     group_id: str = "my_app_group"
@@ -24,17 +25,17 @@ class KafkaConfig:
 
 class KafkaBroker:
     """Kafka message broker client."""
-    
+
     def __init__(self, config: KafkaConfig | None = None) -> None:
         self._config = config or KafkaConfig()
         self._producer = None
         self._consumer = None
-    
+
     async def connect(self) -> None:
         """Connect to Kafka broker."""
         logger.info(f"Connecting to Kafka: {self._config.bootstrap_servers}")
         # TODO: Initialize aiokafka producer/consumer
-    
+
     async def disconnect(self) -> None:
         """Disconnect from Kafka broker."""
         if self._producer:
@@ -42,8 +43,10 @@ class KafkaBroker:
         if self._consumer:
             await self._consumer.stop()
         logger.info("Disconnected from Kafka")
-    
-    async def publish(self, topic: str, message: dict[str, Any], key: str | None = None) -> bool:
+
+    async def publish(
+        self, topic: str, message: dict[str, Any], key: str | None = None
+    ) -> bool:
         """Publish message to Kafka topic."""
         try:
             payload = json.dumps(message).encode("utf-8")
@@ -54,12 +57,12 @@ class KafkaBroker:
         except Exception as e:
             logger.error(f"Failed to publish to {topic}: {e}")
             return False
-    
+
     async def subscribe(self, topics: list[str]) -> None:
         """Subscribe to Kafka topics."""
         # TODO: self._consumer.subscribe(topics)
         logger.info(f"Subscribed to topics: {topics}")
-    
+
     async def consume(self) -> dict[str, Any] | None:
         """Consume next message from subscribed topics."""
         # TODO: msg = await self._consumer.getone()

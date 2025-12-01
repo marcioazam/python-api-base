@@ -18,17 +18,17 @@ ULID_PATTERN = re.compile(r"^[0-9A-HJKMNP-TV-Z]{26}$", re.IGNORECASE)
 @dataclass(frozen=True)
 class BaseValueObject(ABC):
     """Base class for all value objects.
-    
+
     Value objects are immutable and compared by their attributes.
     They have no identity and are interchangeable if their values are equal.
     """
-    
+
     def __eq__(self, other: Any) -> bool:
         """Compare value objects by their attributes."""
         if not isinstance(other, self.__class__):
             return False
         return self.__dict__ == other.__dict__
-    
+
     def __hash__(self) -> int:
         """Hash based on all attributes."""
         return hash(tuple(sorted(self.__dict__.items())))

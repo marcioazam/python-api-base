@@ -4,9 +4,13 @@ Provides generic batch repository operations with chunking, parallel execution,
 and error handling for high-performance mass operations.
 
 Uses PEP 695 type parameter syntax (Python 3.12+).
+
+**Feature: enterprise-features-2025**
+**Refactored: Split into interfaces.py + repository.py for SRP compliance**
 """
 
-from my_app.shared.batch.config import (
+from .builder import BatchOperationBuilder
+from .config import (
     BatchConfig,
     BatchErrorStrategy,
     BatchOperationStats,
@@ -16,13 +20,12 @@ from my_app.shared.batch.config import (
     ChunkProcessor,
     ProgressCallback,
 )
-from my_app.shared.batch.repository import (
-    BatchRepository,
+from .interfaces import (
     IBatchRepository,
     chunk_sequence,
     iter_chunks,
 )
-from my_app.shared.batch.builder import BatchOperationBuilder
+from .repository import BatchRepository
 
 __all__ = [
     "BatchConfig",

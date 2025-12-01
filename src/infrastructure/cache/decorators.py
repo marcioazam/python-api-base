@@ -45,6 +45,7 @@ def _run_async_in_thread(coro: Any) -> Any:
     This avoids nested event loop errors when calling async cache
     operations from sync code running in an async context.
     """
+
     def run_in_new_loop() -> Any:
         loop = asyncio.new_event_loop()
         try:
@@ -124,7 +125,10 @@ def cached[T, **P](
                 except TimeoutError:
                     logger.warning(
                         "Cache operation timed out, executing without cache",
-                        extra={"cache_key": cache_key, "timeout": CACHE_OPERATION_TIMEOUT},
+                        extra={
+                            "cache_key": cache_key,
+                            "timeout": CACHE_OPERATION_TIMEOUT,
+                        },
                     )
                     return func(*args, **kwargs)
                 except Exception as e:

@@ -2,13 +2,19 @@
 
 Provides CRUD operations with Unit of Work support.
 Uses PEP 695 type parameter syntax.
+
+**Feature: application-layer-improvements-2025**
+**Validates: Requirements 4.1, 4.2, 4.3**
 """
 
+import logging
 from abc import ABC, abstractmethod
 from typing import Any, overload
 
-from src.application.common.dto import PaginatedResponse
-from src.core.base.result import Result, Ok, Err
+from application.common.dto import PaginatedResponse
+from core.base.result import Result, Ok, Err
+
+logger = logging.getLogger(__name__)
 
 
 class UseCaseError(Exception):
@@ -32,7 +38,9 @@ class NotFoundError(UseCaseError):
 class ValidationError(UseCaseError):
     """Validation error."""
 
-    def __init__(self, message: str, errors: list[dict[str, Any]] | None = None) -> None:
+    def __init__(
+        self, message: str, errors: list[dict[str, Any]] | None = None
+    ) -> None:
         self.errors = errors or []
         super().__init__(message, "VALIDATION_ERROR")
 
@@ -194,8 +202,16 @@ class BaseUseCase[TEntity, TId](ABC):
                 await uow.commit()
                 await self._after_create(entity)
                 return Ok(entity)
+        except NotFoundError:
+            raise
+        except ValidationError as e:
+            return Err(e)
         except Exception as e:
-            return Err(UseCaseError(str(e)))
+            logger.exception(
+                f"Unexpected error creating {self._get_entity_name()}",
+                extra={"entity_type": self._get_entity_name(), "operation": "CREATE"},
+            )
+            return Err(UseCaseError(str(e), code="INTERNAL_ERROR"))
 
     async def update(
         self,
@@ -226,8 +242,20 @@ class BaseUseCase[TEntity, TId](ABC):
                 await uow.commit()
                 await self._after_update(entity)
                 return Ok(entity)
+        except NotFoundError:
+            raise
+        except ValidationError as e:
+            return Err(e)
         except Exception as e:
-            return Err(UseCaseError(str(e)))
+            logger.exception(
+                f"Unexpected error updating {self._get_entity_name()} {entity_id}",
+                extra={
+                    "entity_type": self._get_entity_name(),
+                    "entity_id": str(entity_id),
+                    "operation": "UPDATE",
+                },
+            )
+            return Err(UseCaseError(str(e), code="INTERNAL_ERROR"))
 
     async def delete(self, entity_id: TId) -> Result[bool, UseCaseError]:
         """Delete an entity.
@@ -249,8 +277,18 @@ class BaseUseCase[TEntity, TId](ABC):
                 await uow.commit()
                 await self._after_delete(entity_id)
                 return Ok(True)
+        except NotFoundError:
+            raise
         except Exception as e:
-            return Err(UseCaseError(str(e)))
+            logger.exception(
+                f"Unexpected error deleting {self._get_entity_name()} {entity_id}",
+                extra={
+                    "entity_type": self._get_entity_name(),
+                    "entity_id": str(entity_id),
+                    "operation": "DELETE",
+                },
+            )
+            return Err(UseCaseError(str(e), code="INTERNAL_ERROR"))
 
     # Hooks for customization
     async def _validate_create(self, data: Any) -> Result[None, UseCaseError]:

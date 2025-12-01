@@ -14,13 +14,16 @@ from sqlalchemy import false, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import SQLModel
 
-from my_app.core.exceptions import ValidationError as AppValidationError
-from my_app.core.base.repository import IRepository
+from core.exceptions import ValidationError as AppValidationError
+from core.base.repository import IRepository
 
 
-class SQLModelRepository[T: SQLModel, CreateT: BaseModel, UpdateT: BaseModel](
-    IRepository[T, CreateT, UpdateT]
-):
+class SQLModelRepository[
+    T: SQLModel,
+    CreateT: BaseModel,
+    UpdateT: BaseModel,
+    IdType: (str, int) = str,
+](IRepository[T, CreateT, UpdateT, IdType]):
     """SQLModel repository implementation.
 
     Provides CRUD operations using SQLModel and async SQLAlchemy.
@@ -40,7 +43,7 @@ class SQLModelRepository[T: SQLModel, CreateT: BaseModel, UpdateT: BaseModel](
         self._session = session
         self._model_class = model_class
 
-    async def get_by_id(self, id: str) -> T | None:
+    async def get_by_id(self, id: IdType) -> T | None:
         """Get entity by ID.
 
         Args:
@@ -136,7 +139,7 @@ class SQLModelRepository[T: SQLModel, CreateT: BaseModel, UpdateT: BaseModel](
         await self._session.refresh(entity)
         return entity
 
-    async def update(self, id: str, data: UpdateT) -> T | None:
+    async def update(self, id: IdType, data: UpdateT) -> T | None:
         """Update existing entity."""
         entity = await self.get_by_id(id)
         if entity is None:
@@ -152,7 +155,7 @@ class SQLModelRepository[T: SQLModel, CreateT: BaseModel, UpdateT: BaseModel](
         await self._session.refresh(entity)
         return entity
 
-    async def delete(self, id: str, *, soft: bool = True) -> bool:
+    async def delete(self, id: IdType, *, soft: bool = True) -> bool:
         """Delete entity."""
         entity = await self.get_by_id(id)
         if entity is None:
@@ -182,14 +185,14 @@ class SQLModelRepository[T: SQLModel, CreateT: BaseModel, UpdateT: BaseModel](
 
         return entities
 
-    async def exists(self, id: str) -> bool:
+    async def exists(self, id: IdType) -> bool:
         """Check if entity exists."""
         entity = await self.get_by_id(id)
         return entity is not None
 
     async def bulk_update(
         self,
-        updates: Sequence[tuple[str, UpdateT]],
+        updates: Sequence[tuple[IdType, UpdateT]],
     ) -> Sequence[T]:
         """Bulk update entities.
 
@@ -226,7 +229,7 @@ class SQLModelRepository[T: SQLModel, CreateT: BaseModel, UpdateT: BaseModel](
 
     async def bulk_delete(
         self,
-        ids: Sequence[str],
+        ids: Sequence[IdType],
         *,
         soft: bool = True,
     ) -> int:

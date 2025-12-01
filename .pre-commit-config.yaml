@@ -1,15 +1,21 @@
 # Pre-commit hooks configuration
 # Install: pre-commit install
 # Run manually: pre-commit run --all-files
+# Update hooks: pre-commit autoupdate
+
+default_language_version:
+  python: python3.12
 
 repos:
   # Ruff - Fast Python linter and formatter
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.0
+    rev: v0.8.4
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
+        types_or: [python, pyi]
       - id: ruff-format
+        types_or: [python, pyi]
 
   # MyPy - Static type checking
   - repo: https://github.com/pre-commit/mirrors-mypy
@@ -31,16 +37,25 @@ repos:
     rev: v5.0.0
     hooks:
       - id: trailing-whitespace
+        exclude: ^(.*\.md|.*\.lock)$
       - id: end-of-file-fixer
+        exclude: ^(.*\.lock)$
       - id: check-yaml
+        args: [--unsafe]
       - id: check-toml
       - id: check-json
       - id: check-added-large-files
-        args: [--maxkb=1000]
+        args: [--maxkb=500]
       - id: check-merge-conflict
       - id: detect-private-key
       - id: debug-statements
       - id: check-case-conflict
+      - id: check-ast
+      - id: check-docstring-first
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: no-commit-to-branch
+        args: [--branch, main, --branch, master]
 
   # Security checks
   - repo: https://github.com/PyCQA/bandit
@@ -50,6 +65,55 @@ repos:
         args: [-c, pyproject.toml, -r, src/]
         additional_dependencies: ["bandit[toml]"]
 
+  # Commit message linting
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.1.0
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
+
+  # YAML/JSON/TOML validation
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.29.4
+    hooks:
+      - id: check-github-workflows
+        args: [--verbose]
+      - id: check-github-actions
+        args: [--verbose]
+
+  # Security - detect secrets
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: [--baseline, .secrets.baseline]
+        exclude: |
+          (?x)^(
+            uv.lock|
+            .*/snapshots/.*|
+            tests/.*/.*
+          )$
+
+  # Markdown linting
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.43.0
+    hooks:
+      - id: markdownlint
+        args: [--fix]
+        exclude: |
+          (?x)^(
+            CHANGELOG.md
+          )$
+
+  # Dockerfile linting
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        args: [--ignore, DL3008, --ignore, DL3009]
+
 ci:
   autofix_commit_msg: "style: auto-fix by pre-commit hooks"
   autoupdate_commit_msg: "chore: update pre-commit hooks"
+  skip: [no-commit-to-branch]
+  autoupdate_schedule: weekly

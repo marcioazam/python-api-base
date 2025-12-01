@@ -10,13 +10,13 @@ from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
-from my_app.shared.utils.datetime import utc_now
+from core.shared.utils.datetime import utc_now
 
 
 @dataclass(frozen=True, slots=True)
 class DomainEvent(ABC):
     """Base class for domain events.
-    
+
     All domain events should inherit from this class and be immutable.
     """
 
@@ -73,7 +73,7 @@ type EventHandler = Callable[[DomainEvent], Any]
 
 class EventBus:
     """Simple in-process event bus for domain events.
-    
+
     Supports both sync and async handlers.
     """
 
@@ -88,16 +88,17 @@ class EventBus:
         handler: EventHandler | None = None,
     ) -> Callable[[EventHandler], EventHandler]:
         """Subscribe a handler to an event type.
-        
+
         Can be used as a decorator or called directly.
-        
+
         Args:
             event_type: Event type to subscribe to. None for all events.
             handler: Handler function.
-            
+
         Returns:
             Decorator function or the handler.
         """
+
         def decorator(fn: EventHandler) -> EventHandler:
             if event_type is None:
                 self._global_handlers.append(fn)
@@ -117,7 +118,7 @@ class EventBus:
         handler: EventHandler,
     ) -> None:
         """Unsubscribe a handler from an event type.
-        
+
         Args:
             event_type: Event type to unsubscribe from.
             handler: Handler function to remove.
@@ -131,7 +132,7 @@ class EventBus:
 
     async def publish(self, event: DomainEvent) -> None:
         """Publish an event to all subscribed handlers.
-        
+
         Args:
             event: Domain event to publish.
         """
@@ -158,7 +159,7 @@ class EventBus:
 
     def publish_sync(self, event: DomainEvent) -> None:
         """Publish an event synchronously (for sync handlers only).
-        
+
         Args:
             event: Domain event to publish.
         """

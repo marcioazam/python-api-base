@@ -1,7 +1,11 @@
 """Token store implementations.
 
-Feature: file-size-compliance-phase2, infrastructure-code-review
-Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 3.1, 5.1, 5.2, 5.3
+**Feature: infrastructure-generics-review-2025**
+**Validates: Requirements 8.2, 8.3, 8.5**
+
+Provides:
+- InMemoryTokenStore: In-memory token storage for development/testing
+- RedisTokenStore: Redis-based token storage for production
 """
 
 import json
@@ -9,6 +13,7 @@ import logging
 import threading
 from datetime import datetime, UTC
 from typing import Any
+
 
 from .models import StoredToken
 from .protocols import RefreshTokenStore
@@ -18,12 +23,14 @@ logger = logging.getLogger(__name__)
 
 def _validate_token_input(jti: str, user_id: str, expires_at: datetime) -> None:
     """Validate token store input parameters.
-    
+
+    Uses centralized error messages for consistency.
+
     Args:
         jti: Token identifier.
         user_id: User identifier.
         expires_at: Token expiration time.
-        
+
     Raises:
         ValueError: If any parameter is invalid.
     """
@@ -48,9 +55,11 @@ class InMemoryTokenStore(RefreshTokenStore):
         _validate_token_input(jti, user_id, expires_at)
 
         token = StoredToken(
-            jti=jti, user_id=user_id,
+            jti=jti,
+            user_id=user_id,
             created_at=datetime.now(UTC),
-            expires_at=expires_at, revoked=False,
+            expires_at=expires_at,
+            revoked=False,
         )
 
         with self._lock:
@@ -62,14 +71,15 @@ class InMemoryTokenStore(RefreshTokenStore):
             # Evict oldest tokens if over limit
             if len(self._tokens) > self._max_entries:
                 sorted_tokens = sorted(
-                    self._tokens.items(),
-                    key=lambda x: x[1].created_at
+                    self._tokens.items(), key=lambda x: x[1].created_at
                 )
                 tokens_to_remove = len(self._tokens) - self._max_entries
                 for jti_to_remove, token_to_remove in sorted_tokens[:tokens_to_remove]:
                     del self._tokens[jti_to_remove]
                     if token_to_remove.user_id in self._user_tokens:
-                        self._user_tokens[token_to_remove.user_id].discard(jti_to_remove)
+                        self._user_tokens[token_to_remove.user_id].discard(
+                            jti_to_remove
+                        )
 
     async def get(self, jti: str) -> StoredToken | None:
         with self._lock:
@@ -81,8 +91,11 @@ class InMemoryTokenStore(RefreshTokenStore):
             if token is None:
                 return False
             self._tokens[jti] = StoredToken(
-                jti=token.jti, user_id=token.user_id,
-                created_at=token.created_at, expires_at=token.expires_at, revoked=True,
+                jti=token.jti,
+                user_id=token.user_id,
+                created_at=token.created_at,
+                expires_at=token.expires_at,
+                revoked=True,
             )
             return True
 
@@ -137,9 +150,11 @@ class RedisTokenStore(RefreshTokenStore):
         _validate_token_input(jti, user_id, expires_at)
 
         token = StoredToken(
-            jti=jti, user_id=user_id,
+            jti=jti,
+            user_id=user_id,
             created_at=datetime.now(UTC),
-            expires_at=expires_at, revoked=False,
+            expires_at=expires_at,
+            revoked=False,
         )
         ttl_seconds = (expires_at - datetime.now(UTC)).total_seconds()
         ttl = max(int(ttl_seconds), 1) if ttl_seconds > 0 else self._default_ttl
@@ -157,8 +172,11 @@ class RedisTokenStore(RefreshTokenStore):
             return False
         token = StoredToken.from_dict(json.loads(data))
         revoked = StoredToken(
-            jti=token.jti, user_id=token.user_id,
-            created_at=token.created_at, expires_at=token.expires_at, revoked=True,
+            jti=token.jti,
+            user_id=token.user_id,
+            created_at=token.created_at,
+            expires_at=token.expires_at,
+            revoked=True,
         )
         ttl = await self._redis.ttl(key)
         if ttl > 0:

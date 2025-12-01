@@ -1,6 +1,6 @@
 language: "pt-BR"
 
-tone_instructions: "Seja direto e técnico. Foque em problemas de segurança, performance e manutenibilidade."
+tone_instructions: "Seja direto e técnico. Foque em problemas de segurança, performance e manutenibilidade. Siga OWASP Top 10 e Clean Architecture."
 
 reviews:
   auto_review:
@@ -9,19 +9,29 @@ reviews:
     base_branches:
       - main
       - develop
-  
+    ignore_title_keywords:
+      - "WIP"
+      - "DO NOT MERGE"
+      - "DRAFT"
+
   high_level_summary: true
   poem: false
   review_status: true
   collapse_walkthrough: false
-  
+
   path_filters:
     - "!.venv/**"
     - "!**/__pycache__/**"
-    - "!*.lock"
     - "!.hypothesis/**"
     - "!htmlcov/**"
-  
+    - "!.ruff_cache/**"
+    - "!.mypy_cache/**"
+    - "!.pytest_cache/**"
+    - "!*.egg-info/**"
+    - "!uv.lock"
+    - "!.github/**"
+    - "!deployments/helm/**/*.lock"
+
   path_instructions:
     - path: "src/**/*.py"
       instructions: |
@@ -29,33 +39,77 @@ reviews:
         - Complexidade ciclomática < 10
         - Funções com no máximo 50 linhas
         - Arquivos com no máximo 400 linhas
-        - Uso de type hints
-        - Tratamento adequado de erros
-        - Princípios SOLID
-        - Sem secrets hardcoded
-        - SQL injection prevention
-    
+        - Type hints obrigatórios (strict mypy)
+        - Tratamento adequado de erros com Result pattern
+        - Princípios SOLID e Clean Architecture
+        - Sem secrets hardcoded (use env vars)
+        - SQL injection prevention (parameterized queries)
+        - Input validation com Pydantic
+        - Async/await correto (sem blocking calls)
+
     - path: "tests/**/*.py"
       instructions: |
         Verifique:
         - Cobertura de edge cases
-        - Nomenclatura descritiva
+        - Nomenclatura descritiva (test_should_*)
         - Arrange-Act-Assert pattern
         - Sem dados sensíveis em fixtures
-    
+        - Property-based tests para lógica complexa
+        - Mocks apropriados para dependências externas
+
     - path: "alembic/**/*.py"
       instructions: |
         Verifique:
-        - Migrations reversíveis
+        - Migrations reversíveis (upgrade/downgrade)
         - Sem dados sensíveis
+        - Índices para foreign keys
+        - Constraints apropriados
 
     - path: "terraform/**/*.tf"
       instructions: |
         Verifique:
         - Sem secrets hardcoded
         - Uso de variáveis para valores sensíveis
-        - Tags obrigatórias
+        - Tags obrigatórias (Environment, Project, Owner)
         - Encryption at rest habilitado
+        - Least privilege IAM policies
+
+    - path: "deployments/**/*.yaml"
+      instructions: |
+        Verifique:
+        - Sem secrets em plain text
+        - Resource limits definidos
+        - Health checks configurados
+        - Security context apropriado
+        - Network policies restritivas
+        - Pod disruption budgets
+        - External Secrets usage
+
+    - path: ".github/workflows/**/*.yml"
+      instructions: |
+        Verifique:
+        - Permissions explícitas (least privilege)
+        - Secrets via GitHub Secrets (não hardcoded)
+        - Timeout configurado
+        - Concurrency groups para evitar runs duplicados
+        - Cache de dependências
+        - Fail fast quando apropriado
+
+    - path: "pyproject.toml"
+      instructions: |
+        Verifique:
+        - Versões de dependências pinadas ou com range seguro
+        - Sem dependências não utilizadas
+        - Dependências de segurança atualizadas
+        - Optional dependencies bem organizados
+
+    - path: "src/**/config/**/*.py"
+      instructions: |
+        Verifique:
+        - Validação de todas as configurações
+        - Defaults seguros
+        - Documentação de cada campo
+        - Sem valores padrão sensíveis
 
 chat:
   auto_reply: true
@@ -65,3 +119,4 @@ early_access: true
 knowledge_base:
   learnings:
     scope: auto
+  opt_out: false

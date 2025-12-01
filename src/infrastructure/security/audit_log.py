@@ -13,7 +13,7 @@ from datetime import datetime, UTC
 from enum import Enum
 from typing import Any
 
-from my_app.shared.utils.ids import generate_ulid
+from core.shared.utils.ids import generate_ulid
 
 logger = logging.getLogger(__name__)
 
@@ -102,13 +102,13 @@ class AuditEntry:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "AuditEntry":
         """Create entry from dictionary.
-        
+
         Args:
             data: Dictionary containing audit entry data.
-            
+
         Returns:
             AuditEntry instance.
-            
+
         Raises:
             KeyError: If required fields are missing.
             ValueError: If timestamp format is invalid.
@@ -269,7 +269,7 @@ class InMemoryAuditLogger(AuditLogger):
 
             # Trim old entries if over limit (keep newest)
             if len(self._entries) > self._max_entries:
-                self._entries = self._entries[-self._max_entries:]
+                self._entries = self._entries[-self._max_entries :]
 
         logger.debug(
             f"Audit: {entry.action} on {entry.resource_type} "

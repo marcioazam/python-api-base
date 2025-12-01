@@ -10,6 +10,7 @@ import asyncio
 
 class MessageStatus(Enum):
     """Message processing status."""
+
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -20,6 +21,7 @@ class MessageStatus(Enum):
 @dataclass
 class RetryConfig:
     """Retry configuration."""
+
     max_retries: int = 3
     initial_delay_ms: int = 1000
     max_delay_ms: int = 60000
@@ -30,6 +32,7 @@ class RetryConfig:
 @dataclass
 class QueueMessage[T]:
     """Message in retry queue."""
+
     id: str
     payload: T
     created_at: datetime
@@ -43,6 +46,7 @@ class QueueMessage[T]:
 @dataclass
 class ProcessingResult:
     """Result of message processing."""
+
     success: bool
     error: str | None = None
     should_retry: bool = True
@@ -72,7 +76,7 @@ class RetryQueue[T]:
         self,
         backend: QueueBackend[T],
         handler: MessageHandler[T],
-        config: RetryConfig | None = None
+        config: RetryConfig | None = None,
     ) -> None:
         self._backend = backend
         self._handler = handler
@@ -85,9 +89,7 @@ class RetryQueue[T]:
         }
 
     def register_hook(
-        self,
-        event: str,
-        callback: Callable[[QueueMessage[T]], Awaitable[None]]
+        self, event: str, callback: Callable[[QueueMessage[T]], Awaitable[None]]
     ) -> None:
         """Register a hook for queue events."""
         if event in self._hooks:
@@ -100,8 +102,9 @@ class RetryQueue[T]:
     def _calculate_delay(self, retry_count: int) -> int:
         """Calculate delay with exponential backoff and jitter."""
         import random
+
         delay = self._config.initial_delay_ms * (
-            self._config.backoff_multiplier ** retry_count
+            self._config.backoff_multiplier**retry_count
         )
         delay = min(delay, self._config.max_delay_ms)
 
@@ -111,17 +114,16 @@ class RetryQueue[T]:
         return int(max(0, delay))
 
     async def enqueue(
-        self,
-        payload: T,
-        metadata: dict[str, Any] | None = None
+        self, payload: T, metadata: dict[str, Any] | None = None
     ) -> QueueMessage[T]:
         """Add a message to the queue."""
         import uuid
+
         message = QueueMessage(
             id=str(uuid.uuid4()),
             payload=payload,
             created_at=datetime.now(UTC),
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
         await self._backend.enqueue(message)
         return message
@@ -153,7 +155,9 @@ class RetryQueue[T]:
                 message.last_error = result.error
                 message.status = MessageStatus.PENDING
                 delay = self._calculate_delay(message.retry_count)
-                message.next_retry_at = datetime.now(UTC) + timedelta(milliseconds=delay)
+                message.next_retry_at = datetime.now(UTC) + timedelta(
+                    milliseconds=delay
+                )
                 await self._backend.update(message)
             else:
                 message.status = MessageStatus.DEAD_LETTER
@@ -167,7 +171,9 @@ class RetryQueue[T]:
                 message.retry_count += 1
                 message.status = MessageStatus.PENDING
                 delay = self._calculate_delay(message.retry_count)
-                message.next_retry_at = datetime.now(UTC) + timedelta(milliseconds=delay)
+                message.next_retry_at = datetime.now(UTC) + timedelta(
+                    milliseconds=delay
+                )
                 await self._backend.update(message)
             else:
                 message.status = MessageStatus.DEAD_LETTER
@@ -226,9 +232,10 @@ class InMemoryQueueBackend[T]:
     async def dequeue(self, limit: int) -> list[QueueMessage[T]]:
         now = datetime.now(UTC)
         ready = [
-            m for m in self._queue
-            if m.status == MessageStatus.PENDING and
-            (m.next_retry_at is None or m.next_retry_at <= now)
+            m
+            for m in self._queue
+            if m.status == MessageStatus.PENDING
+            and (m.next_retry_at is None or m.next_retry_at <= now)
         ][:limit]
         return ready
 

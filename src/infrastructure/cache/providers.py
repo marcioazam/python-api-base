@@ -1,7 +1,7 @@
 """Cache provider implementations with PEP 695 generics.
 
-**Feature: enterprise-features-2025, Task 1.1: Enhance CacheProvider Protocol**
-**Validates: Requirements 1.1, 1.8, 1.9**
+**Feature: python-api-base-2025-state-of-art**
+**Validates: Requirements 4.1, 4.2, 4.3**
 """
 
 from __future__ import annotations
@@ -9,16 +9,108 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import time
 from abc import abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Protocol
+from typing import Any, Protocol, runtime_checkable
 
 from .config import CacheConfig
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Serializer Protocol
+# =============================================================================
+
+
+@runtime_checkable
+class Serializer[T](Protocol):
+    """Protocol for type-safe serialization.
+
+    Type Parameters:
+        T: The type to serialize/deserialize.
+
+    **Feature: python-api-base-2025-state-of-art**
+    **Validates: Requirements 4.1**
+    """
+
+    def serialize(self, value: T) -> bytes:
+        """Serialize value to bytes.
+
+        Args:
+            value: Value to serialize.
+
+        Returns:
+            Serialized bytes.
+        """
+        ...
+
+    def deserialize(self, data: bytes) -> T:
+        """Deserialize bytes to value.
+
+        Args:
+            data: Bytes to deserialize.
+
+        Returns:
+            Deserialized value.
+        """
+        ...
+
+
+class JsonSerializer[T]:
+    """JSON serializer implementation.
+
+    Type Parameters:
+        T: The type to serialize/deserialize.
+    """
+
+    def serialize(self, value: T) -> bytes:
+        """Serialize value to JSON bytes."""
+        return json.dumps(value, default=str).encode("utf-8")
+
+    def deserialize(self, data: bytes) -> T:
+        """Deserialize JSON bytes to value."""
+        return json.loads(data.decode("utf-8"))
+
+
+# =============================================================================
+# Typed Cache Key
+# =============================================================================
+
+
+@dataclass(frozen=True, slots=True)
+class CacheKey[T]:
+    """Type-safe cache key that associates a key pattern with a type.
+
+    Type Parameters:
+        T: The type of value stored at this key.
+
+    Example:
+        user_cache: CacheKey[User] = CacheKey("user:{id}")
+        key = user_cache.format(id="123")  # "user:123"
+
+    **Feature: python-api-base-2025-state-of-art**
+    **Validates: Requirements 4.1**
+    """
+
+    pattern: str
+
+    def format(self, **kwargs: Any) -> str:
+        """Format the key pattern with provided values.
+
+        Args:
+            **kwargs: Values to substitute in pattern.
+
+        Returns:
+            Formatted cache key string.
+        """
+        return self.pattern.format(**kwargs)
+
+    def __str__(self) -> str:
+        """Return the pattern string."""
+        return self.pattern
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,12 +119,16 @@ class CacheEntry[T]:
 
     PEP 695 generic dataclass for type-safe cache entries.
 
+    **Feature: infrastructure-generics-review-2025**
+    **Validates: Requirements 6.2, 6.3**
+
     Attributes:
         key: The cache key.
         value: The cached value of type T.
         created_at: When entry was created.
         ttl: Time-to-live in seconds. None for no expiration.
         expires_at: When entry expires. None for no expiration.
+        tags: Tuple of tags for group invalidation.
     """
 
     key: str
@@ -40,6 +136,7 @@ class CacheEntry[T]:
     created_at: datetime
     ttl: int | None = None
     expires_at: datetime | None = None
+    tags: tuple[str, ...] = ()
 
     @property
     def is_expired(self) -> bool:
@@ -179,7 +276,7 @@ class InMemoryCacheProvider[T]:
         self._misses = 0
         self._evictions = 0
 
-    def get_metrics(self) -> "CacheStats":
+    def get_metrics(self) -> CacheStats:
         """Get cache metrics for OpenTelemetry export.
 
         **Feature: api-base-score-100, Task 4.2: Integrate metrics with InMemoryCacheProvider**
@@ -227,7 +324,7 @@ class InMemoryCacheProvider[T]:
     async def set(self, key: str, value: T, ttl: int | None = None) -> None:
         """Store a value in the cache."""
         full_key = self._make_key(key)
-        effective_ttl = ttl if ttl is not None else self._config.ttl
+        effective_ttl = ttl if ttl is not None else self._config.default_ttl
         now = datetime.now()
         expires_at = None
         if effective_ttl is not None:
@@ -236,7 +333,10 @@ class InMemoryCacheProvider[T]:
             expires_at = now + timedelta(seconds=effective_ttl)
 
         async with self._lock:
-            if full_key not in self._cache and len(self._cache) >= self._config.max_size:
+            if (
+                full_key not in self._cache
+                and len(self._cache) >= self._config.max_size
+            ):
                 self._cache.popitem(last=False)
                 self._evictions += 1  # Track LRU eviction
 
@@ -490,7 +590,7 @@ class RedisCacheProvider[T]:
         try:
             full_key = self._make_key(key)
             data = self._serialize(value)
-            effective_ttl = ttl if ttl is not None else self._config.ttl
+            effective_ttl = ttl if ttl is not None else self._config.default_ttl
 
             if effective_ttl is not None:
                 await client.setex(full_key, effective_ttl, data)

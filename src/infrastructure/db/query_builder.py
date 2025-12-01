@@ -7,7 +7,7 @@ See: src/my_app/shared/query_builder/
 """
 
 # Re-export all public APIs for backward compatibility
-from my_app.infrastructure.db.query_builder import (
+from infrastructure.db.query_builder import (
     ComparisonOperator,
     ConditionGroup,
     FieldAccessor,

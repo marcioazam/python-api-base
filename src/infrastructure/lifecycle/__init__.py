@@ -3,7 +3,7 @@
 Provides graceful shutdown handling and lifecycle hooks.
 """
 
-from src.infrastructure.lifecycle.shutdown import (
+from infrastructure.lifecycle.shutdown import (
     ShutdownHandler,
     ShutdownConfig,
     ShutdownState,

@@ -11,14 +11,14 @@ from typing import Any, Self
 
 from pydantic import BaseModel
 
-from my_app.infrastructure.db.query_builder.conditions import (
+from infrastructure.db.query_builder.conditions import (
     ConditionGroup,
     LogicalOperator,
     QueryCondition,
     SortClause,
     SortDirection,
 )
-from my_app.domain.common.specification import Specification
+from domain.common.specification import Specification
 
 
 @dataclass(slots=True)

@@ -1,0 +1,63 @@
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: my-api-vpa
+  namespace: my-api
+  labels:
+    app.kubernetes.io/name: my-api
+    app.kubernetes.io/instance: my-api-prod
+    app.kubernetes.io/component: vpa
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: my-api
+
+  # Update mode: "Auto", "Recreate", "Initial", or "Off"
+  # Auto: VPA automatically updates pods with new resource recommendations
+  # Recreate: VPA recreates pods when recommendations change significantly
+  # Initial: VPA only sets resources on pod creation
+  # Off: VPA only provides recommendations, doesn't update pods
+  updatePolicy:
+    updateMode: "Auto"
+
+  # Resource policy defines boundaries for VPA recommendations
+  resourcePolicy:
+    containerPolicies:
+      - containerName: my-api
+        # Minimum allowed resources (prevents under-provisioning)
+        minAllowed:
+          cpu: 100m
+          memory: 128Mi
+        # Maximum allowed resources (prevents over-provisioning)
+        maxAllowed:
+          cpu: 2000m
+          memory: 2Gi
+        # Control which resources VPA can update
+        controlledResources:
+          - cpu
+          - memory
+        # Control values: RequestsAndLimits, RequestsOnly
+        controlledValues: RequestsAndLimits
+
+---
+# PriorityClass for production workloads
+# Ensures critical pods are scheduled first and less likely to be evicted
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: high-priority
+value: 1000000
+globalDefault: false
+description: "High priority class for production API workloads"
+
+---
+# PriorityClass for critical system workloads
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: critical-priority
+value: 2000000
+globalDefault: false
+description: "Critical priority for essential system components"
+preemptionPolicy: PreemptLowerPriority

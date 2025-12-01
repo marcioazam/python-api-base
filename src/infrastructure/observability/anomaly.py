@@ -138,7 +138,7 @@ class StatisticalAnalyzer:
         result = []
         for i in range(len(values)):
             start = max(0, i - window + 1)
-            result.append(StatisticalAnalyzer.mean(values[start:i + 1]))
+            result.append(StatisticalAnalyzer.mean(values[start : i + 1]))
         return result
 
     @staticmethod
@@ -178,7 +178,9 @@ class AnomalyDetector:
         self._data: dict[str, list[DataPoint]] = {}
         self._stats = StatisticalAnalyzer()
 
-    async def record(self, metric_name: str, value: float, labels: dict[str, str] | None = None) -> Anomaly | None:
+    async def record(
+        self, metric_name: str, value: float, labels: dict[str, str] | None = None
+    ) -> Anomaly | None:
         """Record a data point and check for anomalies."""
         point = DataPoint(value=value, timestamp=datetime.now(UTC), labels=labels or {})
 
@@ -188,7 +190,9 @@ class AnomalyDetector:
 
         # Trim old data
         cutoff = datetime.now(UTC) - timedelta(hours=24)
-        self._data[metric_name] = [p for p in self._data[metric_name] if p.timestamp > cutoff]
+        self._data[metric_name] = [
+            p for p in self._data[metric_name] if p.timestamp > cutoff
+        ]
 
         # Check for anomalies
         anomaly = self._detect_anomaly(metric_name, point)
@@ -226,12 +230,14 @@ class AnomalyDetector:
 
         # Check for trend
         if len(values) >= self._config.trend_window:
-            recent = values[-self._config.trend_window:]
+            recent = values[-self._config.trend_window :]
             slope = self._stats.linear_regression_slope(recent)
             normalized_slope = slope / (mean if mean != 0 else 1)
 
             if abs(normalized_slope) > self._config.trend_threshold:
-                anomaly_type = AnomalyType.TREND_UP if slope > 0 else AnomalyType.TREND_DOWN
+                anomaly_type = (
+                    AnomalyType.TREND_UP if slope > 0 else AnomalyType.TREND_DOWN
+                )
                 return Anomaly(
                     anomaly_type=anomaly_type,
                     severity=AnomalySeverity.WARNING,

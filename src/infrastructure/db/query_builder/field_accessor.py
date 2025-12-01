@@ -5,7 +5,7 @@ Enables IDE autocompletion and type checking for field references.
 
 from collections.abc import Sequence
 
-from my_app.infrastructure.db.query_builder.conditions import (
+from infrastructure.db.query_builder.conditions import (
     ComparisonOperator,
     QueryCondition,
     SortClause,

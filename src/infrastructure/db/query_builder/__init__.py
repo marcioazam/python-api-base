@@ -6,7 +6,7 @@ integrating with the Specification pattern for filtering.
 Uses PEP 695 type parameter syntax (Python 3.12+).
 """
 
-from my_app.infrastructure.db.query_builder.conditions import (
+from infrastructure.db.query_builder.conditions import (
     ComparisonOperator,
     ConditionGroup,
     LogicalOperator,
@@ -14,13 +14,13 @@ from my_app.infrastructure.db.query_builder.conditions import (
     SortClause,
     SortDirection,
 )
-from my_app.infrastructure.db.query_builder.field_accessor import FieldAccessor, field_
-from my_app.infrastructure.db.query_builder.builder import (
+from infrastructure.db.query_builder.field_accessor import FieldAccessor, field_
+from infrastructure.db.query_builder.builder import (
     QueryBuilder,
     QueryOptions,
     QueryResult,
 )
-from my_app.infrastructure.db.query_builder.in_memory import InMemoryQueryBuilder
+from infrastructure.db.query_builder.in_memory import InMemoryQueryBuilder
 
 __all__ = [
     "ComparisonOperator",

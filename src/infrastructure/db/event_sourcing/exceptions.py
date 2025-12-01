@@ -35,5 +35,7 @@ class ConcurrencyError(Exception):
         self.expected_version = expected_version
         self.actual_version = actual_version
         if expected_version is not None and actual_version is not None:
-            message = f"{message} (expected: {expected_version}, actual: {actual_version})"
+            message = (
+                f"{message} (expected: {expected_version}, actual: {actual_version})"
+            )
         super().__init__(message)

@@ -70,7 +70,6 @@ def get_database_url(config: Config | None = None) -> str:
     return url
 
 
-
 def import_models(entities_package: str = "my_app.domain.entities") -> list[str]:
     """Auto-import all entity models for metadata registration.
 

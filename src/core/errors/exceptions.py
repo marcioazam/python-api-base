@@ -133,7 +133,9 @@ class ValidationError(SharedModuleError):
         self.field = field
         self.value = value
         self.constraint = constraint
-        super().__init__(f"Validation failed for '{field}': {constraint} (got: {value})")
+        super().__init__(
+            f"Validation failed for '{field}': {constraint} (got: {value})"
+        )
 
 
 # Phase 2 Module Exceptions

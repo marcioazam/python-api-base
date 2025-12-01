@@ -37,7 +37,7 @@ Configuration:
         - "10/second": 10 requests per second
 
 Example Usage:
-    >>> from my_app.adapters.api.middleware.sliding_window import (
+    >>> from interface.middleware.sliding_window import (
     ...     SlidingWindowConfig,
     ...     SlidingWindowRateLimiter,
     ...     parse_rate_limit,
@@ -53,8 +53,7 @@ import asyncio
 import logging
 import re
 import time
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -204,7 +203,9 @@ class SlidingWindowRateLimiter:
 
     def _get_current_window_start(self, now: float) -> float:
         """Get start timestamp of current window."""
-        return (now // self._config.window_size_seconds) * self._config.window_size_seconds
+        return (
+            now // self._config.window_size_seconds
+        ) * self._config.window_size_seconds
 
     def _calculate_weighted_count(
         self,
@@ -270,7 +271,10 @@ class SlidingWindowRateLimiter:
                 self._windows[key] = state
 
             if state.window_start < current_window_start:
-                if current_window_start - state.window_start >= self._config.window_size_seconds:
+                if (
+                    current_window_start - state.window_start
+                    >= self._config.window_size_seconds
+                ):
                     state = WindowState(
                         window_start=current_window_start,
                         previous_count=state.current_count,
@@ -294,7 +298,9 @@ class SlidingWindowRateLimiter:
                 )
 
             state.current_count += 1
-            remaining = max(0, self._config.requests_per_window - int(weighted_count) - 1)
+            remaining = max(
+                0, self._config.requests_per_window - int(weighted_count) - 1
+            )
 
             return RateLimitResult(
                 allowed=True,

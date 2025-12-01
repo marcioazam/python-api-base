@@ -6,7 +6,7 @@
 
 import logging
 
-from my_app.shared.result import Err, Result
+from core.base.result import Err, Result
 
 from .models import (
     Notification,
@@ -83,7 +83,10 @@ class NotificationService[TPayload]:
         if self.is_opted_out(notification.recipient_id, notification.channel):
             logger.info(
                 "Notification skipped due to opt-out",
-                extra={"user_id": notification.recipient_id, "channel": notification.channel},
+                extra={
+                    "user_id": notification.recipient_id,
+                    "channel": notification.channel,
+                },
             )
             return Err(NotificationError.OPT_OUT)
 

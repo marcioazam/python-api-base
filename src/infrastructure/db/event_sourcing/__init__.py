@@ -13,7 +13,7 @@ Original: event_sourcing.py (522 lines)
 Refactored: event_sourcing/ package (8 files, ~60-130 lines each)
 
 Usage:
-    from my_app.infrastructure.db.event_sourcing import (
+    from infrastructure.db.event_sourcing import (
         Aggregate,
         EventStore,
         InMemoryEventStore,
@@ -39,7 +39,6 @@ __all__ = [
     # Aggregate
     "Aggregate",
     "AggregateId",
-
     # Store
     "EventStore",
     "InMemoryEventStore",

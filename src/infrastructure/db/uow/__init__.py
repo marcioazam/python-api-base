@@ -4,7 +4,7 @@
 **Validates: Requirements 6.3**
 """
 
-from my_app.infrastructure.db.uow.unit_of_work import (
+from infrastructure.db.uow.unit_of_work import (
     IUnitOfWork,
     SQLAlchemyUnitOfWork,
     transaction,

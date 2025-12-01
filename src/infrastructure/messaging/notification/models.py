@@ -9,7 +9,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Protocol
 
-from my_app.shared.result import Result
+from core.base.result import Result
 
 
 class NotificationStatus(Enum):

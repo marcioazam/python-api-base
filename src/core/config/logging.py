@@ -14,7 +14,7 @@ request_id_ctx: ContextVar[str | None] = ContextVar("request_id", default=None)
 
 def get_request_id() -> str | None:
     """Get current request ID from context.
-    
+
     Returns:
         Request ID or None if not set.
     """
@@ -23,7 +23,7 @@ def get_request_id() -> str | None:
 
 def set_request_id(request_id: str) -> None:
     """Set request ID in context.
-    
+
     Args:
         request_id: Request ID to set.
     """
@@ -39,12 +39,12 @@ def add_request_id(
     logger: logging.Logger, method_name: str, event_dict: EventDict
 ) -> EventDict:
     """Add request ID to log event.
-    
+
     Args:
         logger: Logger instance.
         method_name: Logging method name.
         event_dict: Event dictionary.
-        
+
     Returns:
         Updated event dictionary.
     """
@@ -58,23 +58,23 @@ def add_trace_context(
     logger: logging.Logger, method_name: str, event_dict: EventDict
 ) -> EventDict:
     """Add OpenTelemetry trace context to log event.
-    
+
     Adds trace_id and span_id from the current trace context for
     log correlation with distributed traces.
-    
+
     **Feature: advanced-reusability**
     **Validates: Requirements 4.7**
-    
+
     Args:
         logger: Logger instance.
         method_name: Logging method name.
         event_dict: Event dictionary.
-        
+
     Returns:
         Updated event dictionary with trace context.
     """
     try:
-        from my_app.infrastructure.observability.tracing import (
+        from infrastructure.observability.tracing import (
             get_current_span_id,
             get_current_trace_id,
         )
@@ -112,18 +112,19 @@ def redact_pii(
     logger: logging.Logger, method_name: str, event_dict: EventDict
 ) -> EventDict:
     """Redact PII from log events.
-    
+
     **Feature: infrastructure-code-review**
     **Validates: Requirements 5.1, 5.2**
-    
+
     Args:
         logger: Logger instance.
         method_name: Logging method name.
         event_dict: Event dictionary.
-        
+
     Returns:
         Event dictionary with PII redacted.
     """
+
     def _redact_value(key: str, value: Any) -> Any:
         """Redact value if key matches PII pattern."""
         # Handle None and non-string keys
@@ -155,13 +156,13 @@ def configure_logging(
     additional_pii_patterns: set[str] | None = None,
 ) -> None:
     """Configure structured logging.
-    
+
     Args:
         log_level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL).
         log_format: Output format ("json" or "console").
         development: Enable development mode with pretty printing.
         additional_pii_patterns: Additional patterns to redact as PII.
-        
+
     Raises:
         ValueError: If log_level is not a valid logging level.
     """
@@ -240,10 +241,10 @@ def configure_logging(
 
 def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
     """Get a structured logger.
-    
+
     Args:
         name: Logger name (defaults to caller's module).
-        
+
     Returns:
         Structured logger instance.
     """

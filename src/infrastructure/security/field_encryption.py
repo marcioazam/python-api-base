@@ -16,7 +16,7 @@ from typing import Any, Protocol
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-from my_app.core.errors.exceptions import (
+from core.errors.exceptions import (
     AuthenticationError,
     DecryptionError,
     EncryptionError,
@@ -33,8 +33,8 @@ class EncryptionAlgorithm(Enum):
 
 # Constants for AES-256-GCM
 NONCE_SIZE = 12  # 96 bits for GCM (recommended)
-KEY_SIZE = 32    # 256 bits
-TAG_SIZE = 16    # 128 bits
+KEY_SIZE = 32  # 256 bits
+TAG_SIZE = 16  # 128 bits
 
 
 @dataclass
@@ -182,7 +182,6 @@ class FieldEncryptor:
             tag=tag,
             version=2,
         )
-
 
     async def decrypt(self, encrypted: EncryptedValue) -> bytes:
         """Decrypt a value and verify authentication tag.

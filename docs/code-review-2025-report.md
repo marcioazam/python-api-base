@@ -1,7 +1,7 @@
 # Code Review Report - Python API Base 2025
 
 **Data:** 30 de Novembro de 2025  
-**Escopo:** `src/my_api`  
+**Escopo:** `src/`  
 **Metodologia:** Análise baseada em pesquisas de boas práticas 2025
 
 ## Resumo Executivo
@@ -58,12 +58,12 @@ O projeto Python API Base demonstra excelente aderência às melhores práticas 
 
 ### 1. Tamanho de Arquivos
 6 arquivos excedem 400 linhas:
-- `shared/connection_pool/service.py`: 444 linhas
-- `shared/api_key_service.py`: 437 linhas
-- `core/auth/jwt.py`: 424 linhas
-- `core/security/audit_logger.py`: 411 linhas
-- `shared/background_tasks/service.py`: 409 linhas
-- `shared/request_signing/service.py`: 404 linhas
+- `src/infrastructure/connection_pool/service.py`: 444 linhas
+- `src/infrastructure/api_key_service.py`: 437 linhas
+- `src/infrastructure/auth/jwt.py`: 424 linhas
+- `src/infrastructure/security/audit_logger.py`: 411 linhas
+- `src/infrastructure/tasks/service.py`: 409 linhas
+- `src/infrastructure/security/request_signing.py`: 404 linhas
 
 **Recomendação:** Considerar refatoração para arquivos menores.
 

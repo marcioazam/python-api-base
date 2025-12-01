@@ -7,7 +7,7 @@
 import pytest
 from hypothesis import given, strategies as st, settings
 
-from src.my_app.shared.grpc_service import (
+from my_app.shared.grpc_service import (
     GRPCStatus,
     MethodType,
     GRPCError,

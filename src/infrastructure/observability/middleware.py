@@ -15,7 +15,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-from my_app.infrastructure.observability.telemetry import (
+from infrastructure.observability.telemetry import (
     _current_span_id,
     _current_trace_id,
     get_telemetry,

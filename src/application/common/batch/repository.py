@@ -1,105 +1,22 @@
-"""Batch repository interface and in-memory implementation."""
+"""In-memory batch repository implementation.
 
-from abc import ABC, abstractmethod
-from collections.abc import AsyncIterator, Callable, Sequence
+**Feature: enterprise-features-2025**
+**Validates: Requirements 10.1, 10.2, 10.3**
+**Refactored: Interface moved to interfaces.py for SRP compliance**
+"""
+
+from collections.abc import Callable, Sequence
 
 from pydantic import BaseModel
 
-from my_app.shared.batch.config import (
+from .config import (
     BatchConfig,
     BatchErrorStrategy,
     BatchProgress,
     BatchResult,
     ProgressCallback,
 )
-
-
-def chunk_sequence[T](items: Sequence[T], chunk_size: int) -> list[Sequence[T]]:
-    """Split a sequence into chunks of specified size."""
-    if chunk_size <= 0:
-        msg = "chunk_size must be positive"
-        raise ValueError(msg)
-    return [items[i : i + chunk_size] for i in range(0, len(items), chunk_size)]
-
-
-async def iter_chunks[T](
-    items: Sequence[T],
-    chunk_size: int,
-) -> AsyncIterator[tuple[int, Sequence[T]]]:
-    """Async iterator over chunks with index."""
-    chunks = chunk_sequence(items, chunk_size)
-    for idx, chunk in enumerate(chunks):
-        yield idx, chunk
-
-
-class IBatchRepository[T: BaseModel, CreateT: BaseModel, UpdateT: BaseModel](ABC):
-    """Interface for batch repository operations."""
-
-    @abstractmethod
-    async def bulk_create(
-        self,
-        items: Sequence[CreateT],
-        *,
-        config: BatchConfig | None = None,
-        on_progress: ProgressCallback | None = None,
-    ) -> BatchResult[T]:
-        """Create multiple entities in bulk."""
-        ...
-
-    @abstractmethod
-    async def bulk_update(
-        self,
-        items: Sequence[tuple[str, UpdateT]],
-        *,
-        config: BatchConfig | None = None,
-        on_progress: ProgressCallback | None = None,
-    ) -> BatchResult[T]:
-        """Update multiple entities in bulk."""
-        ...
-
-    @abstractmethod
-    async def bulk_delete(
-        self,
-        ids: Sequence[str],
-        *,
-        soft: bool = True,
-        config: BatchConfig | None = None,
-        on_progress: ProgressCallback | None = None,
-    ) -> BatchResult[str]:
-        """Delete multiple entities in bulk."""
-        ...
-
-    @abstractmethod
-    async def bulk_get(
-        self,
-        ids: Sequence[str],
-        *,
-        config: BatchConfig | None = None,
-    ) -> dict[str, T | None]:
-        """Get multiple entities by IDs."""
-        ...
-
-    @abstractmethod
-    async def bulk_exists(
-        self,
-        ids: Sequence[str],
-        *,
-        config: BatchConfig | None = None,
-    ) -> dict[str, bool]:
-        """Check existence of multiple entities."""
-        ...
-
-    @abstractmethod
-    async def bulk_upsert(
-        self,
-        items: Sequence[CreateT],
-        *,
-        key_field: str = "id",
-        config: BatchConfig | None = None,
-        on_progress: ProgressCallback | None = None,
-    ) -> BatchResult[T]:
-        """Insert or update multiple entities."""
-        ...
+from .interfaces import IBatchRepository, chunk_sequence
 
 
 class BatchRepository[T: BaseModel, CreateT: BaseModel, UpdateT: BaseModel](
@@ -173,7 +90,10 @@ class BatchRepository[T: BaseModel, CreateT: BaseModel, UpdateT: BaseModel](
             for item in chunk:
                 try:
                     entity_data = item.model_dump()
-                    if self._id_field not in entity_data or not entity_data[self._id_field]:
+                    if (
+                        self._id_field not in entity_data
+                        or not entity_data[self._id_field]
+                    ):
                         entity_data[self._id_field] = self._id_generator()
                     entity = self._entity_type.model_validate(entity_data)
                     entity_id = entity_data[self._id_field]
@@ -195,19 +115,24 @@ class BatchRepository[T: BaseModel, CreateT: BaseModel, UpdateT: BaseModel](
                         except Exception as re:
                             rollback_error = re
                         return BatchResult(
-                            succeeded=[], failed=[(item, e)],
+                            succeeded=[],
+                            failed=[(item, e)],
                             total_processed=len(succeeded) + 1,
-                            total_succeeded=0, total_failed=len(succeeded) + 1,
-                            rolled_back=True, rollback_error=rollback_error,
+                            total_succeeded=0,
+                            total_failed=len(succeeded) + 1,
+                            rolled_back=True,
+                            rollback_error=rollback_error,
                         )
             self._update_progress(progress, chunk_succeeded, chunk_failed, on_progress)
             if cfg.error_strategy == BatchErrorStrategy.FAIL_FAST and failed:
                 break
 
         return BatchResult(
-            succeeded=succeeded, failed=failed,
+            succeeded=succeeded,
+            failed=failed,
             total_processed=len(succeeded) + len(failed),
-            total_succeeded=len(succeeded), total_failed=len(failed),
+            total_succeeded=len(succeeded),
+            total_failed=len(failed),
         )
 
     async def bulk_update(
@@ -250,9 +175,11 @@ class BatchRepository[T: BaseModel, CreateT: BaseModel, UpdateT: BaseModel](
                 break
 
         return BatchResult(
-            succeeded=succeeded, failed=failed,
+            succeeded=succeeded,
+            failed=failed,
             total_processed=len(succeeded) + len(failed),
-            total_succeeded=len(succeeded), total_failed=len(failed),
+            total_succeeded=len(succeeded),
+            total_failed=len(failed),
         )
 
     async def bulk_delete(
@@ -281,7 +208,9 @@ class BatchRepository[T: BaseModel, CreateT: BaseModel, UpdateT: BaseModel](
                         if hasattr(entity, "is_deleted"):
                             entity_data = entity.model_dump()
                             entity_data["is_deleted"] = True
-                            self._storage[entity_id] = self._entity_type.model_validate(entity_data)
+                            self._storage[entity_id] = self._entity_type.model_validate(
+                                entity_data
+                            )
                         else:
                             del self._storage[entity_id]
                     else:
@@ -298,9 +227,11 @@ class BatchRepository[T: BaseModel, CreateT: BaseModel, UpdateT: BaseModel](
                 break
 
         return BatchResult(
-            succeeded=succeeded, failed=failed,
+            succeeded=succeeded,
+            failed=failed,
             total_processed=len(succeeded) + len(failed),
-            total_succeeded=len(succeeded), total_failed=len(failed),
+            total_succeeded=len(succeeded),
+            total_failed=len(failed),
         )
 
     async def bulk_get(
@@ -375,9 +306,11 @@ class BatchRepository[T: BaseModel, CreateT: BaseModel, UpdateT: BaseModel](
                 break
 
         return BatchResult(
-            succeeded=succeeded, failed=failed,
+            succeeded=succeeded,
+            failed=failed,
             total_processed=len(succeeded) + len(failed),
-            total_succeeded=len(succeeded), total_failed=len(failed),
+            total_succeeded=len(succeeded),
+            total_failed=len(failed),
         )
 
     def clear(self) -> None:

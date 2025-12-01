@@ -28,9 +28,7 @@ class Snapshot[AggregateT: "Aggregate[Any]"]:
     version: int
     state: dict[str, Any]
     state_hash: str = ""  # SHA-256 hash of serialized state
-    created_at: datetime = field(
-        default_factory=lambda: datetime.now(tz=UTC)
-    )
+    created_at: datetime = field(default_factory=lambda: datetime.now(tz=UTC))
 
     @staticmethod
     def _compute_hash(state: dict[str, Any]) -> str:

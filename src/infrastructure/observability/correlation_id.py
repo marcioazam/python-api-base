@@ -209,6 +209,7 @@ class CorrelationContextManager:
         if self._entered:
             # Already entered - log warning and return existing context
             import logging
+
             logging.getLogger(__name__).warning(
                 "CorrelationContextManager entered multiple times"
             )
@@ -230,6 +231,7 @@ class CorrelationContextManager:
         and logging a warning instead of raising an exception.
         """
         import logging
+
         logger = logging.getLogger(__name__)
 
         for token in reversed(self._tokens):
@@ -268,6 +270,7 @@ def with_correlation(
     request_id: str | None = None,
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Decorator to run function with correlation context."""
+
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             context = CorrelationContext(
@@ -276,7 +279,9 @@ def with_correlation(
             )
             with CorrelationContextManager(context):
                 return func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -284,6 +289,7 @@ def propagate_correlation(
     func: Callable[..., Any],
 ) -> Callable[..., Any]:
     """Decorator to propagate existing correlation context."""
+
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         # Get current context or create new
         context = get_current_context()
@@ -298,6 +304,7 @@ def propagate_correlation(
             with CorrelationContextManager(new_context):
                 return func(*args, **kwargs)
         return func(*args, **kwargs)
+
     return wrapper
 
 

@@ -10,6 +10,7 @@ import hashlib
 
 class AuditAction(Enum):
     """Audit action types."""
+
     CREATE = "create"
     UPDATE = "update"
     DELETE = "delete"
@@ -21,6 +22,7 @@ class AuditAction(Enum):
 @dataclass
 class FieldChange:
     """Single field change."""
+
     field_name: str
     old_value: Any
     new_value: Any
@@ -30,6 +32,7 @@ class FieldChange:
 @dataclass
 class AuditEntry:
     """Audit log entry with diff tracking."""
+
     id: str
     entity_type: str
     entity_id: str
@@ -71,8 +74,7 @@ class DiffCalculator:
 
     @staticmethod
     def compute_diff(
-        before: dict[str, Any] | None,
-        after: dict[str, Any] | None
+        before: dict[str, Any] | None, after: dict[str, Any] | None
     ) -> list[FieldChange]:
         """Compute field-level differences."""
         changes: list[FieldChange] = []
@@ -89,20 +91,19 @@ class DiffCalculator:
             new_val = after.get(key)
 
             if old_val != new_val:
-                changes.append(FieldChange(
-                    field_name=key,
-                    old_value=old_val,
-                    new_value=new_val,
-                    field_type=type(new_val).__name__ if new_val else "null"
-                ))
+                changes.append(
+                    FieldChange(
+                        field_name=key,
+                        old_value=old_val,
+                        new_value=new_val,
+                        field_type=type(new_val).__name__ if new_val else "null",
+                    )
+                )
 
         return changes
 
     @staticmethod
-    def apply_diff(
-        base: dict[str, Any],
-        changes: list[FieldChange]
-    ) -> dict[str, Any]:
+    def apply_diff(base: dict[str, Any], changes: list[FieldChange]) -> dict[str, Any]:
         """Apply changes to reconstruct state."""
         result = dict(base)
         for change in changes:
@@ -136,10 +137,11 @@ class AuditService[T]:
         entity: T,
         user_id: str | None = None,
         user_ip: str | None = None,
-        metadata: dict[str, Any] | None = None
+        metadata: dict[str, Any] | None = None,
     ) -> AuditEntry:
         """Log entity creation."""
         import uuid
+
         after = self._to_dict(entity)
         changes = self._diff_calc.compute_diff(None, after)
 
@@ -154,7 +156,7 @@ class AuditService[T]:
             changes=changes,
             before_snapshot=None,
             after_snapshot=after,
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
 
         await self._backend.save(entry)
@@ -168,10 +170,11 @@ class AuditService[T]:
         after: T,
         user_id: str | None = None,
         user_ip: str | None = None,
-        metadata: dict[str, Any] | None = None
+        metadata: dict[str, Any] | None = None,
     ) -> AuditEntry:
         """Log entity update with diff."""
         import uuid
+
         before_dict = self._to_dict(before)
         after_dict = self._to_dict(after)
         changes = self._diff_calc.compute_diff(before_dict, after_dict)
@@ -187,7 +190,7 @@ class AuditService[T]:
             changes=changes,
             before_snapshot=before_dict,
             after_snapshot=after_dict,
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
 
         await self._backend.save(entry)
@@ -200,10 +203,11 @@ class AuditService[T]:
         entity: T,
         user_id: str | None = None,
         user_ip: str | None = None,
-        metadata: dict[str, Any] | None = None
+        metadata: dict[str, Any] | None = None,
     ) -> AuditEntry:
         """Log entity deletion."""
         import uuid
+
         before = self._to_dict(entity)
 
         entry = AuditEntry(
@@ -217,25 +221,18 @@ class AuditService[T]:
             changes=self._diff_calc.compute_diff(before, None),
             before_snapshot=before,
             after_snapshot=None,
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
 
         await self._backend.save(entry)
         return entry
 
-    async def get_history(
-        self,
-        entity_type: str,
-        entity_id: str
-    ) -> list[AuditEntry]:
+    async def get_history(self, entity_type: str, entity_id: str) -> list[AuditEntry]:
         """Get complete history for an entity."""
         return await self._backend.find_by_entity(entity_type, entity_id)
 
     async def reconstruct_at(
-        self,
-        entity_type: str,
-        entity_id: str,
-        timestamp: datetime
+        self, entity_type: str, entity_id: str, timestamp: datetime
     ) -> dict[str, Any] | None:
         """Reconstruct entity state at a point in time."""
         history = await self.get_history(entity_type, entity_id)
@@ -268,7 +265,8 @@ class InMemoryAuditBackend:
         self, entity_type: str, entity_id: str
     ) -> list[AuditEntry]:
         return [
-            e for e in self._entries
+            e
+            for e in self._entries
             if e.entity_type == entity_type and e.entity_id == entity_id
         ]
 
@@ -278,7 +276,4 @@ class InMemoryAuditBackend:
     async def find_by_time_range(
         self, start: datetime, end: datetime
     ) -> list[AuditEntry]:
-        return [
-            e for e in self._entries
-            if start <= e.timestamp <= end
-        ]
+        return [e for e in self._entries if start <= e.timestamp <= end]

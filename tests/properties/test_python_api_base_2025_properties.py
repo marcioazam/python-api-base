@@ -13,9 +13,9 @@ from typing import Any
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from src.core.base.result import Ok, Err, Result, ok, err
-from src.application.common.dto import PaginatedResponse
-from src.domain.common.specification import (
+from core.base.result import Ok, Err, Result, ok, err
+from application.common.dto import PaginatedResponse
+from domain.common.specification import (
     Specification,
     AndSpecification,
     OrSpecification,
@@ -355,7 +355,7 @@ class TestValueObjectImmutability:
         **Feature: python-api-base-2025-review, Property 11: Value Object Immutability**
         **Validates: Requirements 106.1**
         """
-        from src.core.base.value_object import EntityId
+        from core.base.value_object import EntityId
         
         try:
             entity_id = EntityId(ulid)
@@ -407,8 +407,8 @@ class TestAggregateEventCollection:
         **Feature: python-api-base-2025-review, Property 12: Aggregate Event Collection**
         **Validates: Requirements 107.2**
         """
-        from src.core.base.aggregate_root import AggregateRoot
-        from src.core.base.domain_event import EntityCreatedEvent
+        from core.base.aggregate_root import AggregateRoot
+        from core.base.domain_event import EntityCreatedEvent
         
         class TestAggregate(AggregateRoot[str]):
             pass
@@ -433,8 +433,8 @@ class TestAggregateEventCollection:
         **Feature: python-api-base-2025-review, Property 12: Aggregate Event Collection**
         **Validates: Requirements 107.2**
         """
-        from src.core.base.aggregate_root import AggregateRoot
-        from src.core.base.domain_event import EntityCreatedEvent
+        from core.base.aggregate_root import AggregateRoot
+        from core.base.domain_event import EntityCreatedEvent
         
         class TestAggregate(AggregateRoot[str]):
             pass
@@ -520,8 +520,8 @@ class TestCommandBusHandlerRegistration:
         **Feature: python-api-base-2025-review, Property 7: Command Bus Handler Registration**
         **Validates: Requirements 10.1, 109.1**
         """
-        from src.application.common.bus import CommandBus, Command
-        from src.core.base.result import Ok, Result
+        from application.common.bus import CommandBus, Command
+        from core.base.result import Ok, Result
         
         class TestCommand(Command[int, str]):
             def __init__(self, value: int) -> None:
@@ -664,7 +664,7 @@ class TestCircuitBreakerStateTransitions:
         **Feature: python-api-base-2025-review, Property 9: Circuit Breaker State Transitions**
         **Validates: Requirements 119.3**
         """
-        from src.infrastructure.resilience.circuit_breaker import (
+        from infrastructure.resilience.circuit_breaker import (
             CircuitBreaker,
             CircuitState,
         )
@@ -692,7 +692,7 @@ class TestCircuitBreakerStateTransitions:
         **Feature: python-api-base-2025-review, Property 9: Circuit Breaker State Transitions**
         **Validates: Requirements 119.3**
         """
-        from src.infrastructure.resilience.circuit_breaker import (
+        from infrastructure.resilience.circuit_breaker import (
             CircuitBreaker,
             CircuitState,
         )
@@ -739,7 +739,7 @@ class TestRetryDecoratorAttemptCount:
         **Feature: python-api-base-2025-review, Property 13: Retry Decorator Attempt Count**
         **Validates: Requirements 118.2**
         """
-        from src.infrastructure.resilience.retry import retry, RetryExhaustedError
+        from infrastructure.resilience.retry import retry, RetryExhaustedError
         
         attempt_count = 0
         
@@ -776,7 +776,7 @@ class TestQueryBusCaching:
         **Feature: python-api-base-2025-review, Property 14: Query Bus Caching**
         **Validates: Requirements 110.2**
         """
-        from src.application.common.bus import QueryBus, Query
+        from application.common.bus import QueryBus, Query
         
         class TestQuery(Query[str]):
             def __init__(self, param: str) -> None:
@@ -837,7 +837,7 @@ class TestProtocolStructuralSubtyping:
         **Feature: python-api-base-2025-review, Property 15: Protocol Structural Subtyping**
         **Validates: Requirements 11.1, 28.3**
         """
-        from src.core.protocols.repository import CacheProvider
+        from core.protocols.repository import CacheProvider
         
         class CustomCache:
             async def get(self, key: str) -> Any:

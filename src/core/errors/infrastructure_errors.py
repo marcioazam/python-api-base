@@ -13,10 +13,10 @@ from typing import Any
 
 class InfrastructureError(Exception):
     """Base exception for all infrastructure layer errors.
-    
+
     All infrastructure-specific exceptions should inherit from this class
     to enable consistent error handling and logging.
-    
+
     Attributes:
         message: Human-readable error message.
         details: Additional error context as key-value pairs.
@@ -28,7 +28,7 @@ class InfrastructureError(Exception):
         details: dict[str, Any] | None = None,
     ) -> None:
         """Initialize infrastructure error.
-        
+
         Args:
             message: Human-readable error message.
             details: Additional error context.
@@ -47,71 +47,78 @@ class InfrastructureError(Exception):
 
 class DatabaseError(InfrastructureError):
     """Database-related errors.
-    
+
     Raised when database operations fail, including connection errors,
     query failures, and transaction issues.
     """
+
     pass
 
 
 class ConnectionPoolError(DatabaseError):
     """Connection pool specific errors.
-    
+
     Raised when connection pool operations fail, such as exhausted
     connections or pool configuration issues.
     """
+
     pass
 
 
 class TokenStoreError(InfrastructureError):
     """Token storage errors.
-    
+
     Raised when token store operations fail, including storage,
     retrieval, and revocation failures.
     """
+
     pass
 
 
 class TokenValidationError(TokenStoreError):
     """Token validation errors.
-    
+
     Raised when token validation fails due to invalid format,
     expiration, or revocation.
     """
+
     pass
 
 
 class TelemetryError(InfrastructureError):
     """Telemetry/tracing errors.
-    
+
     Raised when telemetry operations fail, including span creation,
     metric recording, and exporter issues.
     """
+
     pass
 
 
 class AuditLogError(InfrastructureError):
     """Audit logging errors.
-    
+
     Raised when audit log operations fail, including logging
     and query failures.
     """
+
     pass
 
 
 class ConfigurationError(InfrastructureError):
     """Configuration errors.
-    
+
     Raised when infrastructure configuration is invalid or missing.
     """
+
     pass
 
 
 class ExternalServiceError(InfrastructureError):
     """External service errors.
-    
+
     Raised when communication with external services fails.
-    
+
     Attributes:
         service_name: Name of the external service.
         retry_after: Suggested retry delay in seconds, if applicable.
@@ -125,7 +132,7 @@ class ExternalServiceError(InfrastructureError):
         retry_after: int | None = None,
     ) -> None:
         """Initialize external service error.
-        
+
         Args:
             message: Human-readable error message.
             service_name: Name of the external service.
@@ -139,8 +146,9 @@ class ExternalServiceError(InfrastructureError):
 
 class CacheError(InfrastructureError):
     """Cache-related errors.
-    
+
     Raised when cache operations fail, including Redis
     connection and operation failures.
     """
+
     pass

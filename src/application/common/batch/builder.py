@@ -4,13 +4,13 @@ from collections.abc import Sequence
 
 from pydantic import BaseModel
 
-from my_app.shared.batch.config import (
+from .config import (
     BatchConfig,
     BatchErrorStrategy,
     BatchResult,
     ProgressCallback,
 )
-from my_app.shared.batch.repository import IBatchRepository
+from .interfaces import IBatchRepository
 
 
 class BatchOperationBuilder[T: BaseModel, CreateT: BaseModel, UpdateT: BaseModel]:
@@ -25,7 +25,9 @@ class BatchOperationBuilder[T: BaseModel, CreateT: BaseModel, UpdateT: BaseModel
         self._config = BatchConfig()
         self._progress_callback: ProgressCallback | None = None
 
-    def with_chunk_size(self, size: int) -> "BatchOperationBuilder[T, CreateT, UpdateT]":
+    def with_chunk_size(
+        self, size: int
+    ) -> "BatchOperationBuilder[T, CreateT, UpdateT]":
         """Set chunk size for batch processing."""
         self._config.chunk_size = size
         return self
@@ -64,7 +66,9 @@ class BatchOperationBuilder[T: BaseModel, CreateT: BaseModel, UpdateT: BaseModel
             items, config=self._config, on_progress=self._progress_callback
         )
 
-    async def delete(self, ids: Sequence[str], *, soft: bool = True) -> BatchResult[str]:
+    async def delete(
+        self, ids: Sequence[str], *, soft: bool = True
+    ) -> BatchResult[str]:
         """Execute bulk delete operation."""
         return await self._repository.bulk_delete(
             ids, soft=soft, config=self._config, on_progress=self._progress_callback

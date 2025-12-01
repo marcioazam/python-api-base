@@ -82,7 +82,9 @@ class AndSpecification[T](CompositeSpecification[T]):
 
     def is_satisfied_by(self, candidate: T) -> bool:
         """Check if candidate satisfies both specifications."""
-        return self._left.is_satisfied_by(candidate) and self._right.is_satisfied_by(candidate)
+        return self._left.is_satisfied_by(candidate) and self._right.is_satisfied_by(
+            candidate
+        )
 
 
 class OrSpecification[T](CompositeSpecification[T]):
@@ -103,7 +105,9 @@ class OrSpecification[T](CompositeSpecification[T]):
 
     def is_satisfied_by(self, candidate: T) -> bool:
         """Check if candidate satisfies at least one specification."""
-        return self._left.is_satisfied_by(candidate) or self._right.is_satisfied_by(candidate)
+        return self._left.is_satisfied_by(candidate) or self._right.is_satisfied_by(
+            candidate
+        )
 
 
 class NotSpecification[T](CompositeSpecification[T]):

@@ -1,14 +1,36 @@
-"""Money value object with Decimal precision.
+"""Common value objects with Decimal precision.
 
-**Feature: domain-code-review-fixes**
+**Feature: domain-consolidation-2025**
 **Validates: Requirements 4.1**
+
+Provides reusable value objects for domain modeling:
+- Money: Monetary values with currency support
+- Percentage: Percentage values (0-100)
+- Slug: URL-safe slugs
 """
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
+from enum import Enum
 from typing import Self
+
+
+class CurrencyCode(str, Enum):
+    """ISO 4217 currency codes."""
+
+    USD = "USD"
+    EUR = "EUR"
+    GBP = "GBP"
+    JPY = "JPY"
+    CAD = "CAD"
+    AUD = "AUD"
+    CHF = "CHF"
+    CNY = "CNY"
+    BRL = "BRL"
+    INR = "INR"
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,3 +170,68 @@ class Money:
         symbols = {"USD": "$", "EUR": "€", "GBP": "£", "BRL": "R$"}
         sym = symbol or symbols.get(self.currency, self.currency + " ")
         return f"{sym}{self.amount:,.2f}"
+
+
+@dataclass(frozen=True, slots=True)
+class Percentage:
+    """Percentage value object (0-100).
+
+    Example:
+        >>> discount = Percentage(15.5)  # 15.5%
+        >>> factor = discount.as_factor()  # 0.155
+    """
+
+    value: float
+
+    def __post_init__(self) -> None:
+        """Validate percentage range."""
+        if self.value < 0:
+            raise ValueError("Percentage cannot be negative")
+        if self.value > 100:
+            raise ValueError("Percentage cannot exceed 100")
+
+    def as_factor(self) -> float:
+        """Convert to decimal factor (e.g., 15% -> 0.15)."""
+        return self.value / 100
+
+    def __str__(self) -> str:
+        return f"{self.value}%"
+
+
+@dataclass(frozen=True, slots=True)
+class Slug:
+    """URL-safe slug value object.
+
+    Example:
+        >>> slug = Slug.from_text("Hello World!")
+        >>> print(slug.value)  # "hello-world"
+    """
+
+    value: str
+
+    def __post_init__(self) -> None:
+        """Validate slug format."""
+        if not self.value:
+            raise ValueError("Slug cannot be empty")
+
+        pattern = r"^[a-z0-9-]+$"
+        if not re.match(pattern, self.value):
+            raise ValueError(f"Invalid slug format: {self.value}")
+
+        if self.value.startswith("-") or self.value.endswith("-"):
+            raise ValueError("Slug cannot start or end with hyphen")
+
+        if "--" in self.value:
+            raise ValueError("Slug cannot contain consecutive hyphens")
+
+    @classmethod
+    def from_text(cls, text: str) -> Self:
+        """Create slug from text."""
+        slug = text.lower()
+        slug = re.sub(r"[^a-z0-9]+", "-", slug)
+        slug = slug.strip("-")
+        slug = re.sub(r"-+", "-", slug)
+        return cls(slug)
+
+    def __str__(self) -> str:
+        return self.value
