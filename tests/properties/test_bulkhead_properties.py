@@ -9,7 +9,7 @@ import asyncio
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.bulkhead import (
+from my_app.infrastructure.resilience.bulkhead import (
     Bulkhead,
     BulkheadRejectedError,
     BulkheadRegistry,

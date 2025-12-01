@@ -27,7 +27,7 @@ class TestPEP695SyntaxCompliance:
         
         SQLModelRepository SHALL use PEP 695 type parameter syntax.
         """
-        file_path = Path("src/my_api/adapters/repositories/sqlmodel_repository.py")
+        file_path = Path("src/my_app/adapters/repositories/sqlmodel_repository.py")
         source = file_path.read_text(encoding="utf-8")
         tree = ast.parse(source)
         
@@ -52,7 +52,7 @@ class TestPEP695SyntaxCompliance:
         
         CircuitBreaker SHALL use PEP 695 type parameter syntax.
         """
-        file_path = Path("src/my_api/shared/circuit_breaker.py")
+        file_path = Path("src/my_app/shared/circuit_breaker.py")
         source = file_path.read_text(encoding="utf-8")
         
         # Check that old ParamSpec/TypeVar syntax is NOT present
@@ -67,7 +67,7 @@ class TestPEP695SyntaxCompliance:
         
         Aggregate SHALL use PEP 695 type parameter syntax.
         """
-        file_path = Path("src/my_api/shared/event_sourcing/aggregate.py")
+        file_path = Path("src/my_app/shared/event_sourcing/aggregate.py")
         source = file_path.read_text(encoding="utf-8")
         tree = ast.parse(source)
         
@@ -103,7 +103,7 @@ class TestDataclassMemoryOptimization:
         
         ErrorContext SHALL use slots=True for memory optimization.
         """
-        from my_api.core.exceptions import ErrorContext
+        from my_app.core.exceptions import ErrorContext
         
         # Check that __slots__ is defined (slots=True in dataclass)
         assert hasattr(ErrorContext, "__slots__"), (
@@ -125,7 +125,7 @@ class TestDataclassMemoryOptimization:
         
         ErrorContext with slots SHALL use less memory than without slots.
         """
-        from my_api.core.exceptions import ErrorContext
+        from my_app.core.exceptions import ErrorContext
         
         # Create instance and verify no __dict__ (slots optimization)
         context = ErrorContext()
@@ -148,7 +148,7 @@ class TestCallableTypeHint:
         
         InMemoryRepository SHALL use Callable type hint instead of callable.
         """
-        file_path = Path("src/my_api/shared/repository.py")
+        file_path = Path("src/my_app/shared/repository.py")
         source = file_path.read_text(encoding="utf-8")
         
         # Check that lowercase 'callable' is NOT used as type hint
@@ -183,7 +183,7 @@ class TestResultPatternCompliance:
         
         For any Ok value, map SHALL apply the function to the value.
         """
-        from my_api.shared.result import Ok
+        from my_app.shared.result import Ok
         
         ok = Ok(value)
         mapped = ok.map(lambda x: x * 2)
@@ -199,7 +199,7 @@ class TestResultPatternCompliance:
         
         For any Err value, map_err SHALL apply the function to the error.
         """
-        from my_api.shared.result import Err
+        from my_app.shared.result import Err
         
         err = Err(error)
         mapped = err.map_err(lambda e: f"Error: {e}")
@@ -215,7 +215,7 @@ class TestResultPatternCompliance:
         
         For any Ok value, unwrap_or SHALL return the value, not the default.
         """
-        from my_api.shared.result import Ok
+        from my_app.shared.result import Ok
         
         ok = Ok(value)
         result = ok.unwrap_or(default)
@@ -231,7 +231,7 @@ class TestResultPatternCompliance:
         
         For any Err value, unwrap_or SHALL return the default.
         """
-        from my_api.shared.result import Err
+        from my_app.shared.result import Err
         
         err = Err(error)
         result = err.unwrap_or(default)
@@ -261,7 +261,7 @@ class TestExceptionSerializationConsistency:
         
         For any AppException, to_dict() SHALL return consistent keys.
         """
-        from my_api.core.exceptions import AppException
+        from my_app.core.exceptions import AppException
         
         exc = AppException(
             message=message,

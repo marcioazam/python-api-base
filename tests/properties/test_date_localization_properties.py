@@ -9,7 +9,7 @@ from hypothesis import given, strategies as st, settings
 from datetime import datetime, date, time, timedelta
 from zoneinfo import ZoneInfo
 
-from my_api.shared.date_localization import (
+from my_app.shared.date_localization import (
     DateTimeFormatter,
     DateFormat,
     TimeFormat,

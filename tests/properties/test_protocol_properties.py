@@ -12,7 +12,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from pydantic import BaseModel
 
-from my_api.shared.protocols import (
+from my_app.core.protocols import (
     AsyncRepository,
     CacheProvider,
     CommandHandler,

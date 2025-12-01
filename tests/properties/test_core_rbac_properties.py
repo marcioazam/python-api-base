@@ -11,7 +11,7 @@ import pytest
 from hypothesis import given, settings, assume
 from hypothesis import strategies as st
 
-from my_api.core.auth.rbac import (
+from my_app.core.auth.rbac import (
     Permission,
     Role,
     RBACService,
@@ -21,7 +21,7 @@ from my_api.core.auth.rbac import (
     ROLE_USER,
     ROLE_VIEWER,
 )
-from my_api.core.exceptions import AuthorizationError
+from my_app.core.exceptions import AuthorizationError
 
 
 class TestRBACPermissionInheritance:

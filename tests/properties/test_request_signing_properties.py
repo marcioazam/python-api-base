@@ -9,7 +9,7 @@ import time
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.shared.request_signing import (
+from my_app.infrastructure.security.request_signing import (
     ExpiredTimestampError,
     HashAlgorithm,
     InvalidSignatureError,

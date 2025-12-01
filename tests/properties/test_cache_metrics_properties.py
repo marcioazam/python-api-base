@@ -8,7 +8,7 @@
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.caching.metrics import CacheMetrics
+from my_app.shared.caching.metrics import CacheMetrics
 
 
 class TestCacheHitCounter:

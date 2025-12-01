@@ -13,7 +13,7 @@ from hypothesis import given, settings, assume
 from hypothesis import strategies as st
 from jose import jwt
 
-from my_api.core.auth.jwt_validator import (
+from my_app.core.auth.jwt_validator import (
     JWTValidator,
     InvalidTokenError,
     ValidatedToken,

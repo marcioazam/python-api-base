@@ -10,7 +10,7 @@ from datetime import timedelta
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.timeout import (
+from my_app.interface.api.middleware.timeout import (
     TimeoutAction,
     TimeoutConfig,
     TimeoutConfigBuilder,

@@ -9,7 +9,7 @@ from hypothesis import given, strategies as st, settings
 from datetime import datetime
 from dataclasses import dataclass
 
-from my_api.shared.audit_trail import (
+from my_app.infrastructure.security.audit_trail import (
     AuditService,
     AuditAction,
     DiffCalculator,

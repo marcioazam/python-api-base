@@ -10,7 +10,7 @@ import pytest
 from hypothesis import given, settings, assume
 from hypothesis import strategies as st
 
-from my_api.shared.utils.sanitization import (
+from my_app.shared.utils.sanitization import (
     InputSanitizer,
     SanitizationType,
     sanitize_string,

@@ -7,7 +7,7 @@
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.shared.utils.pagination import (
+from my_app.shared.utils.pagination import (
     OffsetPaginationParams,
     decode_cursor,
     encode_cursor,

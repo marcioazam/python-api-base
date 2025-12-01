@@ -87,7 +87,7 @@ def get_all_source_files() -> list[Path]:
     Returns:
         List of Path objects for Python files.
     """
-    src_dir = Path("src/my_api")
+    src_dir = Path("src/my_app")
     if not src_dir.exists():
         return []
 
@@ -181,7 +181,7 @@ class TestTypeAnnotationCompleteness:
     def test_source_files_exist(self) -> None:
         """Source directory SHALL contain Python files."""
         files = get_all_source_files()
-        assert len(files) > 0, "No source files found in src/my_api"
+        assert len(files) > 0, "No source files found in src/my_app"
 
     def test_ast_parsing_handles_all_files(self) -> None:
         """All source files SHALL be parseable by AST."""

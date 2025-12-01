@@ -11,7 +11,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlmodel import SQLModel
 
-from my_api.infrastructure.database.alembic_utils import get_database_url
+from my_app.infrastructure.database.alembic_utils import get_database_url
 
 
 def import_models() -> list[str]:
@@ -27,17 +27,17 @@ def import_models() -> list[str]:
         ImportError: If entities package is not found.
     """
     try:
-        import my_api.domain.entities as entities_pkg
+        import my_app.domain.entities as entities_pkg
     except ImportError as e:
         raise ImportError(
-            "Cannot find entities package at my_api.domain.entities. "
+            "Cannot find entities package at my_app.domain.entities. "
             "Ensure the package exists and is properly installed."
         ) from e
 
     imported_modules: list[str] = []
     for _, module_name, is_pkg in pkgutil.iter_modules(entities_pkg.__path__):
         if not is_pkg and not module_name.startswith("_"):
-            full_module_name = f"my_api.domain.entities.{module_name}"
+            full_module_name = f"my_app.domain.entities.{module_name}"
             importlib.import_module(full_module_name)
             imported_modules.append(module_name)
 

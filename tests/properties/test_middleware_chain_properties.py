@@ -7,7 +7,7 @@
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.middleware_chain import (
+from my_app.interface.api.middleware.middleware_chain import (
     ErrorHandlerMiddleware,
     FunctionMiddleware,
     LoggingMiddleware,

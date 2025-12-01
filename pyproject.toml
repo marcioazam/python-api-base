@@ -81,7 +81,7 @@ dev = [
 ]
 
 [project.scripts]
-api-cli = "my_api.cli.main:main"
+api-cli = "my_app.cli.main:main"
 
 [project.urls]
 Homepage = "https://github.com/example/my-api"
@@ -93,7 +93,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/my_api"]
+packages = ["src/my_app"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -112,7 +112,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["src/my_api"]
+source = ["src/my_app"]
 branch = true
 
 [tool.coverage.report]

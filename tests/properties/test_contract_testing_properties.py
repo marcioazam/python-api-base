@@ -8,7 +8,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from pydantic import BaseModel
 
-from my_api.shared.contract_testing import (
+from my_app.shared.contract_testing import (
     Contract,
     ContractExpectation,
     ContractInteraction,

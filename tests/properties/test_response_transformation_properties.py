@@ -9,7 +9,7 @@ from datetime import datetime
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.response_transformation import (
+from my_app.interface.api.response_transformation import (
     ClientTypeTransformer,
     CompositeTransformer,
     FieldAddTransformer,

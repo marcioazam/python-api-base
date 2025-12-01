@@ -9,7 +9,7 @@ from hypothesis import given, strategies as st, settings
 from dataclasses import dataclass
 from typing import Any
 
-from my_api.shared.data_export import (
+from my_app.application.common.data_export import (
     DataExporter,
     DataImporter,
     ExportConfig,

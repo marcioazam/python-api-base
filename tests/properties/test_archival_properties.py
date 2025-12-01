@@ -9,7 +9,7 @@ from hypothesis import given, strategies as st, settings
 from datetime import datetime, timedelta
 from dataclasses import dataclass
 
-from my_api.shared.archival import (
+from my_app.infrastructure.storage.archival import (
     RetentionPolicy,
     ArchivalService,
     StorageTier,

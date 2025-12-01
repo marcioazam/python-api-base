@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.shared.secrets_manager import (
+from my_app.infrastructure.security.secrets_manager import (
     InMemorySecretCache,
     LocalSecretsProvider,
     RotationConfig,

@@ -15,7 +15,7 @@ import asyncio
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.shared.geo_blocking import (
+from my_app.infrastructure.security.geo_blocking import (
     BlockMode,
     GeoBlockConfig,
     GeoBlockConfigBuilder,

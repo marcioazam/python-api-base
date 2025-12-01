@@ -12,7 +12,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from hypothesis import given, settings, strategies as st
 
-from my_api.core.auth.jwt_providers import (
+from my_app.core.auth.jwt_providers import (
     AlgorithmMismatchError,
     ES256Provider,
     HS256Provider,

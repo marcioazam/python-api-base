@@ -15,7 +15,7 @@ import asyncio
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.shared.tiered_rate_limiter import (
+from my_app.infrastructure.security.tiered_rate_limiter import (
     DEFAULT_TIER_LIMITS,
     InMemoryRateLimitStore,
     RateLimitConfig,

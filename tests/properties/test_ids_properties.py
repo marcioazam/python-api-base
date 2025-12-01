@@ -9,7 +9,7 @@ import time
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.shared.utils.ids import (
+from my_app.shared.utils.ids import (
     generate_ulid,
     generate_uuid7,
     is_valid_ulid,

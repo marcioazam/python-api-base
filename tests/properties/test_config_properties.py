@@ -1,7 +1,7 @@
 """Property-based tests for configuration validation.
 
-**Feature: generic-fastapi-crud, Property 18: Missing Config Fails Fast**
-**Validates: Requirements 12.2**
+**Feature: architecture-restructuring-2025, Property 1: Configuration Loading from Environment**
+**Validates: Requirements 1.1**
 """
 
 import os
@@ -12,7 +12,10 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from pydantic import ValidationError
 
-from my_api.core.config import SecuritySettings, Settings
+try:
+    from my_app.core.config.settings import SecuritySettings, Settings, DatabaseSettings, ObservabilitySettings
+except ImportError:
+    from my_app.core.config import SecuritySettings, Settings
 
 
 class TestConfigValidation:
@@ -61,9 +64,15 @@ class TestConfigValidation:
     )
     def test_valid_log_levels_pass_validation(self, log_level: str) -> None:
         """
+        **Feature: architecture-restructuring-2025, Property 1: Configuration Loading from Environment**
+        
         For any valid log level, ObservabilitySettings SHALL accept the value.
+        **Validates: Requirements 1.1**
         """
-        from my_api.core.config import ObservabilitySettings
+        try:
+            from my_app.core.config.settings import ObservabilitySettings
+        except ImportError:
+            from my_app.core.config import ObservabilitySettings
 
         with patch.dict(
             os.environ, {"OBSERVABILITY__LOG_LEVEL": log_level}, clear=False
@@ -82,7 +91,10 @@ class TestConfigValidation:
         For any invalid log level, ObservabilitySettings SHALL raise
         a ValidationError.
         """
-        from my_api.core.config import ObservabilitySettings
+        try:
+            from my_app.core.config.settings import ObservabilitySettings
+        except ImportError:
+            from my_app.core.config import ObservabilitySettings
 
         with patch.dict(
             os.environ, {"OBSERVABILITY__LOG_LEVEL": log_level}, clear=False
@@ -119,7 +131,10 @@ class TestConfigValidation:
         For any valid pool_size (1-100) and max_overflow (0-100),
         DatabaseSettings SHALL accept the values.
         """
-        from my_api.core.config import DatabaseSettings
+        try:
+            from my_app.core.config.settings import DatabaseSettings
+        except ImportError:
+            from my_app.core.config import DatabaseSettings
 
         with patch.dict(
             os.environ,
@@ -142,7 +157,7 @@ class TestConfigValidation:
         For any pool_size outside 1-100 range, DatabaseSettings SHALL
         raise a ValidationError.
         """
-        from my_api.core.config import DatabaseSettings
+        from my_app.core.config import DatabaseSettings
 
         with patch.dict(
             os.environ,

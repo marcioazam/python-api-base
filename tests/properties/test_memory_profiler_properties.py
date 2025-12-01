@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 import pytest
 from hypothesis import HealthCheck, given, settings, strategies as st
 
-from my_api.shared.memory_profiler import (
+from my_app.infrastructure.observability.memory_profiler import (
     AllocationInfo,
     MemoryAlert,
     MemoryAlertSeverity,

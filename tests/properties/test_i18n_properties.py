@@ -6,7 +6,7 @@
 
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.i18n import (
+from my_app.shared.i18n import (
     Locale,
     TranslationCatalog,
     TranslationEntry,

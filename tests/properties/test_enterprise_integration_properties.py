@@ -21,10 +21,10 @@ class TestPEP695Compliance:
     def test_no_legacy_typevar_in_enterprise_modules(self) -> None:
         """Enterprise modules use PEP 695 syntax instead of legacy Generic[T]."""
         enterprise_modules = [
-            "src/my_api/shared/webhook",
-            "src/my_api/shared/file_upload",
-            "src/my_api/shared/search",
-            "src/my_api/shared/notification",
+            "src/my_app/shared/webhook",
+            "src/my_app/shared/file_upload",
+            "src/my_app/shared/search",
+            "src/my_app/shared/notification",
         ]
 
         legacy_patterns = [
@@ -53,10 +53,10 @@ class TestPEP695Compliance:
         """Generic classes use class Foo[T]: syntax."""
         # Check that our new modules use PEP 695
         files_to_check = [
-            "src/my_api/shared/webhook/models.py",
-            "src/my_api/shared/file_upload/models.py",
-            "src/my_api/shared/search/models.py",
-            "src/my_api/shared/notification/models.py",
+            "src/my_app/shared/webhook/models.py",
+            "src/my_app/shared/file_upload/models.py",
+            "src/my_app/shared/search/models.py",
+            "src/my_app/shared/notification/models.py",
         ]
 
         pep695_pattern = r"class\s+\w+\s*\[\s*\w+"
@@ -159,10 +159,10 @@ class TestNoHardcodedSecrets:
     def test_no_hardcoded_passwords_in_enterprise_modules(self) -> None:
         """No hardcoded passwords in enterprise modules."""
         enterprise_modules = [
-            "src/my_api/shared/webhook",
-            "src/my_api/shared/file_upload",
-            "src/my_api/shared/search",
-            "src/my_api/shared/notification",
+            "src/my_app/shared/webhook",
+            "src/my_app/shared/file_upload",
+            "src/my_app/shared/search",
+            "src/my_app/shared/notification",
         ]
 
         secret_patterns = [
@@ -213,8 +213,8 @@ class TestResultPatternUsage:
     def test_enterprise_modules_use_result_pattern(self) -> None:
         """Enterprise modules use Result pattern for error handling."""
         files_with_result = [
-            "src/my_api/shared/webhook/service.py",
-            "src/my_api/shared/file_upload/service.py",
+            "src/my_app/shared/webhook/service.py",
+            "src/my_app/shared/file_upload/service.py",
         ]
 
         for file_path in files_with_result:

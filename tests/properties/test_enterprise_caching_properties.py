@@ -10,13 +10,13 @@ from datetime import datetime, timedelta
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.caching.providers import (
+from my_app.shared.caching.providers import (
     CacheEntry,
     CacheStats,
     InMemoryCacheProvider,
 )
-from my_api.shared.caching.config import CacheConfig
-from my_api.shared.caching.decorators import cached
+from my_app.shared.caching.config import CacheConfig
+from my_app.shared.caching.decorators import cached
 
 
 # Strategies for generating test data

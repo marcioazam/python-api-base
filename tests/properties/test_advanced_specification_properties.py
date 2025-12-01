@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.shared.advanced_specification import (
+from my_app.domain.common.advanced_specification import (
     ComparisonOperator,
     FieldSpecification,
     SpecificationBuilder,

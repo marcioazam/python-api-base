@@ -12,7 +12,7 @@ from hypothesis import strategies as st
 from starlette.testclient import TestClient
 from fastapi import FastAPI, APIRouter
 
-from my_api.adapters.api.versioning import (
+from my_app.adapters.api.versioning import (
     APIVersion,
     VersionConfig,
     VersionedRouter,

@@ -7,7 +7,7 @@
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.shared.cors_manager import (
+from my_app.interface.api.middleware.cors_manager import (
     CORSManager,
     CORSPolicy,
     CORSRequest,

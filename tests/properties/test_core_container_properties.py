@@ -8,7 +8,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.core.container import LifecycleManager, LifecycleHookError
+from my_app.core.container import LifecycleManager, LifecycleHookError
 
 
 class TestLifecycleHookExecutionOrder:

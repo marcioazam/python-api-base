@@ -10,7 +10,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from pydantic import BaseModel
 
-from my_api.shared.mapper import AutoMapper, BaseMapper, MapperError
+from my_app.application.common.mapper import AutoMapper, BaseMapper, MapperError
 
 
 # Test models

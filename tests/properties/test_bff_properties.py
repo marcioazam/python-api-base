@@ -7,7 +7,7 @@
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.bff import (
+from my_app.interface.api.bff import (
     BFFConfig,
     BFFConfigBuilder,
     BFFRoute,

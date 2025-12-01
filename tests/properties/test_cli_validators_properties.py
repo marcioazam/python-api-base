@@ -9,7 +9,7 @@ import pytest
 from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
-from my_api.cli.constants import (
+from my_app.cli.constants import (
     ALLOWED_ALEMBIC_COMMANDS,
     ALLOWED_FIELD_TYPES,
     ENTITY_NAME_PATTERN,
@@ -17,7 +17,7 @@ from my_api.cli.constants import (
     MAX_FIELD_NAME_LENGTH,
     REVISION_PATTERN,
 )
-from my_api.cli.exceptions import (
+from my_app.cli.exceptions import (
     InvalidCommandError,
     InvalidEntityNameError,
     InvalidFieldError,
@@ -25,7 +25,7 @@ from my_api.cli.exceptions import (
     InvalidRevisionError,
     ValidationError,
 )
-from my_api.cli.validators import (
+from my_app.cli.validators import (
     serialize_field_definition,
     validate_alembic_command,
     validate_entity_name,

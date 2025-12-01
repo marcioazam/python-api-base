@@ -9,7 +9,7 @@ import base64
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.adapters.api.graphql.types import (
+from my_app.adapters.api.graphql.types import (
     Connection,
     ConnectionArgs,
     Edge,

@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.fuzzing import (
+from my_app.shared.fuzzing import (
     CorpusManager,
     CrashInfo,
     CrashManager,

@@ -8,7 +8,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.core.auth.rbac import (
+from my_app.core.auth.rbac import (
     Permission,
     RBACService,
     RBACUser,
@@ -18,7 +18,7 @@ from my_api.core.auth.rbac import (
     ROLE_VIEWER,
     ROLE_MODERATOR,
 )
-from my_api.core.exceptions import AuthorizationError
+from my_app.core.exceptions import AuthorizationError
 
 
 # Strategy for generating user IDs

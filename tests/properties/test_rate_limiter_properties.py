@@ -12,11 +12,11 @@ from hypothesis import strategies as st
 from starlette.requests import Request
 from starlette.datastructures import Headers
 
-from my_api.adapters.api.middleware.rate_limiter import (
+from my_app.adapters.api.middleware.rate_limiter import (
     get_client_ip,
     rate_limit_exceeded_handler,
 )
-from my_api.shared.dto import ProblemDetail
+from my_app.application.common.dto import ProblemDetail
 
 
 # Generators for IP addresses

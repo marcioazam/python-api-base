@@ -11,7 +11,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.adapters.api.websocket.types import (
+from my_app.adapters.api.websocket.types import (
     ConnectionManager,
     ErrorMessage,
     MessageType,

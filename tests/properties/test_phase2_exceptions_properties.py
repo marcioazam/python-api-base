@@ -7,7 +7,7 @@
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.exceptions import (
+from my_app.core.errors.exceptions import (
     EntityResolutionError,
     FederationValidationError,
     FilterValidationError,

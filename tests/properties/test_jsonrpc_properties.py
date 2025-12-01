@@ -9,7 +9,7 @@ import json
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.jsonrpc import (
+from my_app.interface.api.jsonrpc import (
     JSONRPCError,
     JSONRPCErrorCode,
     JSONRPCRequest,

@@ -15,7 +15,7 @@ import asyncio
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.shared.cloud_provider_filter import (
+from my_app.infrastructure.security.cloud_provider_filter import (
     CloudProvider,
     CloudProviderConfig,
     CloudProviderFilter,
@@ -467,7 +467,7 @@ class TestExternalRangeSource:
         For any CloudIPRangeProvider initialized with external sources,
         the provider SHALL contain ranges from both default and external sources.
         """
-        from my_api.shared.cloud_provider_filter.ranges import UpdatableCloudRangeProvider
+        from my_app.infrastructure.security.cloud_provider_filter.ranges import UpdatableCloudRangeProvider
 
         provider = UpdatableCloudRangeProvider()
 
@@ -536,7 +536,7 @@ class TestExternalRangeSource:
     def test_staleness_detection(self) -> None:
         """Test that staleness is properly detected."""
         from datetime import timedelta
-        from my_api.shared.cloud_provider_filter.ranges import InMemoryCloudRangeProvider
+        from my_app.infrastructure.security.cloud_provider_filter.ranges import InMemoryCloudRangeProvider
 
         provider = InMemoryCloudRangeProvider()
 

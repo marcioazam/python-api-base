@@ -8,7 +8,7 @@ import pytest
 from hypothesis import given, strategies as st, settings
 from datetime import datetime
 
-from my_api.shared.changelog import (
+from my_app.interface.api.changelog import (
     Change,
     ChangeType,
     Version,

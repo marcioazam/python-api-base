@@ -11,14 +11,14 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.shared.cqrs import (
+from my_app.shared.cqrs import (
     Command,
     CommandBus,
     HandlerNotFoundError,
     Query,
     QueryBus,
 )
-from my_api.shared.result import Err, Ok, Result
+from my_app.shared.result import Err, Ok, Result
 
 
 # Test Commands
@@ -347,7 +347,7 @@ class TestQueryBusDispatch:
         """
         Query results SHALL be cached when cache is configured.
         """
-        from my_api.shared.caching import InMemoryCacheProvider
+        from my_app.shared.caching import InMemoryCacheProvider
 
         bus = QueryBus()
         cache = InMemoryCacheProvider()

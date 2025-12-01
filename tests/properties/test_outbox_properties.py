@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.outbox import (
+from my_app.shared.outbox import (
     InMemoryOutboxRepository,
     MockEventPublisher,
     OutboxEntry,

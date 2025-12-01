@@ -10,9 +10,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from my_api.shared.secrets_manager.enums import SecretType
-from my_api.shared.secrets_manager.manager import SecretsManager
-from my_api.shared.secrets_manager.providers import LocalSecretsProvider
+from my_app.infrastructure.security.secrets_manager.enums import SecretType
+from my_app.infrastructure.security.secrets_manager.manager import SecretsManager
+from my_app.infrastructure.security.secrets_manager.providers import LocalSecretsProvider
 
 
 class TestRotationLogging:
@@ -40,7 +40,7 @@ class TestRotationLogging:
         # Create a secret first
         await provider.create_secret("test-secret", "test-value", SecretType.STRING)
 
-        with patch("my_api.shared.secrets_manager.manager._logger"):
+        with patch("my_app.shared.secrets_manager.manager._logger"):
             # Trigger rotation manually
             await manager.rotate_secret("test-secret")
 
@@ -62,7 +62,7 @@ class TestRotationLogging:
         # Create a secret
         await provider.create_secret("scheduled-secret", "value", SecretType.STRING)
 
-        with patch("my_api.shared.secrets_manager.manager._logger") as mock_logger:
+        with patch("my_app.shared.secrets_manager.manager._logger") as mock_logger:
             # Schedule rotation with very short interval
             manager.schedule_rotation("scheduled-secret", interval_seconds=0)
 
@@ -94,7 +94,7 @@ class TestRotationLogging:
 
         manager = SecretsManager(primary_provider=mock_provider)
 
-        with patch("my_api.shared.secrets_manager.manager._logger") as mock_logger:
+        with patch("my_app.shared.secrets_manager.manager._logger") as mock_logger:
             # Schedule rotation with very short interval
             manager.schedule_rotation("failing-secret", interval_seconds=0)
 
@@ -127,7 +127,7 @@ class TestRotationLogging:
 
         await provider.create_secret(test_secret_name, "value", SecretType.STRING)
 
-        with patch("my_api.shared.secrets_manager.manager._logger") as mock_logger:
+        with patch("my_app.shared.secrets_manager.manager._logger") as mock_logger:
             manager.schedule_rotation(test_secret_name, interval_seconds=0)
             await asyncio.sleep(0.1)
             manager.cancel_rotation(test_secret_name)
@@ -153,7 +153,7 @@ class TestRotationLogging:
 
         await provider.create_secret("cancel-test", "value", SecretType.STRING)
 
-        with patch("my_api.shared.secrets_manager.manager._logger") as mock_logger:
+        with patch("my_app.shared.secrets_manager.manager._logger") as mock_logger:
             manager.schedule_rotation("cancel-test", interval_seconds=1)
 
             # Cancel immediately
@@ -175,8 +175,8 @@ class TestRotationLogging:
         **Feature: shared-modules-code-review-fixes, Task 2.4**
         **Validates: Requirements 2.3**
         """
-        from my_api.shared.secrets_manager import manager
+        from my_app.infrastructure.security.secrets_manager import manager
 
         assert hasattr(manager, "_logger")
         assert isinstance(manager._logger, logging.Logger)
-        assert manager._logger.name == "my_api.shared.secrets_manager.manager"
+        assert manager._logger.name == "my_app.shared.secrets_manager.manager"

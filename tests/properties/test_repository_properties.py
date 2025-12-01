@@ -9,7 +9,7 @@ from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from pydantic import BaseModel
 
-from my_api.shared.repository import InMemoryRepository
+from my_app.core.base.repository import InMemoryRepository
 
 
 # Test models (prefixed with Sample to avoid pytest collection)

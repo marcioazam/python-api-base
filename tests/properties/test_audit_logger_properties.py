@@ -11,7 +11,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.core.security.audit_logger import (
+from my_app.core.security.audit_logger import (
     SecurityAuditLogger,
     SecurityEvent,
     SecurityEventType,

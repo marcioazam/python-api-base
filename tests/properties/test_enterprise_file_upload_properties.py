@@ -10,13 +10,13 @@ from datetime import datetime, timedelta
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.file_upload.models import (
+from my_app.application.file_upload.models import (
     FileMetadata,
     FileValidationConfig,
     UploadError,
 )
-from my_api.shared.file_upload.service import FileUploadService, InMemoryStorageProvider
-from my_api.shared.file_upload.validators import validate_file, get_safe_filename
+from my_app.application.file_upload.service import FileUploadService, InMemoryStorageProvider
+from my_app.application.file_upload.validators import validate_file, get_safe_filename
 
 
 # Strategies

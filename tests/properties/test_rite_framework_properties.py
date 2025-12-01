@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 # Project root
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-SRC_ROOT = PROJECT_ROOT / "src" / "my_api"
+SRC_ROOT = PROJECT_ROOT / "src" / "my_app"
 TESTS_ROOT = PROJECT_ROOT / "tests"
 SHARED_ROOT = SRC_ROOT / "shared"
 
@@ -73,7 +73,7 @@ KNOWN_MULTI_CLASS_EXCEPTIONS: set[str] = {
 
 
 def get_all_python_files() -> list[Path]:
-    """Get all Python files in src/my_api."""
+    """Get all Python files in src/my_app."""
     files = []
     for py_file in SRC_ROOT.rglob("*.py"):
         if "__pycache__" not in str(py_file):
@@ -178,7 +178,7 @@ def classify_import(module_name: str) -> str:
     
     if top_module in stdlib_modules:
         return "stdlib"
-    elif top_module in ("my_api", "src"):
+    elif top_module in ("my_app", "src"):
         return "local"
     else:
         return "third_party"

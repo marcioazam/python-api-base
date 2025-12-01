@@ -13,7 +13,7 @@ from hypothesis import given, settings, assume
 from hypothesis import strategies as st
 from pydantic import ValidationError
 
-from my_api.core.config import (
+from my_app.core.config import (
     DatabaseSettings,
     SecuritySettings,
     redact_url_credentials,

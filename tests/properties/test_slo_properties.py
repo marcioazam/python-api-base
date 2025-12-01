@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.slo import (
+from my_app.infrastructure.observability.slo import (
     InMemoryMetricsStore,
     SLOConfig,
     SLOMetric,

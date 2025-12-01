@@ -7,7 +7,7 @@
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.compression import (
+from my_app.infrastructure.compression import (
     BROTLI_AVAILABLE,
     CompressionAlgorithm,
     CompressionConfig,
@@ -501,7 +501,7 @@ class TestCompressionLevelValidation:
         For any integer level outside range [0, 11], creating a BrotliCompressor
         SHALL raise ValueError.
         """
-        from my_api.shared.compression import BrotliCompressor
+        from my_app.infrastructure.compression import BrotliCompressor
 
         if 0 <= level <= 11:
             compressor = BrotliCompressor(level)
@@ -548,7 +548,7 @@ class TestCompressionLevelValidation:
         """**Feature: shared-modules-refactoring, Property 17: Validation Error Message Content**
         **Validates: Requirements 8.3**
         """
-        from my_api.shared.compression import BrotliCompressor
+        from my_app.infrastructure.compression import BrotliCompressor
 
         invalid_level = 20
         with pytest.raises(ValueError) as exc_info:

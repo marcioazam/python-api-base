@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 # Project root
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-SRC_ROOT = PROJECT_ROOT / "src" / "my_api"
+SRC_ROOT = PROJECT_ROOT / "src" / "my_app"
 TESTS_ROOT = PROJECT_ROOT / "tests"
 
 # Thresholds from design document
@@ -91,7 +91,7 @@ EXCLUDED_SECRET_PATTERNS = [
 
 
 def get_all_python_files() -> list[Path]:
-    """Get all Python files in src/my_api."""
+    """Get all Python files in src/my_app."""
     files = []
     for py_file in SRC_ROOT.rglob("*.py"):
         if "__pycache__" not in str(py_file):
@@ -395,10 +395,10 @@ def test_domain_layer_isolation(file_path: Path) -> None:
         pytest.skip(f"Could not parse {file_path}")
     
     forbidden_prefixes = [
-        "my_api.infrastructure",
-        "my_api.adapters",
-        "src.my_api.infrastructure",
-        "src.my_api.adapters",
+        "my_app.infrastructure",
+        "my_app.adapters",
+        "src.my_app.infrastructure",
+        "src.my_app.adapters",
     ]
     
     imports = get_imports(tree)
@@ -551,7 +551,7 @@ def test_test_file_existence() -> None:
     **Feature: comprehensive-code-review, Property 11: Test File Existence**
     **Validates: Requirements 8.1**
     
-    For any module in src/my_api, a corresponding test file should exist
+    For any module in src/my_app, a corresponding test file should exist
     in the tests directory.
     """
     # Get key modules that should have tests

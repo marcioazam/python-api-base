@@ -9,9 +9,9 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.application.mappers.item_mapper import ItemMapper
-from my_api.domain.entities.item import Item, ItemResponse
-from my_api.shared.mapper import MapperError
+from my_app.application.mappers.item_mapper import ItemMapper
+from my_app.domain.entities.item import Item, ItemResponse
+from my_app.application.common.mapper import MapperError
 
 
 # Strategy for valid item data
@@ -105,7 +105,7 @@ class TestModuleExportCompleteness:
 
     def test_application_module_exports_mapper(self) -> None:
         """Application module exports ItemMapper."""
-        from my_api import application
+        from my_app import application
 
         assert hasattr(application, "__all__")
         assert "ItemMapper" in application.__all__
@@ -113,7 +113,7 @@ class TestModuleExportCompleteness:
 
     def test_application_module_exports_use_case(self) -> None:
         """Application module exports ItemUseCase."""
-        from my_api import application
+        from my_app import application
 
         assert hasattr(application, "__all__")
         assert "ItemUseCase" in application.__all__
@@ -121,21 +121,21 @@ class TestModuleExportCompleteness:
 
     def test_mappers_submodule_exports(self) -> None:
         """Mappers submodule has proper exports."""
-        from my_api.application import mappers
+        from my_app.application import mappers
 
         assert hasattr(mappers, "__all__")
         assert "ItemMapper" in mappers.__all__
 
     def test_use_cases_submodule_exports(self) -> None:
         """Use cases submodule has proper exports."""
-        from my_api.application import use_cases
+        from my_app.application import use_cases
 
         assert hasattr(use_cases, "__all__")
         assert "ItemUseCase" in use_cases.__all__
 
     def test_dtos_submodule_exports(self) -> None:
         """DTOs submodule has proper exports."""
-        from my_api.application import dtos
+        from my_app.application import dtos
 
         assert hasattr(dtos, "__all__")
 

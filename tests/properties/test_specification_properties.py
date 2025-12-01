@@ -7,7 +7,7 @@
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.shared.specification import spec
+from my_app.domain.common.specification import spec
 
 
 class TestSpecificationComposition:

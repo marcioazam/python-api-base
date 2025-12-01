@@ -7,7 +7,7 @@
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.conditional_middleware import (
+from my_app.interface.api.middleware.conditional_middleware import (
     AlwaysCondition,
     AndCondition,
     ConditionalMiddleware,

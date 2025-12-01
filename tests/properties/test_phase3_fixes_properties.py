@@ -14,9 +14,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.memory_profiler.enums import MemoryAlertSeverity, MemoryAlertType
-from my_api.shared.memory_profiler.models import MemoryAlert
-from my_api.shared.memory_profiler.service import LogMemoryAlertHandler
+from my_app.infrastructure.observability.memory_profiler.enums import MemoryAlertSeverity, MemoryAlertType
+from my_app.infrastructure.observability.memory_profiler.models import MemoryAlert
+from my_app.infrastructure.observability.memory_profiler.service import LogMemoryAlertHandler
 
 
 # =============================================================================
@@ -62,7 +62,7 @@ def test_memory_alert_logging_severity_mapping(alert: MemoryAlert) -> None:
     
     expected_level = expected_level_map.get(alert.severity, logging.WARNING)
     
-    with patch("my_api.shared.memory_profiler.service.logger") as mock_logger:
+    with patch("my_app.shared.memory_profiler.service.logger") as mock_logger:
         asyncio.get_event_loop().run_until_complete(handler.handle(alert))
         
         mock_logger.log.assert_called_once()
@@ -80,8 +80,8 @@ def test_memory_alert_logging_severity_mapping(alert: MemoryAlert) -> None:
 # **Validates: Requirements 2.1**
 # =============================================================================
 
-from my_api.shared.query_analyzer.service import QueryAnalyzer
-from my_api.shared.query_analyzer.constants import MAX_QUERY_LENGTH, ALLOWED_IDENTIFIER_PATTERN
+from my_app.infrastructure.observability.query_analyzer.service import QueryAnalyzer
+from my_app.infrastructure.observability.query_analyzer.constants import MAX_QUERY_LENGTH, ALLOWED_IDENTIFIER_PATTERN
 
 
 @settings(max_examples=100)
@@ -164,7 +164,7 @@ def test_sqlalchemy_boolean_filter_uses_is_method() -> None:
     This is a static verification test.
     """
     import inspect
-    from my_api.shared.multitenancy.service import TenantRepository
+    from my_app.application.multitenancy.service import TenantRepository
     
     source = inspect.getsource(TenantRepository.get_all)
     
@@ -178,7 +178,7 @@ def test_sqlalchemy_boolean_filter_uses_is_method() -> None:
 # **Validates: Requirements 4.1**
 # =============================================================================
 
-from my_api.shared.lazy.loader import BatchLoader
+from my_app.infrastructure.resilience.lazy.loader import BatchLoader
 
 
 @settings(max_examples=50)
@@ -217,8 +217,8 @@ def test_batch_loader_cache_respects_limit(num_items: int, max_cache: int) -> No
 # **Validates: Requirements 4.2**
 # =============================================================================
 
-from my_api.shared.oauth2.state_store import InMemoryStateStore
-from my_api.shared.oauth2.models import OAuthState
+from my_app.infrastructure.security.oauth2.state_store import InMemoryStateStore
+from my_app.infrastructure.security.oauth2.models import OAuthState
 
 
 @settings(max_examples=50)
@@ -263,8 +263,8 @@ def test_state_store_clears_expired(num_states: int, max_age: int) -> None:
 # **Validates: Requirements 4.3**
 # =============================================================================
 
-from my_api.shared.metrics_dashboard.store import InMemoryMetricsStore
-from my_api.shared.metrics_dashboard.enums import MetricType
+from my_app.infrastructure.observability.metrics_dashboard.store import InMemoryMetricsStore
+from my_app.infrastructure.observability.metrics_dashboard.enums import MetricType
 
 
 @settings(max_examples=50)
@@ -302,8 +302,8 @@ def test_metrics_store_respects_limit(num_points: int, max_points: int) -> None:
 # **Validates: Requirements 5.2**
 # =============================================================================
 
-from my_api.shared.oauth2.models import OAuthConfig
-from my_api.shared.oauth2.enums import OAuthProvider
+from my_app.infrastructure.security.oauth2.models import OAuthConfig
+from my_app.infrastructure.security.oauth2.enums import OAuthProvider
 
 
 @settings(max_examples=50)
@@ -331,7 +331,7 @@ def test_oauth_timeout_is_configurable(timeout: float) -> None:
 # **Validates: Requirements 5.1, 5.3**
 # =============================================================================
 
-from my_api.shared.lazy.proxy import LazyProxy
+from my_app.infrastructure.resilience.lazy.proxy import LazyProxy
 
 
 @settings(max_examples=50)
@@ -374,8 +374,8 @@ def test_lazy_proxy_fast_loader_completes_with_timeout() -> None:
 # **Validates: Requirements 7.1, 7.2, 7.3**
 # =============================================================================
 
-from my_api.shared.metrics_dashboard.models import Dashboard, DashboardData, MetricSeries
-from my_api.shared.metrics_dashboard.enums import MetricType
+from my_app.infrastructure.observability.metrics_dashboard.models import Dashboard, DashboardData, MetricSeries
+from my_app.infrastructure.observability.metrics_dashboard.enums import MetricType
 
 
 def test_dashboard_created_at_is_timezone_aware() -> None:
@@ -418,8 +418,8 @@ def test_metric_series_add_point_is_timezone_aware() -> None:
 
 import tempfile
 from pathlib import Path
-from my_api.shared.mutation_testing.service import MutationScoreTracker
-from my_api.shared.mutation_testing.models import MutationReport
+from my_app.shared.mutation_testing.service import MutationScoreTracker
+from my_app.shared.mutation_testing.models import MutationReport
 
 
 @settings(max_examples=50)
@@ -464,7 +464,7 @@ def test_mutation_tracker_handles_utf8_content(unicode_text: str) -> None:
 # **Validates: Requirements 2.2**
 # =============================================================================
 
-from my_api.shared.query_builder.in_memory import InMemoryQueryBuilder
+from my_app.infrastructure.db.query_builder.in_memory import InMemoryQueryBuilder
 from pydantic import BaseModel
 
 

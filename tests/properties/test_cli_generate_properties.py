@@ -11,7 +11,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.cli.commands.generate import (
+from my_app.cli.commands.generate import (
     _generate_entity_content,
     _generate_mapper_content,
     _generate_routes_content,
@@ -19,7 +19,7 @@ from my_api.cli.commands.generate import (
     to_pascal_case,
     to_snake_case,
 )
-from my_api.cli.constants import ALLOWED_FIELD_TYPES, MAX_ENTITY_NAME_LENGTH
+from my_app.cli.constants import ALLOWED_FIELD_TYPES, MAX_ENTITY_NAME_LENGTH
 
 
 # Strategy for valid entity names
@@ -166,7 +166,7 @@ class TestGeneratedCodeImportOrdering:
                 stdlib_imports.append(line)
             elif any(module.startswith(prefix) for prefix in third_party_prefixes):
                 third_party_imports.append(line)
-            elif module.startswith("my_api"):
+            elif module.startswith("my_app"):
                 local_imports.append(line)
             else:
                 # Unknown - could be stdlib or third-party

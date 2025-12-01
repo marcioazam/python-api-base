@@ -7,7 +7,7 @@
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.shared.query_analyzer import (
+from my_app.infrastructure.observability.query_analyzer import (
     AnalyzerConfig,
     IndexSuggestion,
     OptimizationSuggestion,

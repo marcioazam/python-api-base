@@ -13,10 +13,10 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.core.auth.jwt import JWTService
-from my_api.core.auth.password_policy import get_password_validator
-from my_api.core.auth.rbac import get_rbac_service
-from my_api.core.security.audit_logger import (
+from my_app.core.auth.jwt import JWTService
+from my_app.core.auth.password_policy import get_password_validator
+from my_app.core.auth.rbac import get_rbac_service
+from my_app.core.security.audit_logger import (
     SecurityAuditLogger,
     SecurityEvent,
     SecurityEventType,
@@ -154,7 +154,7 @@ class TestFailClosedBehavior:
         When the revocation store raises an exception, validate_with_revocation()
         SHALL reject the token.
         """
-        from my_api.core.auth.jwt_validator import JWTValidator, InvalidTokenError
+        from my_app.core.auth.jwt_validator import JWTValidator, InvalidTokenError
         
         # Create a mock revocation store that raises an exception
         mock_store = MagicMock()
@@ -296,7 +296,7 @@ class TestModuleExports:
         **Feature: core-improvements-v2, Property 10: Module __all__ Completeness**
         **Validates: Requirements 6.1**
         """
-        from my_api.core import exceptions
+        from my_app.core import exceptions
         
         assert hasattr(exceptions, "__all__")
         expected = [
@@ -318,7 +318,7 @@ class TestModuleExports:
         **Feature: core-improvements-v2, Property 10: Module __all__ Completeness**
         **Validates: Requirements 6.2**
         """
-        from my_api.core import config
+        from my_app.core import config
         
         assert hasattr(config, "__all__")
         assert "Settings" in config.__all__
@@ -329,7 +329,7 @@ class TestModuleExports:
         **Feature: core-improvements-v2, Property 10: Module __all__ Completeness**
         **Validates: Requirements 6.3**
         """
-        from my_api.core import container
+        from my_app.core import container
         
         assert hasattr(container, "__all__")
         expected = ["Container", "LifecycleManager", "LifecycleHookError", "create_container", "lifecycle"]

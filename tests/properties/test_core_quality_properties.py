@@ -15,10 +15,10 @@ import pytest
 from hypothesis import given, settings, assume
 from hypothesis import strategies as st
 
-from my_api.core.config import Settings, get_settings
-from my_api.core.auth.rbac import get_rbac_service, RBACService
-from my_api.core.security.audit_logger import get_audit_logger, SecurityAuditLogger
-from my_api.core.auth.jwt import TokenPayload, TokenPair
+from my_app.core.config import Settings, get_settings
+from my_app.core.auth.rbac import get_rbac_service, RBACService
+from my_app.core.security.audit_logger import get_audit_logger, SecurityAuditLogger
+from my_app.core.auth.jwt import TokenPayload, TokenPair
 
 
 class TestThreadSafeSingletonAccess:

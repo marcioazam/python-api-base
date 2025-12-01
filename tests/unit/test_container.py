@@ -6,8 +6,8 @@
 import pytest
 from dependency_injector import providers
 
-from my_api.core.config import Settings
-from my_api.core.container import Container, LifecycleManager, create_container
+from my_app.core.config import Settings
+from my_app.core.container import Container, LifecycleManager, create_container
 
 
 class TestContainer:

@@ -8,7 +8,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.shared.utils.password import hash_password, verify_password
+from my_app.shared.utils.password import hash_password, verify_password
 
 
 # Strategy for generating valid passwords

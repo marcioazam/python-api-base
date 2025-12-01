@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.adapters.api.routes.health import (
+from my_app.adapters.api.routes.health import (
     DEFAULT_HEALTH_CHECK_TIMEOUT,
     DependencyHealth,
     HealthResponse,

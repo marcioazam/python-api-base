@@ -10,8 +10,8 @@ from typing import Any
 
 from hypothesis import given, settings, strategies as st
 
-from my_api.adapters.api.middleware.rate_limiter import _is_valid_ip
-from my_api.adapters.api.middleware.request_logger import (
+from my_app.adapters.api.middleware.rate_limiter import _is_valid_ip
+from my_app.adapters.api.middleware.request_logger import (
     MASK_VALUE,
     SENSITIVE_FIELDS,
     SENSITIVE_HEADERS,
@@ -20,7 +20,7 @@ from my_api.adapters.api.middleware.request_logger import (
 )
 # GraphQL imports - conditional to avoid strawberry dependency in tests
 try:
-    from my_api.adapters.api.graphql.types import (
+    from my_app.adapters.api.graphql.types import (
         ConnectionArgs,
         connection_from_list,
         decode_cursor,
@@ -33,7 +33,7 @@ except ImportError:
     connection_from_list = None
     decode_cursor = None
     encode_cursor = None
-from my_api.shared.dto import ProblemDetail
+from my_app.application.common.dto import ProblemDetail
 
 
 # =============================================================================
@@ -68,7 +68,7 @@ def test_security_headers_completeness(_: None) -> None:
     For any SecurityHeadersMiddleware instance, all OWASP-recommended
     headers SHALL be present in the default configuration.
     """
-    from my_api.adapters.api.middleware.security_headers import SecurityHeadersMiddleware
+    from my_app.adapters.api.middleware.security_headers import SecurityHeadersMiddleware
 
     # Create middleware with mock app
     middleware = SecurityHeadersMiddleware(app=None)

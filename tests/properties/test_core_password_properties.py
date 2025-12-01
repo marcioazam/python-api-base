@@ -10,7 +10,7 @@ import pytest
 from hypothesis import given, settings, assume
 from hypothesis import strategies as st
 
-from my_api.core.auth.password_policy import (
+from my_app.core.auth.password_policy import (
     PasswordPolicy,
     PasswordValidator,
     PasswordValidationResult,

@@ -9,7 +9,7 @@ import asyncio
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.api_composition import (
+from my_app.interface.api.api_composition import (
     AggregatedResponse,
     APIComposer,
     CallResult,

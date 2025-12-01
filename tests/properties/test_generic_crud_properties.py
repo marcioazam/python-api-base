@@ -9,14 +9,14 @@ import json
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.generic_crud.endpoints import (
+from my_app.interface.api.generic_crud.endpoints import (
     EndpointConfig,
     FilterParams,
     GenericEndpoints,
     PaginationParams,
     SortParams,
 )
-from my_api.shared.generic_crud.repository import FilterCondition, FilterOperator
+from my_app.interface.api.generic_crud.repository import FilterCondition, FilterOperator
 
 
 class TestFilterFieldValidation:

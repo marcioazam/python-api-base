@@ -36,7 +36,7 @@ O framework inclui tudo necessário para produção: operações CRUD genéricas
 ## Arquitetura
 
 ```
-src/my_api/
+src/my_app/
 ├── core/           # Configuração, container DI, exceções, autenticação
 │   └── auth/       # JWT, RBAC, password policy
 ├── shared/         # Classes base genéricas (Repository, UseCase, Router, DTOs)
@@ -90,7 +90,7 @@ docker-compose up -d postgres redis
 python scripts/migrate.py upgrade head
 
 # Iniciar API
-uv run uvicorn my_api.main:app --reload
+uv run uvicorn my_app.main:app --reload
 ```
 
 ### Pontos de Acesso
@@ -154,7 +154,7 @@ python scripts/generate_entity.py product --dry-run
 ### JWT Authentication
 
 ```python
-from my_api.core.auth.jwt import JWTService
+from my_app.core.auth.jwt import JWTService
 
 jwt_service = JWTService(secret_key="...", algorithm="HS256")
 
@@ -169,7 +169,7 @@ payload = jwt_service.verify_token(access_token)
 ### Token Revocation
 
 ```python
-from my_api.infrastructure.auth.token_store import TokenStore
+from my_app.infrastructure.auth.token_store import TokenStore
 
 token_store = TokenStore(redis_client)
 
@@ -183,7 +183,7 @@ is_revoked = await token_store.is_revoked(token_jti)
 ### RBAC (Role-Based Access Control)
 
 ```python
-from my_api.core.auth.rbac import RBACService, Role, Permission
+from my_app.core.auth.rbac import RBACService, Role, Permission
 
 # Definir roles com permissões
 admin_role = Role(name="admin", permissions=[
@@ -201,7 +201,7 @@ has_access = rbac.has_permission(user_roles=["admin"], resource="users", action=
 ### Password Policy
 
 ```python
-from my_api.core.auth.password_policy import PasswordPolicy
+from my_app.core.auth.password_policy import PasswordPolicy
 
 policy = PasswordPolicy(min_length=12, require_uppercase=True, require_special=True)
 result = policy.validate("MyP@ssw0rd123")
@@ -215,7 +215,7 @@ if not result.is_valid:
 ### Caching
 
 ```python
-from my_api.shared.caching import cached, InMemoryCacheProvider, CacheConfig
+from my_app.shared.caching import cached, InMemoryCacheProvider, CacheConfig
 
 # Decorator simples
 @cached(ttl=300)
@@ -233,8 +233,8 @@ async def expensive_query() -> list:
 ### CQRS
 
 ```python
-from my_api.shared.cqrs import Command, Query, CommandBus, QueryBus
-from my_api.shared.result import Ok, Result
+from my_app.shared.cqrs import Command, Query, CommandBus, QueryBus
+from my_app.shared.result import Ok, Result
 
 # Command
 @dataclass
@@ -263,7 +263,7 @@ result = await bus.dispatch(CreateOrderCommand(customer_id="123", items=["item1"
 ### Specifications
 
 ```python
-from my_api.shared.advanced_specification import (
+from my_app.shared.advanced_specification import (
     FieldSpecification, ComparisonOperator, SpecificationBuilder
 )
 
@@ -289,7 +289,7 @@ query = select(Product).where(spec.to_sql_condition(Product))
 ### Circuit Breaker
 
 ```python
-from my_api.shared.circuit_breaker import circuit_breaker, CircuitBreaker
+from my_app.shared.circuit_breaker import circuit_breaker, CircuitBreaker
 
 # Decorator
 @circuit_breaker("external-api", failure_threshold=5, recovery_timeout=30)
@@ -305,7 +305,7 @@ async with cb:
 ### Retry Pattern
 
 ```python
-from my_api.shared.retry import retry, RETRY_STANDARD, RETRY_FAST
+from my_app.shared.retry import retry, RETRY_STANDARD, RETRY_FAST
 
 @retry(config=RETRY_STANDARD)  # 3 tentativas, backoff exponencial
 async def unreliable_operation():
@@ -319,7 +319,7 @@ async def quick_retry():
 ### Domain Events
 
 ```python
-from my_api.shared.events import event_bus, EntityCreatedEvent
+from my_app.shared.events import event_bus, EntityCreatedEvent
 
 # Subscribe
 @event_bus.subscribe("item.created")
@@ -336,7 +336,7 @@ await event_bus.publish(EntityCreatedEvent(
 ### Tracing
 
 ```python
-from my_api.infrastructure.observability.telemetry import traced
+from my_app.infrastructure.observability.telemetry import traced
 
 @traced(name="process_payment", attributes={"provider": "stripe"})
 async def process_payment(order_id: str) -> bool:
@@ -396,7 +396,7 @@ Gere documentação completa: `python scripts/generate_config_docs.py --output d
 uv run pytest
 
 # Com cobertura
-uv run pytest --cov=src/my_api --cov-report=html
+uv run pytest --cov=src/my_app --cov-report=html
 
 # Por tipo
 uv run pytest tests/unit/

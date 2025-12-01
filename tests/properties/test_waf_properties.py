@@ -7,7 +7,7 @@
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.shared.waf import (
+from my_app.infrastructure.security.waf import (
     RuleAction,
     RuleSeverity,
     ThreatDetection,

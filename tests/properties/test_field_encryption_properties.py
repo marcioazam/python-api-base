@@ -7,7 +7,7 @@
 import pytest
 from hypothesis import given, strategies as st, settings
 
-from my_api.shared.field_encryption import (
+from my_app.infrastructure.security.field_encryption import (
     FieldEncryptor,
     EncryptedValue,
     EncryptionAlgorithm,

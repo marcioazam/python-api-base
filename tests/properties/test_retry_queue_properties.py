@@ -9,7 +9,7 @@ from hypothesis import given, strategies as st, settings
 from datetime import datetime
 from dataclasses import dataclass
 
-from my_api.shared.retry_queue import (
+from my_app.infrastructure.messaging.retry_queue import (
     RetryQueue,
     RetryConfig,
     QueueMessage,

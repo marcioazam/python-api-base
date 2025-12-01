@@ -31,10 +31,10 @@ from typing import Any, Generic, TypeVar
 import pytest
 from pydantic import BaseModel
 
-from my_api.shared.dto import PaginatedResponse
-from my_api.shared.mapper import IMapper
-from my_api.shared.repository import IRepository, InMemoryRepository
-from my_api.shared.use_case import BaseUseCase
+from my_app.application.common.dto import PaginatedResponse
+from my_app.application.common.mapper import IMapper
+from my_app.core.base.repository import IRepository, InMemoryRepository
+from my_app.shared.use_case import BaseUseCase
 
 # Type variables
 T = TypeVar("T", bound=BaseModel)

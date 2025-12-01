@@ -13,8 +13,8 @@ from datetime import datetime, timezone
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.exceptions import AuthenticationError, DecryptionError
-from my_api.shared.field_encryption import (
+from my_app.core.errors.exceptions import AuthenticationError, DecryptionError
+from my_app.infrastructure.security.field_encryption import (
     EncryptedValue,
     EncryptionAlgorithm,
     FieldEncryptor,
@@ -152,7 +152,7 @@ class TestBcryptHashUniqueness:
     @settings(max_examples=10, deadline=None)
     def test_same_key_produces_different_hashes(self, api_key: str) -> None:
         """Hashing same key multiple times produces different hashes (unique salts)."""
-        from my_api.shared.api_key_service import APIKeyService
+        from my_app.infrastructure.security.api_key_service import APIKeyService
 
         service = APIKeyService()
         hash1 = service._hash_key(api_key)
@@ -173,7 +173,7 @@ class TestBcryptHashUniqueness:
     @settings(max_examples=10, deadline=None)
     def test_bcrypt_hash_format(self, api_key: str) -> None:
         """Bcrypt hash has correct format with cost factor >= 12."""
-        from my_api.shared.api_key_service import APIKeyService
+        from my_app.infrastructure.security.api_key_service import APIKeyService
 
         service = APIKeyService()
         key_hash = service._hash_key(api_key)
@@ -200,7 +200,7 @@ class TestHashMigrationCompatibility:
     @settings(max_examples=20, deadline=None)
     def test_legacy_sha256_verification(self, api_key: str) -> None:
         """Legacy SHA256 hashes can still be verified."""
-        from my_api.shared.api_key_service import APIKeyService
+        from my_app.infrastructure.security.api_key_service import APIKeyService
 
         service = APIKeyService()
         legacy_hash = service._hash_key_sha256(api_key)
@@ -220,7 +220,7 @@ class TestHashMigrationCompatibility:
     @settings(max_examples=10, deadline=None)
     def test_both_formats_work(self, api_key: str) -> None:
         """Both bcrypt and SHA256 formats verify correctly."""
-        from my_api.shared.api_key_service import APIKeyService
+        from my_app.infrastructure.security.api_key_service import APIKeyService
 
         service = APIKeyService()
 
@@ -247,7 +247,7 @@ class TestTimestampTimezoneAwareness:
     @settings(max_examples=100)
     def test_utc_now_is_timezone_aware(self, _: datetime) -> None:
         """utc_now() returns timezone-aware datetime."""
-        from my_api.shared.utils.datetime import utc_now
+        from my_app.shared.utils.datetime import utc_now
 
         result = utc_now()
         assert result.tzinfo is not None
@@ -256,7 +256,7 @@ class TestTimestampTimezoneAwareness:
     @settings(max_examples=100)
     def test_ensure_utc_makes_naive_datetime_aware(self, dt: datetime) -> None:
         """ensure_utc() makes naive datetimes timezone-aware."""
-        from my_api.shared.utils.datetime import ensure_utc
+        from my_app.shared.utils.datetime import ensure_utc
 
         # Create naive datetime
         naive_dt = dt.replace(tzinfo=None)
@@ -273,7 +273,7 @@ class TestTimestampTimezoneAwareness:
     @settings(max_examples=100)
     def test_iso8601_serialization_includes_timezone(self, dt: datetime) -> None:
         """to_iso8601() includes timezone information."""
-        from my_api.shared.utils.datetime import to_iso8601
+        from my_app.shared.utils.datetime import to_iso8601
 
         result = to_iso8601(dt)
 
@@ -289,7 +289,7 @@ class TestTimestampTimezoneAwareness:
     @settings(max_examples=100)
     def test_iso8601_round_trip(self, dt: datetime) -> None:
         """ISO 8601 serialization/deserialization preserves datetime."""
-        from my_api.shared.utils.datetime import to_iso8601, from_iso8601
+        from my_app.shared.utils.datetime import to_iso8601, from_iso8601
 
         serialized = to_iso8601(dt)
         deserialized = from_iso8601(serialized)
@@ -316,7 +316,7 @@ class TestGlobToRegexSafeConversion:
     @settings(max_examples=100)
     def test_glob_matches_literal_filename(self, filename: str) -> None:
         """Glob pattern without wildcards matches exact filename."""
-        from my_api.shared.utils.safe_pattern import match_glob
+        from my_app.shared.utils.safe_pattern import match_glob
 
         # Pattern without wildcards should match exactly
         assert match_glob(filename, filename)
@@ -336,7 +336,7 @@ class TestGlobToRegexSafeConversion:
     @settings(max_examples=100)
     def test_glob_star_matches_any_middle(self, prefix: str, suffix: str, middle: str) -> None:
         """Glob * wildcard matches any characters in the middle."""
-        from my_api.shared.utils.safe_pattern import match_glob
+        from my_app.shared.utils.safe_pattern import match_glob
 
         pattern = f"{prefix}*{suffix}"
         text = f"{prefix}{middle}{suffix}"
@@ -347,7 +347,7 @@ class TestGlobToRegexSafeConversion:
     @settings(max_examples=50)
     def test_regex_special_chars_are_escaped(self, special_char: str) -> None:
         """Regex special characters in glob are properly escaped."""
-        from my_api.shared.utils.safe_pattern import glob_to_regex, match_glob
+        from my_app.shared.utils.safe_pattern import glob_to_regex, match_glob
 
         # Pattern with special char should match literally
         pattern = f"file{special_char}name"
@@ -370,7 +370,7 @@ class TestGlobToRegexSafeConversion:
     @settings(max_examples=100)
     def test_glob_extension_pattern(self, base: str, ext: str) -> None:
         """Glob *.ext pattern matches files with that extension."""
-        from my_api.shared.utils.safe_pattern import match_glob
+        from my_app.shared.utils.safe_pattern import match_glob
 
         pattern = f"*.{ext}"
         matching_file = f"{base}.{ext}"
@@ -383,7 +383,7 @@ class TestGlobToRegexSafeConversion:
     @settings(max_examples=100)
     def test_glob_to_regex_produces_valid_regex(self, text: str) -> None:
         """glob_to_regex always produces valid regex."""
-        from my_api.shared.utils.safe_pattern import glob_to_regex
+        from my_app.shared.utils.safe_pattern import glob_to_regex
 
         regex_pattern = glob_to_regex(text)
 
@@ -400,12 +400,12 @@ class TestCircuitBreakerRegistryThreadSafety:
 
     def setup_method(self) -> None:
         """Reset registry before each test."""
-        from my_api.shared.circuit_breaker import reset_circuit_breaker_registry
+        from my_app.shared.circuit_breaker import reset_circuit_breaker_registry
         reset_circuit_breaker_registry()
 
     def teardown_method(self) -> None:
         """Reset registry after each test."""
-        from my_api.shared.circuit_breaker import reset_circuit_breaker_registry
+        from my_app.shared.circuit_breaker import reset_circuit_breaker_registry
         reset_circuit_breaker_registry()
 
     @given(name=st.text(min_size=1, max_size=50, alphabet=st.characters(
@@ -414,7 +414,7 @@ class TestCircuitBreakerRegistryThreadSafety:
     @settings(max_examples=50)
     def test_same_name_returns_same_instance(self, name: str) -> None:
         """Getting same name multiple times returns same instance."""
-        from my_api.shared.circuit_breaker import (
+        from my_app.shared.circuit_breaker import (
             get_circuit_breaker,
             reset_circuit_breaker_registry,
         )
@@ -436,7 +436,7 @@ class TestCircuitBreakerRegistryThreadSafety:
     @settings(max_examples=50)
     def test_different_names_return_different_instances(self, names: list[str]) -> None:
         """Different names return different instances."""
-        from my_api.shared.circuit_breaker import (
+        from my_app.shared.circuit_breaker import (
             get_circuit_breaker,
             reset_circuit_breaker_registry,
         )
@@ -452,7 +452,7 @@ class TestCircuitBreakerRegistryThreadSafety:
 
     def test_concurrent_access_returns_same_instance(self) -> None:
         """Concurrent access to same name returns same instance."""
-        from my_api.shared.circuit_breaker import (
+        from my_app.shared.circuit_breaker import (
             get_circuit_breaker,
             reset_circuit_breaker_registry,
         )
@@ -490,7 +490,7 @@ class TestCircuitBreakerRegistryThreadSafety:
 
     def test_reset_clears_registry(self) -> None:
         """Reset clears all circuit breakers."""
-        from my_api.shared.circuit_breaker import (
+        from my_app.shared.circuit_breaker import (
             get_circuit_breaker,
             get_all_circuit_breakers,
             reset_circuit_breaker_registry,
@@ -529,7 +529,7 @@ class TestContextTokenSafeReset:
         self, correlation_id: str, request_id: str
     ) -> None:
         """Context manager properly sets and restores context."""
-        from my_api.shared.correlation import (
+        from my_app.shared.correlation import (
             CorrelationContext,
             CorrelationContextManager,
             get_correlation_id,
@@ -557,7 +557,7 @@ class TestContextTokenSafeReset:
 
     def test_double_exit_does_not_raise(self) -> None:
         """Exiting context multiple times does not raise exception."""
-        from my_api.shared.correlation import (
+        from my_app.shared.correlation import (
             CorrelationContext,
             CorrelationContextManager,
             clear_context,
@@ -581,7 +581,7 @@ class TestContextTokenSafeReset:
     @settings(max_examples=20)
     def test_nested_contexts_maintain_relationships(self, depth: int) -> None:
         """Nested contexts maintain proper parent-child relationships."""
-        from my_api.shared.correlation import (
+        from my_app.shared.correlation import (
             CorrelationContext,
             CorrelationContextManager,
             get_correlation_id,

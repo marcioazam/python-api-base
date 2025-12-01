@@ -9,7 +9,7 @@ import asyncio
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.shared.chaos import (
+from my_app.infrastructure.testing.chaos import (
     ChaosEngine,
     ChaosError,
     ChaosExperiment,

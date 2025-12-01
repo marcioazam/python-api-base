@@ -144,7 +144,7 @@ class TestCodeGenerationCompleteness:
         compile(code, f"{name}_use_case.py", "exec")
         
         # Should include caching
-        assert "from my_api.shared.caching import cached" in code
+        assert "from my_app.shared.caching import cached" in code
         assert "@cached" in code
 
     @settings(max_examples=30)

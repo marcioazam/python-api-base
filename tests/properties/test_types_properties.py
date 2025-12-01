@@ -9,7 +9,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from pydantic import BaseModel, ValidationError
 
-from my_api.shared.types import (
+from my_app.core.types.types import (
     ULID,
     UUID,
     Email,

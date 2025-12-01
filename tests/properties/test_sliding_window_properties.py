@@ -12,7 +12,7 @@ from unittest.mock import patch
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.adapters.api.middleware.sliding_window import (
+from my_app.adapters.api.middleware.sliding_window import (
     RateLimitConfigError,
     SlidingWindowConfig,
     SlidingWindowRateLimiter,

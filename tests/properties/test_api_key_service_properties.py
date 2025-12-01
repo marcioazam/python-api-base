@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, UTC
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.shared.api_key_service import (
+from my_app.infrastructure.security.api_key_service import (
     APIKey,
     APIKeyService,
     KeyScope,

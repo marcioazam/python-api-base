@@ -9,7 +9,7 @@ from datetime import timedelta
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.smart_routing import (
+from my_app.infrastructure.resilience.smart_routing import (
     Endpoint,
     EndpointMetrics,
     EndpointStatus,

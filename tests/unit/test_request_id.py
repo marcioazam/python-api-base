@@ -4,11 +4,11 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from my_api.adapters.api.middleware.request_id import (
+from my_app.adapters.api.middleware.request_id import (
     RequestIDMiddleware,
     get_request_id,
 )
-from my_api.infrastructure.logging import get_request_id as get_ctx_request_id
+from my_app.infrastructure.logging import get_request_id as get_ctx_request_id
 
 
 @pytest.fixture

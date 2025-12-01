@@ -10,7 +10,7 @@ import json
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.shared.streaming import (
+from my_app.infrastructure.streaming import (
     ChunkedStream,
     SSEEvent,
     SSEStream,

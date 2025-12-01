@@ -8,7 +8,7 @@ import pytest
 from hypothesis import given, strategies as st, settings
 from decimal import Decimal
 
-from my_api.shared.currency import (
+from my_app.domain.common.currency import (
     Money,
     Currency,
     CurrencyFormatter,

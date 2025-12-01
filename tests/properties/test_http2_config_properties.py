@@ -7,7 +7,7 @@
 import pytest
 from hypothesis import given, strategies as st, assume, settings
 
-from src.my_api.shared.http2_config import (
+from src.my_app.shared.http2_config import (
     HTTPProtocol,
     PushPriority,
     PushResource,

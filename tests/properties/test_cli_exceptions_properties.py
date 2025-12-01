@@ -8,8 +8,8 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.cli.constants import EXIT_ERROR, EXIT_TIMEOUT
-from my_api.cli.exceptions import (
+from my_app.cli.constants import EXIT_ERROR, EXIT_TIMEOUT
+from my_app.cli.exceptions import (
     AlembicError,
     CLIError,
     CLITimeoutError,

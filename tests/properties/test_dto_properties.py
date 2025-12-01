@@ -11,7 +11,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from pydantic import BaseModel
 
-from my_api.shared.dto import ApiResponse, PaginatedResponse, ProblemDetail
+from my_app.application.common.dto import ApiResponse, PaginatedResponse, ProblemDetail
 
 
 # Sample model for testing generic responses

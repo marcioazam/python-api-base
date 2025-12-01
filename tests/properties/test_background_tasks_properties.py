@@ -9,7 +9,7 @@ import asyncio
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.shared.background_tasks import (
+from my_app.infrastructure.tasks.background_tasks import (
     BackgroundTaskQueue,
     QueueStats,
     TaskConfig,

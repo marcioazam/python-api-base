@@ -7,7 +7,7 @@
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.fingerprint import (
+from my_app.infrastructure.security.fingerprint import (
     Fingerprint,
     FingerprintComponent,
     FingerprintConfig,

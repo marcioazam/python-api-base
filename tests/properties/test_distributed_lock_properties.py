@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.distributed_lock import (
+from my_app.infrastructure.distributed.distributed_lock import (
     InMemoryDistributedLock,
     LockAcquisitionError,
     LockInfo,

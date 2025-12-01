@@ -8,7 +8,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.adapters.api.middleware.error_handler import (
+from my_app.adapters.api.middleware.error_handler import (
     create_problem_detail,
     unhandled_exception_handler,
 )

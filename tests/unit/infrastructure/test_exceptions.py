@@ -6,7 +6,7 @@
 
 import pytest
 
-from my_api.infrastructure.exceptions import (
+from my_app.infrastructure.exceptions import (
     AuditLogError,
     CacheError,
     ConfigurationError,

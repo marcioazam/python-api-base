@@ -3,10 +3,10 @@
 import pytest
 from pydantic import BaseModel
 
-from my_api.core.exceptions import EntityNotFoundError
-from my_api.shared.mapper import AutoMapper
-from my_api.shared.repository import InMemoryRepository
-from my_api.shared.use_case import BaseUseCase
+from my_app.core.exceptions import EntityNotFoundError
+from my_app.application.common.mapper import AutoMapper
+from my_app.core.base.repository import InMemoryRepository
+from my_app.shared.use_case import BaseUseCase
 
 
 # Test models

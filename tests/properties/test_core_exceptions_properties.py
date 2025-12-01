@@ -12,7 +12,7 @@ import pytest
 from hypothesis import given, settings, assume
 from hypothesis import strategies as st
 
-from my_api.core.exceptions import (
+from my_app.core.exceptions import (
     AppException,
     ErrorContext,
     ValidationError,

@@ -7,7 +7,7 @@
 import pytest
 from hypothesis import given, strategies as st, settings
 
-from my_api.shared.developer_portal import (
+from my_app.interface.api.developer_portal import (
     DeveloperPortal,
     SubscriptionTier,
     TIER_LIMITS,
@@ -23,7 +23,7 @@ class InMemoryUsageStore:
         pass
 
     async def get_stats(self, developer_id: str, start, end):
-        from my_api.shared.developer_portal import UsageStats
+        from my_app.interface.api.developer_portal import UsageStats
         return UsageStats(
             developer_id=developer_id,
             period_start=start,

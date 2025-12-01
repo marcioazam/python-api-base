@@ -7,7 +7,7 @@
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.shared.api_playground import (
+from my_app.interface.api.api_playground import (
     APIPlayground,
     EndpointInfo,
     HttpMethod,

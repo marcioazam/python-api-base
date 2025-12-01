@@ -9,7 +9,7 @@ import base64
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.csp_generator import (
+from my_app.interface.api.csp_generator import (
     CSPBuilder,
     CSPDirective,
     CSPGenerator,

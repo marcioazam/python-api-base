@@ -7,7 +7,7 @@
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.strangler_fig import (
+from my_app.infrastructure.migration.strangler_fig import (
     RouteConfig,
     RoutingDecision,
     RoutingStats,

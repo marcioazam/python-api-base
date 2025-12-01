@@ -8,7 +8,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.adapters.api.middleware.request_logger import (
+from my_app.adapters.api.middleware.request_logger import (
     RequestLogEntry,
     ResponseLogEntry,
     mask_sensitive_value,

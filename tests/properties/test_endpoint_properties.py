@@ -9,7 +9,7 @@ from hypothesis import given, settings, HealthCheck
 from hypothesis import strategies as st
 from httpx import ASGITransport, AsyncClient
 
-from my_api.main import app
+from my_app.main import app
 
 
 # Strategy for valid item names

@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.connection_pool import (
+from my_app.infrastructure.connection_pool import (
     BaseConnectionFactory,
     ConnectionPool,
     ConnectionState,

@@ -11,8 +11,8 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.core.auth.jwt import JWTService
-from my_api.infrastructure.auth.token_store import (
+from my_app.core.auth.jwt import JWTService
+from my_app.infrastructure.auth.token_store import (
     InMemoryTokenStore,
     StoredToken,
 )

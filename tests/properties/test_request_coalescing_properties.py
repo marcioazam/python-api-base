@@ -9,7 +9,7 @@ import asyncio
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.shared.request_coalescing import (
+from my_app.infrastructure.resilience.request_coalescing import (
     BatchCoalescer,
     CoalescingConfig,
     CoalescingStats,

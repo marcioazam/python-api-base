@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.shared.utils.datetime import ensure_utc, from_iso8601, to_iso8601, utc_now
+from my_app.shared.utils.datetime import ensure_utc, from_iso8601, to_iso8601, utc_now
 
 
 # Strategy for generating timezone-aware datetimes

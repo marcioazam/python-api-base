@@ -9,7 +9,7 @@ import asyncio
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.long_polling import (
+from my_app.interface.api.long_polling import (
     EventQueue,
     LongPollEndpoint,
     PollConfig,

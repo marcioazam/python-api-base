@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.timezone import (
+from my_app.shared.timezone import (
     CommonTimezone,
     TimezoneInfo,
     TimezoneService,

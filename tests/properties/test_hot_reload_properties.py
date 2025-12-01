@@ -11,7 +11,7 @@ from pathlib import Path
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.shared.hot_reload import (
+from my_app.shared.hot_reload import (
     FileChange,
     FileChangeType,
     FileHasher,
@@ -223,20 +223,20 @@ class TestModuleReloaderProperties:
 
     def test_path_to_module_converts_correctly(self) -> None:
         """path_to_module SHALL convert paths to module names."""
-        reloader = ModuleReloader(base_package="my_api")
+        reloader = ModuleReloader(base_package="my_app")
 
         # Test basic conversion
-        path = Path("my_api/shared/utils.py")
+        path = Path("my_app/shared/utils.py")
         module = reloader.path_to_module(path)
-        assert module == "my_api.shared.utils"
+        assert module == "my_app.shared.utils"
 
     def test_path_to_module_handles_init(self) -> None:
         """path_to_module SHALL handle __init__.py correctly."""
-        reloader = ModuleReloader(base_package="my_api")
+        reloader = ModuleReloader(base_package="my_app")
 
-        path = Path("my_api/shared/__init__.py")
+        path = Path("my_app/shared/__init__.py")
         module = reloader.path_to_module(path)
-        assert module == "my_api.shared"
+        assert module == "my_app.shared"
 
     def test_is_loaded_checks_sys_modules(self) -> None:
         """is_loaded SHALL check sys.modules."""

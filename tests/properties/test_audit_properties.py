@@ -11,14 +11,14 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.infrastructure.audit.logger import (
+from my_app.infrastructure.audit.logger import (
     AuditAction,
     AuditEntry,
     AuditFilters,
     AuditResult,
     InMemoryAuditLogger,
 )
-from my_api.shared.utils.ids import generate_ulid
+from my_app.shared.utils.ids import generate_ulid
 
 
 # Strategy for user IDs

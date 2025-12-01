@@ -12,7 +12,7 @@ from hypothesis import strategies as st
 from starlette.testclient import TestClient
 from fastapi import FastAPI
 
-from my_api.adapters.api.middleware.security_headers import SecurityHeadersMiddleware
+from my_app.adapters.api.middleware.security_headers import SecurityHeadersMiddleware
 
 
 # Strategy for CSP directives

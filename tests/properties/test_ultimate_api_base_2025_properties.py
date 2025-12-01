@@ -22,21 +22,21 @@ from hypothesis import given, settings, assume, HealthCheck
 from hypothesis import strategies as st
 from pydantic import BaseModel, SecretStr, ValidationError
 
-from my_api.core.config import (
+from my_app.core.config import (
     SecuritySettings,
     redact_url_credentials,
     RATE_LIMIT_PATTERN,
     get_settings,
 )
-from my_api.core.exceptions import (
+from my_app.core.exceptions import (
     AppException,
     ErrorContext,
     ValidationError as AppValidationError,
     EntityNotFoundError,
 )
-from my_api.shared.result import Ok, Err, ok, err
-from my_api.shared.specification import Specification, spec, AndSpecification
-from my_api.shared.circuit_breaker import (
+from my_app.shared.result import Ok, Err, ok, err
+from my_app.domain.common.specification import Specification, spec, AndSpecification
+from my_app.shared.circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerConfig,
     CircuitState,
@@ -65,7 +65,7 @@ class TestPEP695Compliance:
 
     def test_no_legacy_typevar_in_codebase(self):
         """For any Python file, there SHALL be zero legacy TypeVar patterns in code."""
-        src_path = Path("src/my_api")
+        src_path = Path("src/my_app")
         legacy_patterns = [
             r"TypeVar\s*\(",
             r"Generic\s*\[",
@@ -85,7 +85,7 @@ class TestPEP695Compliance:
 
     def test_generic_classes_use_pep695_syntax(self):
         """For any generic class, it SHALL use PEP 695 bracket syntax."""
-        src_path = Path("src/my_api")
+        src_path = Path("src/my_app")
         
         for py_file in src_path.rglob("*.py"):
             content = py_file.read_text(encoding="utf-8")
@@ -439,8 +439,8 @@ class TestFileSizeCompliance:
     """
 
     def test_all_python_files_under_500_lines(self):
-        """For any Python file in src/my_api, line count SHALL not exceed 500 (with tolerance)."""
-        src_path = Path("src/my_api")
+        """For any Python file in src/my_app, line count SHALL not exceed 500 (with tolerance)."""
+        src_path = Path("src/my_app")
         # Using 500 as max with tolerance for complex modules
         max_lines = 500
         violations = []

@@ -11,8 +11,8 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.cli.constants import CLI_DEFAULT_VERSION, CLI_NAME
-from my_api.cli.main import get_version
+from my_app.cli.constants import CLI_DEFAULT_VERSION, CLI_NAME
+from my_app.cli.main import get_version
 
 
 class TestVersionFormatConsistency:
@@ -80,7 +80,7 @@ class TestVersionFormatConsistency:
         from importlib.metadata import PackageNotFoundError
 
         with patch(
-            "my_api.cli.main.pkg_version",
+            "my_app.cli.main.pkg_version",
             side_effect=PackageNotFoundError("test"),
         ):
             version = get_version()
@@ -92,7 +92,7 @@ class TestVersionFormatConsistency:
     @settings(max_examples=100)
     def test_mocked_version_format(self, version: str) -> None:
         """Mocked versions maintain valid format."""
-        with patch("my_api.cli.main.pkg_version", return_value=version):
+        with patch("my_app.cli.main.pkg_version", return_value=version):
             result = get_version()
             assert result == version
             assert self.SEMVER_PATTERN.match(result)

@@ -14,10 +14,10 @@ import pytest
 from hypothesis import given, settings, HealthCheck
 from hypothesis import strategies as st
 
-from my_api.application.mappers.item_mapper import ItemMapper
-from my_api.application.use_cases.item_use_case import ItemUseCase
-from my_api.core.exceptions import ValidationError
-from my_api.domain.entities.item import Item, ItemCreate, ItemResponse, ItemUpdate
+from my_app.application.mappers.item_mapper import ItemMapper
+from my_app.application.use_cases.item_use_case import ItemUseCase
+from my_app.core.exceptions import ValidationError
+from my_app.domain.entities.item import Item, ItemCreate, ItemResponse, ItemUpdate
 
 
 # Strategies for valid item data
@@ -166,7 +166,7 @@ class TestProperty3StructuredLoggingContext:
         mapper = ItemMapper()
 
         with patch(
-            "my_api.application.mappers.item_mapper.logger"
+            "my_app.application.mappers.item_mapper.logger"
         ) as mock_logger:
             mapper.to_dto(item)
 
@@ -197,7 +197,7 @@ class TestProperty3StructuredLoggingContext:
         dto = mapper.to_dto(item)
 
         with patch(
-            "my_api.application.mappers.item_mapper.logger"
+            "my_app.application.mappers.item_mapper.logger"
         ) as mock_logger:
             mapper.to_entity(dto)
 

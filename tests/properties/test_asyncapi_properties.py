@@ -8,7 +8,7 @@ import json
 
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.asyncapi import (
+from my_app.infrastructure.messaging.asyncapi import (
     AsyncAPIBuilder,
     AsyncAPIDocument,
     ChannelObject,

@@ -9,7 +9,7 @@ import asyncio
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_api.infrastructure.observability.telemetry import (
+from my_app.infrastructure.observability.telemetry import (
     TelemetryProvider,
     _NoOpSpan,
     _NoOpTracer,
@@ -243,7 +243,7 @@ class TestLogTraceCorrelation:
         The add_trace_context processor SHALL add trace_id and span_id
         to log events when trace context is available.
         """
-        from my_api.infrastructure.logging.config import add_trace_context
+        from my_app.infrastructure.logging.config import add_trace_context
 
         # Set trace context
         _current_trace_id.set("00000000000000000000000000000001")
@@ -264,7 +264,7 @@ class TestLogTraceCorrelation:
         add_trace_context processor SHALL not add fields when
         trace context is not available.
         """
-        from my_api.infrastructure.logging.config import add_trace_context
+        from my_app.infrastructure.logging.config import add_trace_context
 
         # Ensure no trace context
         _current_trace_id.set(None)

@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from my_api.shared.unit_of_work import (
+from my_app.shared.unit_of_work import (
     IUnitOfWork,
     SQLAlchemyUnitOfWork,
     transaction,

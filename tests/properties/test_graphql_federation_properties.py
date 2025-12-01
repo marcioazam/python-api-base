@@ -7,7 +7,7 @@
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_api.shared.graphql_federation import (
+from my_app.interface.api.graphql.graphql_federation import (
     FederatedEntity,
     FederatedSchema,
     KeyDirective,

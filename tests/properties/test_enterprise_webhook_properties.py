@@ -11,13 +11,13 @@ import pytest
 from hypothesis import given, settings, strategies as st
 from pydantic import SecretStr
 
-from my_api.shared.webhook.models import WebhookPayload, WebhookSubscription
-from my_api.shared.webhook.signature import (
+from my_app.interface.webhooks.webhook.models import WebhookPayload, WebhookSubscription
+from my_app.interface.webhooks.webhook.signature import (
     generate_signature_header,
     sign_payload,
     verify_signature,
 )
-from my_api.shared.webhook.service import WebhookConfig, WebhookService
+from my_app.interface.webhooks.webhook.service import WebhookConfig, WebhookService
 
 
 # Strategies

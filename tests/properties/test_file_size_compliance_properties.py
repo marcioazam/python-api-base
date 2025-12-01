@@ -75,11 +75,11 @@ class TestFileSizeComplianceProperties:
         **Validates: Requirements 1.1, 1.3**
         """
         expected_packages = [
-            "src/my_api/shared/event_sourcing",
-            "src/my_api/shared/saga",
-            "src/my_api/shared/oauth2",
-            "src/my_api/shared/advanced_specification",
-            "src/my_api/shared/cloud_provider_filter",
+            "src/my_app/shared/event_sourcing",
+            "src/my_app/shared/saga",
+            "src/my_app/shared/oauth2",
+            "src/my_app/shared/advanced_specification",
+            "src/my_app/shared/cloud_provider_filter",
         ]
         
         for package_path in expected_packages:
@@ -96,9 +96,9 @@ class TestFileSizeComplianceProperties:
         **Validates: Requirements 1.1, 1.3**
         """
         packages_to_check = [
-            "src/my_api/shared/event_sourcing",
-            "src/my_api/shared/saga",
-            "src/my_api/shared/oauth2",
+            "src/my_app/shared/event_sourcing",
+            "src/my_app/shared/saga",
+            "src/my_app/shared/oauth2",
         ]
         
         for package_path in packages_to_check:
@@ -143,7 +143,7 @@ class TestBackwardCompatibilityAfterRefactoring:
 
     def test_event_sourcing_imports(self) -> None:
         """Property: Event sourcing imports work after refactoring."""
-        from my_api.shared.event_sourcing import (
+        from my_app.infrastructure.db.event_sourcing import (
             Aggregate,
             ConcurrencyError,
             EventSourcedRepository,
@@ -167,7 +167,7 @@ class TestBackwardCompatibilityAfterRefactoring:
 
     def test_saga_imports(self) -> None:
         """Property: Saga imports work after refactoring."""
-        from my_api.shared.saga import (
+        from my_app.infrastructure.db.saga import (
             Saga,
             SagaBuilder,
             SagaContext,
@@ -191,7 +191,7 @@ class TestBackwardCompatibilityAfterRefactoring:
 
     def test_oauth2_imports(self) -> None:
         """Property: OAuth2 imports work after refactoring."""
-        from my_api.shared.oauth2 import (
+        from my_app.infrastructure.security.oauth2 import (
             BaseOAuthProvider,
             GitHubOAuthProvider,
             GoogleOAuthProvider,

@@ -147,7 +147,7 @@ class TestExceptionResponseStructure:
         """For any exception, response SHALL contain required fields."""
         assume(len(message) > 0 and len(error_code) > 0)
         
-        from my_api.core.exceptions import AppException
+        from my_app.core.exceptions import AppException
         
         exc = AppException(
             message=message,
@@ -184,7 +184,7 @@ class TestExceptionChainPreservation:
         """For any chained exception, __cause__ SHALL be preserved."""
         assume(len(outer_msg) > 0 and len(inner_msg) > 0)
         
-        from my_api.core.exceptions import AppException
+        from my_app.core.exceptions import AppException
         
         inner = AppException(message=inner_msg, error_code="INNER")
         outer = AppException(message=outer_msg, error_code="OUTER")
@@ -208,7 +208,7 @@ class TestULIDFormatValidation:
     @settings(max_examples=100)
     def test_valid_ulid_accepted(self, ulid: str):
         """For any valid ULID, EntityId SHALL accept it."""
-        from my_api.domain.value_objects import EntityId
+        from my_app.domain.value_objects import EntityId
         
         entity_id = EntityId(ulid)
         assert entity_id.value == ulid.upper()
@@ -217,7 +217,7 @@ class TestULIDFormatValidation:
     @settings(max_examples=100)
     def test_invalid_ulid_rejected(self, invalid: str):
         """For any invalid ULID, EntityId SHALL reject it."""
-        from my_api.domain.value_objects import EntityId
+        from my_app.domain.value_objects import EntityId
         
         with pytest.raises(ValueError):
             EntityId(invalid)
@@ -237,7 +237,7 @@ class TestValueObjectEquality:
     @settings(max_examples=100)
     def test_equal_values_equal_objects(self, ulid: str):
         """For any two EntityIds with same value, they SHALL be equal."""
-        from my_api.domain.value_objects import EntityId
+        from my_app.domain.value_objects import EntityId
         
         id1 = EntityId(ulid)
         id2 = EntityId(ulid)
@@ -266,7 +266,7 @@ class TestMonetaryCalculationPrecision:
         self, amount1: Decimal, amount2: Decimal, currency: str
     ):
         """For any monetary addition, precision SHALL be maintained."""
-        from my_api.domain.value_objects import Money
+        from my_app.domain.value_objects import Money
         
         m1 = Money(amount1, currency)
         m2 = Money(amount2, currency)
@@ -327,7 +327,7 @@ class TestValidationErrorCollection:
         """For any input with multiple errors, all SHALL be collected."""
         assume(len(errors) >= 2)
         
-        from my_api.core.exceptions import ValidationError
+        from my_app.core.exceptions import ValidationError
         
         exc = ValidationError(errors=errors)
         result = exc.to_dict()
@@ -409,7 +409,7 @@ class TestRateLimitResponseFormat:
     @settings(max_examples=100)
     def test_rate_limit_response_format(self, retry_after: int):
         """For any rate-limited request, response SHALL include Retry-After."""
-        from my_api.core.exceptions import RateLimitExceededError
+        from my_app.core.exceptions import RateLimitExceededError
         
         exc = RateLimitExceededError(retry_after=retry_after)
         result = exc.to_dict()
@@ -465,7 +465,7 @@ class TestPasswordComplexityValidation:
         """For any password < 12 chars, validation SHALL fail."""
         assume(len(password) < 12)
         
-        from my_api.core.auth.password_policy import PasswordValidator
+        from my_app.core.auth.password_policy import PasswordValidator
         
         validator = PasswordValidator()
         result = validator.validate(password)
@@ -488,7 +488,7 @@ class TestCommonPasswordRejection:
     @settings(max_examples=100)
     def test_common_passwords_rejected(self, password: str):
         """For any common password, validation SHALL fail."""
-        from my_api.core.auth.password_policy import PasswordValidator
+        from my_app.core.auth.password_policy import PasswordValidator
         
         validator = PasswordValidator()
         result = validator.validate(password)
@@ -510,7 +510,7 @@ class TestArgon2idHashFormat:
     @settings(max_examples=20)  # Hashing is slow
     def test_hash_uses_argon2id(self, password: str):
         """For any password hash, algorithm SHALL be Argon2id."""
-        from my_api.shared.utils.password import hash_password
+        from my_app.shared.utils.password import hash_password
         
         hashed = hash_password(password)
         
@@ -538,7 +538,7 @@ class TestCredentialRedactionInLogs:
         """For any URL with credentials, password SHALL be redacted."""
         assume(len(user) > 0 and len(password) > 0 and len(host) > 0)
         
-        from my_api.core.config import redact_url_credentials
+        from my_app.core.config import redact_url_credentials
         
         url = f"postgresql://{user}:{password}@{host}/db"
         redacted = redact_url_credentials(url)
@@ -800,7 +800,7 @@ class TestSingletonThreadSafety:
 
     def test_singleton_returns_same_instance(self):
         """For any concurrent access, singleton SHALL return same instance."""
-        from my_api.core.auth.password_policy import get_password_validator
+        from my_app.core.auth.password_policy import get_password_validator
         
         instance1 = get_password_validator()
         instance2 = get_password_validator()
