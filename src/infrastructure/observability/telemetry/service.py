@@ -269,6 +269,37 @@ def init_telemetry(
         return _telemetry
 
 
+def _set_span_attributes(span: Any, attributes: dict[str, Any] | None) -> None:
+    """Set attributes on a span."""
+    if attributes:
+        for key, value in attributes.items():
+            span.set_attribute(key, value)
+
+
+def _update_trace_context() -> None:
+    """Update context vars for log correlation."""
+    try:
+        from opentelemetry import trace
+
+        ctx = trace.get_current_span().get_span_context()
+        if ctx.is_valid:
+            _current_trace_id.set(format(ctx.trace_id, "032x"))
+            _current_span_id.set(format(ctx.span_id, "016x"))
+    except Exception:
+        pass
+
+
+def _record_span_exception(span: Any, exc: Exception) -> None:
+    """Record exception on span and set error status."""
+    span.record_exception(exc)
+    try:
+        from opentelemetry.trace import StatusCode
+
+        span.set_status(StatusCode.ERROR, str(exc))
+    except ImportError:
+        pass
+
+
 def traced[T](
     name: str | None = None,
     attributes: dict[str, Any] | None = None,
@@ -279,6 +310,7 @@ def traced[T](
     and setting attributes. Supports both sync and async functions.
 
     **Feature: advanced-reusability**
+    **Refactored: 2025 - Reduced complexity from 17 to 7**
     **Validates: Requirements 4.5**
 
     Args:
@@ -293,6 +325,7 @@ def traced[T](
         ... async def get_user(user_id: str) -> User:
         ...     return await db.fetch_user(user_id)
     """
+    import asyncio
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
         span_name = name or f"{func.__module__}.{func.__qualname__}"
@@ -300,70 +333,26 @@ def traced[T](
         @functools.wraps(func)
         async def async_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             tracer = get_telemetry().get_tracer()
-
             with tracer.start_as_current_span(span_name) as span:
-                # Set attributes
-                if attributes:
-                    for key, value in attributes.items():
-                        span.set_attribute(key, value)
-
-                # Update context vars for log correlation
+                _set_span_attributes(span, attributes)
+                _update_trace_context()
                 try:
-                    from opentelemetry import trace
-
-                    ctx = trace.get_current_span().get_span_context()
-                    if ctx.is_valid:
-                        _current_trace_id.set(format(ctx.trace_id, "032x"))
-                        _current_span_id.set(format(ctx.span_id, "016x"))
-                except Exception:
-                    pass
-
-                try:
-                    result = await func(*args, **kwargs)
-                    return result
+                    return await func(*args, **kwargs)
                 except Exception as e:
-                    span.record_exception(e)
-                    try:
-                        from opentelemetry.trace import StatusCode
-
-                        span.set_status(StatusCode.ERROR, str(e))
-                    except ImportError:
-                        pass
+                    _record_span_exception(span, e)
                     raise
 
         @functools.wraps(func)
         def sync_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             tracer = get_telemetry().get_tracer()
-
             with tracer.start_as_current_span(span_name) as span:
-                if attributes:
-                    for key, value in attributes.items():
-                        span.set_attribute(key, value)
-
+                _set_span_attributes(span, attributes)
+                _update_trace_context()
                 try:
-                    from opentelemetry import trace
-
-                    ctx = trace.get_current_span().get_span_context()
-                    if ctx.is_valid:
-                        _current_trace_id.set(format(ctx.trace_id, "032x"))
-                        _current_span_id.set(format(ctx.span_id, "016x"))
-                except Exception:
-                    pass
-
-                try:
-                    result = func(*args, **kwargs)
-                    return result
+                    return func(*args, **kwargs)
                 except Exception as e:
-                    span.record_exception(e)
-                    try:
-                        from opentelemetry.trace import StatusCode
-
-                        span.set_status(StatusCode.ERROR, str(e))
-                    except ImportError:
-                        pass
+                    _record_span_exception(span, e)
                     raise
-
-        import asyncio
 
         if asyncio.iscoroutinefunction(func):
             return async_wrapper  # type: ignore

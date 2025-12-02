@@ -217,11 +217,39 @@ class ComparisonOperator(Enum):
     IS_NOT_NULL = "is_not_null"
 
 
+# Comparison strategy functions - reduces cyclomatic complexity
+def _compare_starts_with(attr_value: Any, value: Any) -> bool:
+    return attr_value is not None and str(attr_value).startswith(str(value))
+
+
+def _compare_ends_with(attr_value: Any, value: Any) -> bool:
+    return attr_value is not None and str(attr_value).endswith(str(value))
+
+
+# Strategy map for comparison operators
+_COMPARISON_STRATEGIES: dict[ComparisonOperator, Callable[[Any, Any], bool]] = {
+    ComparisonOperator.EQ: lambda a, v: a == v,
+    ComparisonOperator.NE: lambda a, v: a != v,
+    ComparisonOperator.GT: lambda a, v: a is not None and a > v,
+    ComparisonOperator.GE: lambda a, v: a is not None and a >= v,
+    ComparisonOperator.LT: lambda a, v: a is not None and a < v,
+    ComparisonOperator.LE: lambda a, v: a is not None and a <= v,
+    ComparisonOperator.CONTAINS: lambda a, v: a is not None and v in a,
+    ComparisonOperator.STARTS_WITH: _compare_starts_with,
+    ComparisonOperator.ENDS_WITH: _compare_ends_with,
+    ComparisonOperator.IN: lambda a, v: a in (v or []),
+    ComparisonOperator.IS_NULL: lambda a, _: a is None,
+    ComparisonOperator.IS_NOT_NULL: lambda a, _: a is not None,
+}
+
+
 class AttributeSpecification[T, V](Specification[T]):
     """Specification based on attribute comparison.
 
     A generic specification for comparing entity attributes using
     various comparison operators. Uses PEP 695 syntax.
+
+    **Refactored: 2025 - Reduced is_satisfied_by complexity from 13 to 3**
 
     Type Parameters:
         T: The entity type being evaluated.
@@ -270,6 +298,8 @@ class AttributeSpecification[T, V](Specification[T]):
     def is_satisfied_by(self, candidate: T) -> bool:
         """Check if candidate satisfies the attribute comparison.
 
+        **Refactored: Complexity reduced from 13 to 3 via strategy pattern**
+
         Args:
             candidate: Object to evaluate.
 
@@ -277,38 +307,8 @@ class AttributeSpecification[T, V](Specification[T]):
             bool: True if comparison is satisfied.
         """
         attr_value = getattr(candidate, self._attribute, None)
-
-        match self._operator:
-            case ComparisonOperator.EQ:
-                return attr_value == self._value
-            case ComparisonOperator.NE:
-                return attr_value != self._value
-            case ComparisonOperator.GT:
-                return attr_value is not None and attr_value > self._value
-            case ComparisonOperator.GE:
-                return attr_value is not None and attr_value >= self._value
-            case ComparisonOperator.LT:
-                return attr_value is not None and attr_value < self._value
-            case ComparisonOperator.LE:
-                return attr_value is not None and attr_value <= self._value
-            case ComparisonOperator.CONTAINS:
-                return attr_value is not None and self._value in attr_value
-            case ComparisonOperator.STARTS_WITH:
-                return attr_value is not None and str(attr_value).startswith(
-                    str(self._value)
-                )
-            case ComparisonOperator.ENDS_WITH:
-                return attr_value is not None and str(attr_value).endswith(
-                    str(self._value)
-                )
-            case ComparisonOperator.IN:
-                return attr_value in (self._value or [])
-            case ComparisonOperator.IS_NULL:
-                return attr_value is None
-            case ComparisonOperator.IS_NOT_NULL:
-                return attr_value is not None
-            case _:
-                return False
+        strategy = _COMPARISON_STRATEGIES.get(self._operator)
+        return strategy(attr_value, self._value) if strategy else False
 
     def to_expression(self) -> Any:
         """Convert to SQLAlchemy expression.

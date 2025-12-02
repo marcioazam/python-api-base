@@ -1,36 +1,50 @@
 # Deployments
 
-Configurações de deploy production-ready para `my-api` em múltiplos ambientes e clouds.
+Configurações de deploy production-ready para Python API Base em múltiplos ambientes e clouds.
 
 ## 📁 Estrutura
 
 ```
 deployments/
-├── docker/               # Docker Compose para local/dev
-├── helm/                # Helm charts para Kubernetes
-│   └── api/            # Chart principal da API
-├── k8s/                # Kubernetes manifests base
-│   ├── base/           # Manifests compartilhados
-│   ├── api/            # API específicos
-│   ├── jobs/           # CronJobs e Jobs
-│   ├── monitoring/     # Prometheus, Grafana
-│   ├── tracing/        # Jaeger/OpenTelemetry
-│   └── worker/         # Workers/Background jobs
-└── terraform/          # Infrastructure as Code
-    ├── modules/        # Módulos reutilizáveis
-    └── environments/   # Configs por ambiente
+├── docker/                 # Docker Compose
+│   ├── configs/            # Prometheus, Grafana, Nginx
+│   ├── dockerfiles/        # Multi-stage Dockerfiles
+│   ├── scripts/            # Init scripts
+│   ├── docker-compose.base.yml       # Core services
+│   ├── docker-compose.dev.yml        # Development
+│   ├── docker-compose.production.yml # Production
+│   └── docker-compose.infra.yml      # Full infrastructure
+├── helm/                   # Helm charts para Kubernetes
+│   └── api/
+├── k8s/                    # Kubernetes manifests
+│   └── base/
+├── serverless/             # Serverless adapters
+│   ├── aws-lambda/
+│   └── vercel/
+└── terraform/              # Infrastructure as Code
+    ├── modules/
+    └── environments/
 ```
 
 ## 🚀 Quick Start
 
-### Local Development (Docker Compose)
+### Docker Compose
 
 ```bash
-# Dev environment
-docker-compose -f deployments/docker/docker-compose.yml up
+# Development (hot reload)
+docker compose -f docker/docker-compose.base.yml -f docker/docker-compose.dev.yml up
 
-# Production simulation
-docker-compose -f deployments/docker/docker-compose.prod.yml up
+# Production
+docker compose -f docker/docker-compose.base.yml -f docker/docker-compose.production.yml up -d
+
+# Full infrastructure (Kafka, RabbitMQ, Prometheus, etc.)
+docker compose -f docker/docker-compose.base.yml -f docker/docker-compose.infra.yml up -d
+
+# All together
+docker compose \
+  -f docker/docker-compose.base.yml \
+  -f docker/docker-compose.dev.yml \
+  -f docker/docker-compose.infra.yml up
 ```
 
 ### Kubernetes (Helm)

@@ -1,0 +1,5 @@
+# AWS Lambda dependencies
+# These are additional to the base requirements.txt
+
+mangum>=0.17.0
+aws-lambda-powertools>=2.30.0

@@ -36,6 +36,7 @@ from interface.v1.auth import auth_router, users_router
 # See docs/example-system-deactivation.md
 from interface.v1.examples import examples_router
 from interface.v1.infrastructure_router import router as infrastructure_router
+from interface.v1.enterprise_examples_router import router as enterprise_router
 
 
 @asynccontextmanager
@@ -207,6 +208,9 @@ def create_app() -> FastAPI:
 
     # Infrastructure Examples (Redis, MinIO)
     app.include_router(infrastructure_router, prefix="/api/v1")
+
+    # Enterprise Examples (Rate Limiter, RBAC, Task Queue, OAuth)
+    app.include_router(enterprise_router, prefix="/api/v1")
 
     return app
 

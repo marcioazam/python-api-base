@@ -2,6 +2,7 @@
 
 **Feature: code-review-refactoring, Task 17.2: Refactor caching.py**
 **Feature: shared-modules-refactoring**
+**Refactored: 2025 - Reduced cached() complexity from 14 to 6**
 **Validates: Requirements 4.1, 4.2, 4.3, 5.5**
 """
 
@@ -40,11 +41,7 @@ def _get_thread_pool() -> ThreadPoolExecutor:
 
 
 def _run_async_in_thread(coro: Any) -> Any:
-    """Run an async coroutine in a new event loop in a thread pool.
-
-    This avoids nested event loop errors when calling async cache
-    operations from sync code running in an async context.
-    """
+    """Run an async coroutine in a new event loop in a thread pool."""
 
     def run_in_new_loop() -> Any:
         loop = asyncio.new_event_loop()
@@ -58,6 +55,57 @@ def _run_async_in_thread(coro: Any) -> Any:
     return future.result(timeout=CACHE_OPERATION_TIMEOUT)
 
 
+def _is_async_context() -> bool:
+    """Check if currently running in an async context."""
+    try:
+        asyncio.get_running_loop()
+        return True
+    except RuntimeError:
+        return False
+
+
+def _make_cache_key(
+    func: Callable, args: tuple, kwargs: dict, key_fn: Callable[..., str] | None
+) -> str:
+    """Generate cache key using custom function or default generator."""
+    if key_fn is not None:
+        return key_fn(*args, **kwargs)
+    return generate_cache_key(func, args, kwargs)
+
+
+def _sync_cache_in_async_context[T](
+    provider: Any, cache_key: str, func: Callable[..., T], ttl: int | None,
+    args: tuple, kwargs: dict
+) -> T:
+    """Handle sync function caching when in async context."""
+    try:
+        cached_value = _run_async_in_thread(provider.get(cache_key))
+        if cached_value is not None:
+            return cached_value
+        result = func(*args, **kwargs)
+        _run_async_in_thread(provider.set(cache_key, result, ttl))
+        return result
+    except (TimeoutError, Exception) as e:
+        logger.warning(
+            "Cache operation failed, executing without cache",
+            extra={"cache_key": cache_key, "error": str(e)},
+        )
+        return func(*args, **kwargs)
+
+
+def _sync_cache_direct[T](
+    provider: Any, cache_key: str, func: Callable[..., T], ttl: int | None,
+    args: tuple, kwargs: dict
+) -> T:
+    """Handle sync function caching in sync context."""
+    cached_value = asyncio.run(provider.get(cache_key))
+    if cached_value is not None:
+        return cached_value
+    result = func(*args, **kwargs)
+    asyncio.run(provider.set(cache_key, result, ttl))
+    return result
+
+
 def cached[T, **P](
     ttl: int | None = 3600,
     key_fn: Callable[..., str] | None = None,
@@ -65,9 +113,7 @@ def cached[T, **P](
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Decorator for caching function results.
 
-    Supports both sync and async functions. When a sync function is called
-    from an async context, cache operations are executed in a thread pool
-    to avoid nested event loop errors.
+    Supports both sync and async functions.
 
     Args:
         ttl: Time-to-live in seconds. None for no expiration.
@@ -82,11 +128,7 @@ def cached[T, **P](
         @functools.wraps(func)
         async def async_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             provider = cache_provider or get_default_cache()
-
-            if key_fn is not None:
-                cache_key = key_fn(*args, **kwargs)
-            else:
-                cache_key = generate_cache_key(func, args, kwargs)
+            cache_key = _make_cache_key(func, args, kwargs, key_fn)
 
             cached_value = await provider.get(cache_key)
             if cached_value is not None:
@@ -99,53 +141,13 @@ def cached[T, **P](
         @functools.wraps(func)
         def sync_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             provider = cache_provider or get_default_cache()
+            cache_key = _make_cache_key(func, args, kwargs, key_fn)
 
-            if key_fn is not None:
-                cache_key = key_fn(*args, **kwargs)
-            else:
-                cache_key = generate_cache_key(func, args, kwargs)
-
-            # Check if we're in an async context
-            try:
-                asyncio.get_running_loop()
-                in_async_context = True
-            except RuntimeError:
-                in_async_context = False
-
-            if in_async_context:
-                # Use thread pool to avoid nested event loop errors
-                try:
-                    cached_value = _run_async_in_thread(provider.get(cache_key))
-                    if cached_value is not None:
-                        return cached_value
-
-                    result = func(*args, **kwargs)
-                    _run_async_in_thread(provider.set(cache_key, result, ttl))
-                    return result
-                except TimeoutError:
-                    logger.warning(
-                        "Cache operation timed out, executing without cache",
-                        extra={
-                            "cache_key": cache_key,
-                            "timeout": CACHE_OPERATION_TIMEOUT,
-                        },
-                    )
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    logger.warning(
-                        "Cache operation failed, executing without cache",
-                        extra={"cache_key": cache_key, "error": str(e)},
-                    )
-                    return func(*args, **kwargs)
-            else:
-                # No async context, safe to use asyncio.run()
-                cached_value = asyncio.run(provider.get(cache_key))
-                if cached_value is not None:
-                    return cached_value
-
-                result = func(*args, **kwargs)
-                asyncio.run(provider.set(cache_key, result, ttl))
-                return result
+            if _is_async_context():
+                return _sync_cache_in_async_context(
+                    provider, cache_key, func, ttl, args, kwargs
+                )
+            return _sync_cache_direct(provider, cache_key, func, ttl, args, kwargs)
 
         if asyncio.iscoroutinefunction(func):
             return async_wrapper  # type: ignore

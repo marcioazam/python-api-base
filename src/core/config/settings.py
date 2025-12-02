@@ -425,6 +425,54 @@ class ObservabilitySettings(BaseSettings):
         description="Use HTTPS for MinIO",
     )
 
+    # RabbitMQ
+    rabbitmq_enabled: bool = Field(
+        default=False,
+        description="Enable RabbitMQ task queue",
+    )
+    rabbitmq_host: str = Field(
+        default="localhost",
+        description="RabbitMQ host",
+    )
+    rabbitmq_port: int = Field(
+        default=5672,
+        description="RabbitMQ port",
+    )
+    rabbitmq_username: str = Field(
+        default="guest",
+        description="RabbitMQ username",
+    )
+    rabbitmq_password: SecretStr = Field(
+        default="guest",
+        description="RabbitMQ password",
+    )
+    rabbitmq_virtual_host: str = Field(
+        default="/",
+        description="RabbitMQ virtual host",
+    )
+
+    # Keycloak
+    keycloak_enabled: bool = Field(
+        default=False,
+        description="Enable Keycloak OAuth",
+    )
+    keycloak_server_url: str = Field(
+        default="http://localhost:8080",
+        description="Keycloak server URL",
+    )
+    keycloak_realm: str = Field(
+        default="master",
+        description="Keycloak realm",
+    )
+    keycloak_client_id: str = Field(
+        default="python-api",
+        description="Keycloak client ID",
+    )
+    keycloak_client_secret: SecretStr = Field(
+        default="",
+        description="Keycloak client secret",
+    )
+
 
 class Settings(BaseSettings):
     """Application settings with nested configuration."""

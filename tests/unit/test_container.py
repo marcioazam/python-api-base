@@ -6,8 +6,8 @@
 import pytest
 from dependency_injector import providers
 
-from my_app.core.config import Settings
-from my_app.core.container import Container, LifecycleManager, create_container
+from core.config import Settings
+from infrastructure.di.app_container import Container, LifecycleManager, create_container
 
 
 class TestContainer:
@@ -179,25 +179,28 @@ class TestLifecycleManager:
 
     def test_lifecycle_manager_continues_on_shutdown_error(self) -> None:
         """LifecycleManager SHALL continue shutdown even if hook fails."""
+        from infrastructure.di.app_container import LifecycleHookError
+
         manager = LifecycleManager()
-        
+
         called = []
-        
+
         @manager.on_shutdown
         def first():
             called.append("first")
-        
+
         @manager.on_shutdown
         def failing():
             raise ValueError("Shutdown failed")
-        
+
         @manager.on_shutdown
         def third():
             called.append("third")
-        
-        # Should not raise, should continue
-        manager.run_shutdown()
-        
+
+        # Should raise aggregated error but continue all hooks
+        with pytest.raises(LifecycleHookError):
+            manager.run_shutdown()
+
         # Both non-failing hooks should have been called
         assert "first" in called
         assert "third" in called

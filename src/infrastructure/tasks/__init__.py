@@ -32,6 +32,14 @@ from infrastructure.tasks.retry import (
     NoRetry,
 )
 from infrastructure.tasks.in_memory import InMemoryTaskQueue
+from infrastructure.tasks.rabbitmq import (
+    RabbitMQConfig,
+    RabbitMQTaskQueue,
+    RabbitMQWorker,
+    RabbitMQRpcClient,
+    TaskHandle,
+    TaskError,
+)
 
 __all__ = [
     # Task
@@ -50,4 +58,11 @@ __all__ = [
     "NoRetry",
     # Implementations
     "InMemoryTaskQueue",
+    # RabbitMQ
+    "RabbitMQConfig",
+    "RabbitMQTaskQueue",
+    "RabbitMQWorker",
+    "RabbitMQRpcClient",
+    "TaskHandle",
+    "TaskError",
 ]

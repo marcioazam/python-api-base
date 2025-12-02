@@ -1,0 +1,116 @@
+# =============================================================================
+# Base Docker Compose - Core Services
+# =============================================================================
+#
+# Usage:
+#   Development:  docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up
+#   Production:   docker compose -f docker-compose.base.yml -f docker-compose.prod.yml up
+#   With Infra:   docker compose -f docker-compose.base.yml -f docker-compose.infra.yml up
+#
+# =============================================================================
+
+x-healthcheck-defaults: &healthcheck-defaults
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 10s
+
+x-logging-defaults: &logging-defaults
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-restart-policy: &restart-policy
+  restart: unless-stopped
+
+services:
+  # ===========================================================================
+  # API Service
+  # ===========================================================================
+  api:
+    build:
+      context: ../..
+      dockerfile: deployments/docker/dockerfiles/api.Dockerfile
+    container_name: python-api
+    ports:
+      - "${API_PORT:-8000}:8000"
+    environment:
+      # Database
+      DATABASE__URL: ${DATABASE_URL:-postgresql+asyncpg://postgres:postgres@postgres:5432/python_api}
+      # Security
+      SECURITY__SECRET_KEY: ${SECURITY_SECRET_KEY:-development-secret-key-change-in-production-min-32}
+      SECURITY__CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:3000"]}
+      # Observability
+      OBSERVABILITY__LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      OBSERVABILITY__LOG_FORMAT: ${LOG_FORMAT:-json}
+      OBSERVABILITY__REDIS_URL: redis://redis:6379/0
+      OBSERVABILITY__PROMETHEUS_ENABLED: "true"
+      OBSERVABILITY__OTEL_ENABLED: ${OTEL_ENABLED:-false}
+      OBSERVABILITY__OTEL_ENDPOINT: ${OTEL_ENDPOINT:-http://otel-collector:4317}
+      # Feature Flags
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+    <<: *restart-policy
+    networks:
+      - backend
+
+  # ===========================================================================
+  # PostgreSQL Database
+  # ===========================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: python-api-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-python_api}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+    <<: *restart-policy
+    networks:
+      - backend
+
+  # ===========================================================================
+  # Redis Cache & Rate Limiting
+  # ===========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: python-api-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+    <<: *restart-policy
+    networks:
+      - backend
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  backend:
+    driver: bridge
+    name: python-api-network

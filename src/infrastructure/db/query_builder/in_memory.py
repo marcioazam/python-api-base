@@ -1,7 +1,11 @@
-"""In-memory implementation of QueryBuilder for testing."""
+"""In-memory implementation of QueryBuilder for testing.
+
+**Feature: infrastructure-code-review**
+**Refactored: 2025 - Reduced _compare complexity from 17 to <10**
+"""
 
 import re
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Any
 
 from pydantic import BaseModel
@@ -15,9 +19,36 @@ from infrastructure.db.query_builder.conditions import (
     SortDirection,
 )
 
+# Type alias for comparison functions
+type ComparisonFn = Callable[[Any, Any], bool]
+
+
+def _compare_between(value: Any, target: Any) -> bool:
+    """Compare value is between target range."""
+    low, high = target
+    return value is not None and low <= value <= high
+
 
 class InMemoryQueryBuilder[T: BaseModel](QueryBuilder[T]):
     """In-memory implementation of QueryBuilder for testing."""
+
+    # Comparison strategy map - reduces cyclomatic complexity
+    _COMPARATORS: dict[ComparisonOperator, ComparisonFn] = {
+        ComparisonOperator.EQ: lambda v, t: v == t,
+        ComparisonOperator.NE: lambda v, t: v != t,
+        ComparisonOperator.GT: lambda v, t: v is not None and v > t,
+        ComparisonOperator.GE: lambda v, t: v is not None and v >= t,
+        ComparisonOperator.LT: lambda v, t: v is not None and v < t,
+        ComparisonOperator.LE: lambda v, t: v is not None and v <= t,
+        ComparisonOperator.IN: lambda v, t: v in t,
+        ComparisonOperator.NOT_IN: lambda v, t: v not in t,
+        ComparisonOperator.IS_NULL: lambda v, _: v is None,
+        ComparisonOperator.IS_NOT_NULL: lambda v, _: v is not None,
+        ComparisonOperator.BETWEEN: _compare_between,
+        ComparisonOperator.CONTAINS: lambda v, t: t in str(v or ""),
+        ComparisonOperator.STARTS_WITH: lambda v, t: str(v or "").startswith(t),
+        ComparisonOperator.ENDS_WITH: lambda v, t: str(v or "").endswith(t),
+    }
 
     def __init__(self, data: Sequence[T] | None = None) -> None:
         """Initialize with optional data source."""
@@ -40,42 +71,18 @@ class InMemoryQueryBuilder[T: BaseModel](QueryBuilder[T]):
         return not result if condition.negate else result
 
     def _compare(self, value: Any, op: ComparisonOperator, target: Any) -> bool:
-        """Compare value using operator."""
-        match op:
-            case ComparisonOperator.EQ:
-                return value == target
-            case ComparisonOperator.NE:
-                return value != target
-            case ComparisonOperator.GT:
-                return value is not None and value > target
-            case ComparisonOperator.GE:
-                return value is not None and value >= target
-            case ComparisonOperator.LT:
-                return value is not None and value < target
-            case ComparisonOperator.LE:
-                return value is not None and value <= target
-            case ComparisonOperator.IN:
-                return value in target
-            case ComparisonOperator.NOT_IN:
-                return value not in target
-            case ComparisonOperator.LIKE:
-                return self._match_pattern(str(value or ""), target)
-            case ComparisonOperator.ILIKE:
-                return self._match_pattern(str(value or "").lower(), target.lower())
-            case ComparisonOperator.IS_NULL:
-                return value is None
-            case ComparisonOperator.IS_NOT_NULL:
-                return value is not None
-            case ComparisonOperator.BETWEEN:
-                low, high = target
-                return value is not None and low <= value <= high
-            case ComparisonOperator.CONTAINS:
-                return target in str(value or "")
-            case ComparisonOperator.STARTS_WITH:
-                return str(value or "").startswith(target)
-            case ComparisonOperator.ENDS_WITH:
-                return str(value or "").endswith(target)
-        return False
+        """Compare value using operator via strategy pattern.
+
+        **Refactored: Complexity reduced from 17 to 4**
+        """
+        # Handle LIKE/ILIKE separately due to instance method dependency
+        if op == ComparisonOperator.LIKE:
+            return self._match_pattern(str(value or ""), target)
+        if op == ComparisonOperator.ILIKE:
+            return self._match_pattern(str(value or "").lower(), target.lower())
+
+        comparator = self._COMPARATORS.get(op)
+        return comparator(value, target) if comparator else False
 
     def _match_pattern(self, value: str, pattern: str) -> bool:
         """Match SQL LIKE pattern (% = any, _ = single char).

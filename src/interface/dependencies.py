@@ -1,15 +1,30 @@
 """FastAPI dependency injection utilities.
 
 **Feature: architecture-restructuring-2025**
+**Refactored: 2025 - Removed global mutable singletons, using DI container**
 **Validates: Requirements 5.5**
 """
 
+import uuid
+from dataclasses import dataclass
 from typing import Annotated
 
-from fastapi import Depends, Request
+from fastapi import Depends, Query, Request
 
 from core.config.settings import Settings, get_settings
-from application.common.bus import CommandBus, QueryBus
+from application.common.cqrs import CommandBus, QueryBus
+from infrastructure.di.app_container import Container, create_container
+
+# Container singleton (immutable after creation)
+_container: Container | None = None
+
+
+def _get_container() -> Container:
+    """Get or create the DI container (lazy initialization)."""
+    global _container
+    if _container is None:
+        _container = create_container()
+    return _container
 
 
 # Settings dependency
@@ -21,41 +36,27 @@ def get_app_settings() -> Settings:
 SettingsDep = Annotated[Settings, Depends(get_app_settings)]
 
 
-# Command Bus dependency
-_command_bus: CommandBus | None = None
-
-
+# Command Bus dependency - via DI container
 def get_command_bus() -> CommandBus:
-    """Get CommandBus singleton.
+    """Get CommandBus from DI container.
 
     Returns:
         CommandBus instance with registered handlers.
     """
-    global _command_bus
-    if _command_bus is None:
-        _command_bus = CommandBus()
-        # TODO: Register handlers here or via DI container
-    return _command_bus
+    return _get_container().command_bus()
 
 
 CommandBusDep = Annotated[CommandBus, Depends(get_command_bus)]
 
 
-# Query Bus dependency
-_query_bus: QueryBus | None = None
-
-
+# Query Bus dependency - via DI container
 def get_query_bus() -> QueryBus:
-    """Get QueryBus singleton.
+    """Get QueryBus from DI container.
 
     Returns:
         QueryBus instance with registered handlers.
     """
-    global _query_bus
-    if _query_bus is None:
-        _query_bus = QueryBus()
-        # TODO: Register handlers here or via DI container
-    return _query_bus
+    return _get_container().query_bus()
 
 
 QueryBusDep = Annotated[QueryBus, Depends(get_query_bus)]
@@ -71,34 +72,41 @@ def get_correlation_id(request: Request) -> str:
     Returns:
         Correlation ID string.
     """
-    correlation_id = request.headers.get("X-Correlation-ID")
-    if not correlation_id:
-        import uuid
-
-        correlation_id = str(uuid.uuid4())
-    return correlation_id
+    return request.headers.get("X-Correlation-ID") or str(uuid.uuid4())
 
 
 CorrelationIdDep = Annotated[str, Depends(get_correlation_id)]
 
 
-# Pagination dependency
+@dataclass(frozen=True, slots=True)
+class PaginationParams:
+    """Pagination parameters value object."""
+
+    page: int
+    page_size: int
+
+    @property
+    def skip(self) -> int:
+        """Calculate offset for database queries."""
+        return (self.page - 1) * self.page_size
+
+
 def get_pagination_params(
-    page: int = 1,
-    page_size: int = 20,
-) -> dict[str, int]:
-    """Get pagination parameters.
+    page: Annotated[int, Query(ge=1, description="Page number")] = 1,
+    page_size: Annotated[
+        int, Query(ge=1, le=100, description="Items per page")
+    ] = 20,
+) -> PaginationParams:
+    """Get validated pagination parameters.
 
     Args:
-        page: Page number (1-indexed).
-        page_size: Items per page (max 100).
+        page: Page number (1-indexed, min 1).
+        page_size: Items per page (1-100).
 
     Returns:
-        Dictionary with page and page_size.
+        PaginationParams with validated values.
     """
-    page = max(1, page)
-    page_size = max(1, min(100, page_size))
-    return {"page": page, "page_size": page_size}
+    return PaginationParams(page=page, page_size=page_size)
 
 
-PaginationDep = Annotated[dict[str, int], Depends(get_pagination_params)]
+PaginationDep = Annotated[PaginationParams, Depends(get_pagination_params)]

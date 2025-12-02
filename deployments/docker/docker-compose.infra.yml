@@ -1,0 +1,276 @@
+# =============================================================================
+# Infrastructure Services - Observability, Messaging, Storage
+# =============================================================================
+#
+# Usage: docker compose -f docker-compose.base.yml -f docker-compose.infra.yml up -d
+#
+# Services:
+#   - Observability: Prometheus, Grafana, Elasticsearch, Kibana
+#   - Messaging: Kafka, RabbitMQ
+#   - Storage: MinIO (S3), ScyllaDB
+#   - Auth: Keycloak
+#
+# =============================================================================
+
+x-healthcheck-defaults: &healthcheck-defaults
+  interval: 30s
+  timeout: 10s
+  retries: 5
+  start_period: 30s
+
+x-restart-policy: &restart-policy
+  restart: unless-stopped
+
+services:
+  # ===========================================================================
+  # OBSERVABILITY STACK
+  # ===========================================================================
+
+  # Prometheus - Metrics Collection
+  prometheus:
+    image: prom/prometheus:v2.50.0
+    container_name: python-api-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./configs/prometheus/alerts:/etc/prometheus/alerts:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+    <<: *restart-policy
+    networks:
+      - backend
+      - observability
+
+  # Grafana - Visualization
+  grafana:
+    image: grafana/grafana:10.3.1
+    container_name: python-api-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-piechart-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./configs/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./configs/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
+    <<: *restart-policy
+    networks:
+      - backend
+      - observability
+
+  # Elasticsearch - Log Storage
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: python-api-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - cluster.name=python-api-logs
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -qE 'yellow|green'"]
+    <<: *restart-policy
+    networks:
+      - backend
+      - observability
+
+  # Kibana - Log Visualization
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.0
+    container_name: python-api-kibana
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "curl", "-f", "http://localhost:5601/api/status"]
+    <<: *restart-policy
+    networks:
+      - observability
+
+  # ===========================================================================
+  # MESSAGING STACK
+  # ===========================================================================
+
+  # Zookeeper - Kafka Dependency
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: python-api-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_log:/var/lib/zookeeper/log
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+    <<: *restart-policy
+    networks:
+      - backend
+
+  # Kafka - Event Streaming
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: python-api-kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_RETENTION_BYTES: 1073741824
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+    <<: *restart-policy
+    networks:
+      - backend
+
+  # RabbitMQ - Message Queue (Task Queue)
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: python-api-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_DEFAULT_VHOST: /
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+    <<: *restart-policy
+    networks:
+      - backend
+
+  # ===========================================================================
+  # STORAGE STACK
+  # ===========================================================================
+
+  # MinIO - S3-Compatible Object Storage
+  minio:
+    image: minio/minio:latest
+    container_name: python-api-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:-minioadmin}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "mc", "ready", "local"]
+    <<: *restart-policy
+    networks:
+      - backend
+
+  # ScyllaDB - High Performance NoSQL
+  scylladb:
+    image: scylladb/scylla:5.4
+    container_name: python-api-scylladb
+    ports:
+      - "9042:9042"
+    volumes:
+      - scylladb_data:/var/lib/scylla
+    command: --smp 1 --memory 512M --overprovisioned 1 --developer-mode 1
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "cqlsh -e 'describe cluster' 2>/dev/null || exit 1"]
+      start_period: 60s
+    <<: *restart-policy
+    networks:
+      - backend
+
+  # ===========================================================================
+  # AUTH STACK
+  # ===========================================================================
+
+  # Keycloak - Identity & Access Management
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: python-api-keycloak
+    ports:
+      - "8080:8080"
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_DB: dev-mem
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+    command: start-dev
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200 OK'"]
+    <<: *restart-policy
+    networks:
+      - backend
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  elasticsearch_data:
+  zookeeper_data:
+  zookeeper_log:
+  kafka_data:
+  rabbitmq_data:
+  minio_data:
+  scylladb_data:
+
+networks:
+  backend:
+    external: true
+    name: python-api-network
+  observability:
+    driver: bridge
+    name: python-api-observability

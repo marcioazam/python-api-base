@@ -1,0 +1,46 @@
+# =============================================================================
+# Development Override - Hot Reload & Debug Settings
+# =============================================================================
+#
+# Usage: docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up
+#
+# Features:
+#   - Hot reload with volume mounts
+#   - Debug logging
+#   - Exposed ports for debugging
+#   - No resource limits
+#
+# =============================================================================
+
+services:
+  api:
+    build:
+      context: ../..
+      dockerfile: deployments/docker/dockerfiles/api.dev.Dockerfile
+    volumes:
+      - ../../src:/app/src:ro
+      - ../../tests:/app/tests:ro
+    environment:
+      ENVIRONMENT: development
+      OBSERVABILITY__LOG_LEVEL: DEBUG
+      OBSERVABILITY__LOG_FORMAT: text
+      # Development settings
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    # Allow debugger attachment
+    ports:
+      - "8000:8000"
+      - "5678:5678"  # debugpy
+
+  postgres:
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: python_api
+
+  redis:
+    ports:
+      - "6379:6379"
