@@ -7,6 +7,7 @@ Uses PEP 695 type parameter syntax (Python 3.12+) for cleaner generic definition
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from typing import Any
 
 

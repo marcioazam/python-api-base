@@ -21,7 +21,7 @@ __all__ = [
 ]
 from infrastructure.observability.telemetry import TelemetryProvider
 from core.shared.caching import CacheConfig, InMemoryCacheProvider, RedisCacheProvider
-from core.shared.cqrs import CommandBus, QueryBus
+from application.common.cqrs import CommandBus, QueryBus
 
 logger = logging.getLogger(__name__)
 

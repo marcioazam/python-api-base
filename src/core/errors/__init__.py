@@ -44,6 +44,17 @@ from core.errors.status import (
     UserStatus,
     TaskStatus,
 )
+from core.errors.problem_details import (
+    ProblemDetail,
+    ValidationErrorDetail,
+    PROBLEM_JSON_MEDIA_TYPE,
+)
+from core.errors.exception_handlers import (
+    setup_exception_handlers,
+    http_exception_handler,
+    validation_exception_handler,
+    generic_exception_handler,
+)
 
 __all__ = [
     "AppException",
@@ -76,4 +87,12 @@ __all__ = [
     "UserStatus",
     "ValidationError",
     "ValidationStatus",
+    # RFC 7807
+    "ProblemDetail",
+    "ValidationErrorDetail",
+    "PROBLEM_JSON_MEDIA_TYPE",
+    "setup_exception_handlers",
+    "http_exception_handler",
+    "validation_exception_handler",
+    "generic_exception_handler",
 ]

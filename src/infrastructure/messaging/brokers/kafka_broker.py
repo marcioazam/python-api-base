@@ -49,8 +49,8 @@ class KafkaBroker:
     ) -> bool:
         """Publish message to Kafka topic."""
         try:
-            payload = json.dumps(message).encode("utf-8")
-            key_bytes = key.encode("utf-8") if key else None
+            json.dumps(message).encode("utf-8")
+            key.encode("utf-8") if key else None
             # TODO: await self._producer.send_and_wait(topic, payload, key=key_bytes)
             logger.debug(f"Published to {topic}: {message}")
             return True

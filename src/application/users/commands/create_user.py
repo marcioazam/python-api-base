@@ -16,7 +16,7 @@ from domain.users.services import UserDomainService
 from core.shared.utils.ids import generate_ulid
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class CreateUserCommand(BaseCommand):
     """Command to create a new user."""
 

@@ -18,19 +18,7 @@ class ItemCreate(BaseModel):
     price: float = Field(..., gt=0, description="Item price (must be positive)")
     tax: float | None = Field(None, ge=0, description="Tax amount")
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "examples": [
-                {
-                    "name": "New Product",
-                    "description": "A brand new product",
-                    "price": 19.99,
-                    "tax": 1.60,
-                }
-            ]
-        },
-    )
+    model_config = ConfigDict(extra="forbid")
 
 
 class ItemUpdate(BaseModel):
@@ -41,17 +29,7 @@ class ItemUpdate(BaseModel):
     price: float | None = Field(None, gt=0)
     tax: float | None = Field(None, ge=0)
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "examples": [
-                {
-                    "name": "Updated Product Name",
-                    "price": 24.99,
-                }
-            ]
-        },
-    )
+    model_config = ConfigDict(extra="forbid")
 
 
 class ItemResponse(BaseModel):
@@ -71,20 +49,4 @@ class ItemResponse(BaseModel):
         """Calculate price including tax."""
         return self.price + (self.tax or 0)
 
-    model_config = ConfigDict(
-        from_attributes=True,
-        json_schema_extra={
-            "examples": [
-                {
-                    "id": "01HXYZ123456789ABCDEFGHIJK",
-                    "name": "Premium Widget",
-                    "description": "A high-quality widget",
-                    "price": 29.99,
-                    "tax": 2.40,
-                    "created_at": "2024-01-15T10:30:00Z",
-                    "updated_at": "2024-01-15T10:30:00Z",
-                    "price_with_tax": 32.39,
-                }
-            ]
-        },
-    )
+    model_config = ConfigDict(from_attributes=True)

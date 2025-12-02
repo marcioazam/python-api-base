@@ -9,7 +9,7 @@ Ensures messages are processed exactly once using an inbox table.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Protocol, runtime_checkable
 import hashlib
@@ -72,7 +72,7 @@ class InboxEntry:
     def mark_processed(self) -> None:
         """Mark entry as processed."""
         self.status = InboxStatus.PROCESSED
-        self.processed_at = datetime.now(timezone.utc)
+        self.processed_at = datetime.now(UTC)
 
     def mark_failed(self, error: str) -> None:
         """Mark entry as failed."""

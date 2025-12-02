@@ -1,9 +1,10 @@
 """Unit of Work pattern for transaction management."""
 
+import asyncio
 from abc import ABC, abstractmethod
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from typing import Self
-from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -319,8 +320,3 @@ async def atomic_operation[T](
         if on_failure:
             await on_failure(e)
         raise
-
-
-# Import for type hints
-import asyncio
-from collections.abc import Awaitable, Callable

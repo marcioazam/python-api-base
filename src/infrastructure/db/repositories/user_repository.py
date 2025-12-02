@@ -119,7 +119,7 @@ class SQLAlchemyUserRepository(IUserRepository):
         """List active users with pagination."""
         stmt = (
             select(UserModel)
-            .where(UserModel.is_active == True)
+            .where(UserModel.is_active)
             .order_by(UserModel.created_at.desc())
             .limit(limit)
             .offset(offset)
@@ -134,7 +134,7 @@ class SQLAlchemyUserRepository(IUserRepository):
         stmt = (
             select(func.count())
             .select_from(UserModel)
-            .where(UserModel.is_active == True)
+            .where(UserModel.is_active)
         )
         result = await self._session.execute(stmt)
         return result.scalar_one()

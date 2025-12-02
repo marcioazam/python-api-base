@@ -184,10 +184,15 @@ class RedisSettings(BaseSettings):
 
 
 class ObservabilitySettings(BaseSettings):
-    """Observability configuration settings."""
+    """Observability configuration settings.
+
+    **Feature: observability-infrastructure**
+    **Requirement: R12 - Configuration Management**
+    """
 
     model_config = SettingsConfigDict(env_prefix="OBSERVABILITY__")
 
+    # Logging
     log_level: str = Field(
         default="INFO",
         description="Logging level",
@@ -198,16 +203,227 @@ class ObservabilitySettings(BaseSettings):
         description="Log output format (json or console)",
         pattern="^(json|console)$",
     )
+    log_ecs_format: bool = Field(
+        default=True,
+        description="Use ECS-compatible field names in logs",
+    )
+    log_pii_redaction: bool = Field(
+        default=True,
+        description="Enable automatic PII redaction in logs",
+    )
+
+    # OpenTelemetry
     otlp_endpoint: str | None = Field(
         default=None,
         description="OpenTelemetry collector endpoint",
     )
     service_name: str = Field(
-        default="my-api",
-        description="Service name for tracing",
+        default="python-api-base",
+        description="Service name for tracing and logging",
+    )
+    service_version: str = Field(
+        default="1.0.0",
+        description="Service version for tracing",
+    )
+    environment: str = Field(
+        default="development",
+        description="Environment name (development, staging, production)",
     )
     enable_tracing: bool = Field(default=True, description="Enable distributed tracing")
     enable_metrics: bool = Field(default=True, description="Enable metrics collection")
+
+    # Elasticsearch
+    elasticsearch_enabled: bool = Field(
+        default=False,
+        description="Enable log shipping to Elasticsearch",
+    )
+    elasticsearch_hosts: list[str] = Field(
+        default=["http://localhost:9200"],
+        description="Elasticsearch hosts",
+    )
+    elasticsearch_index_prefix: str = Field(
+        default="logs-python-api-base",
+        description="Prefix for Elasticsearch index names",
+    )
+    elasticsearch_username: str | None = Field(
+        default=None,
+        description="Elasticsearch username",
+    )
+    elasticsearch_password: SecretStr | None = Field(
+        default=None,
+        description="Elasticsearch password",
+    )
+    elasticsearch_api_key: SecretStr | None = Field(
+        default=None,
+        description="Elasticsearch API key (alternative to username/password)",
+    )
+    elasticsearch_use_ssl: bool = Field(
+        default=False,
+        description="Use SSL for Elasticsearch connection",
+    )
+    elasticsearch_verify_certs: bool = Field(
+        default=True,
+        description="Verify SSL certificates",
+    )
+    elasticsearch_batch_size: int = Field(
+        default=100,
+        ge=1,
+        le=1000,
+        description="Number of logs to batch before sending to Elasticsearch",
+    )
+    elasticsearch_flush_interval: float = Field(
+        default=5.0,
+        ge=1.0,
+        le=60.0,
+        description="Max seconds between Elasticsearch flushes",
+    )
+
+    # Kafka
+    kafka_enabled: bool = Field(
+        default=False,
+        description="Enable Kafka integration",
+    )
+    kafka_bootstrap_servers: list[str] = Field(
+        default=["localhost:9092"],
+        description="Kafka bootstrap servers",
+    )
+    kafka_client_id: str = Field(
+        default="python-api-base",
+        description="Kafka client ID",
+    )
+    kafka_group_id: str = Field(
+        default="python-api-base-group",
+        description="Kafka consumer group ID",
+    )
+    kafka_auto_offset_reset: str = Field(
+        default="earliest",
+        description="Kafka auto offset reset (earliest, latest)",
+        pattern="^(earliest|latest)$",
+    )
+    kafka_enable_auto_commit: bool = Field(
+        default=True,
+        description="Enable Kafka auto commit",
+    )
+    kafka_security_protocol: str = Field(
+        default="PLAINTEXT",
+        description="Kafka security protocol",
+    )
+    kafka_sasl_mechanism: str | None = Field(
+        default=None,
+        description="Kafka SASL mechanism",
+    )
+    kafka_sasl_username: str | None = Field(
+        default=None,
+        description="Kafka SASL username",
+    )
+    kafka_sasl_password: SecretStr | None = Field(
+        default=None,
+        description="Kafka SASL password",
+    )
+
+    # ScyllaDB
+    scylladb_enabled: bool = Field(
+        default=False,
+        description="Enable ScyllaDB integration",
+    )
+    scylladb_hosts: list[str] = Field(
+        default=["localhost"],
+        description="ScyllaDB contact points",
+    )
+    scylladb_port: int = Field(
+        default=9042,
+        description="ScyllaDB port",
+    )
+    scylladb_keyspace: str = Field(
+        default="python_api_base",
+        description="ScyllaDB keyspace",
+    )
+    scylladb_username: str | None = Field(
+        default=None,
+        description="ScyllaDB username",
+    )
+    scylladb_password: SecretStr | None = Field(
+        default=None,
+        description="ScyllaDB password",
+    )
+    scylladb_protocol_version: int = Field(
+        default=4,
+        description="CQL protocol version",
+    )
+    scylladb_connect_timeout: int = Field(
+        default=10,
+        description="Connection timeout in seconds",
+    )
+    scylladb_request_timeout: int = Field(
+        default=30,
+        description="Request timeout in seconds",
+    )
+
+    # Prometheus
+    prometheus_enabled: bool = Field(
+        default=True,
+        description="Enable Prometheus metrics",
+    )
+    prometheus_endpoint: str = Field(
+        default="/metrics",
+        description="Prometheus metrics endpoint",
+    )
+    prometheus_include_in_schema: bool = Field(
+        default=False,
+        description="Include metrics endpoint in OpenAPI schema",
+    )
+    prometheus_namespace: str = Field(
+        default="python_api",
+        description="Prometheus metrics namespace",
+    )
+    prometheus_subsystem: str = Field(
+        default="",
+        description="Prometheus metrics subsystem",
+    )
+
+    # Redis
+    redis_enabled: bool = Field(
+        default=False,
+        description="Enable Redis cache",
+    )
+    redis_url: str = Field(
+        default="redis://localhost:6379/0",
+        description="Redis connection URL",
+    )
+    redis_pool_size: int = Field(
+        default=10,
+        description="Redis connection pool size",
+    )
+    redis_key_prefix: str = Field(
+        default="api",
+        description="Redis key prefix",
+    )
+
+    # MinIO
+    minio_enabled: bool = Field(
+        default=False,
+        description="Enable MinIO storage",
+    )
+    minio_endpoint: str = Field(
+        default="localhost:9000",
+        description="MinIO endpoint",
+    )
+    minio_access_key: str = Field(
+        default="minioadmin",
+        description="MinIO access key",
+    )
+    minio_secret_key: SecretStr = Field(
+        default="minioadmin",
+        description="MinIO secret key",
+    )
+    minio_bucket: str = Field(
+        default="uploads",
+        description="MinIO default bucket",
+    )
+    minio_secure: bool = Field(
+        default=False,
+        description="Use HTTPS for MinIO",
+    )
 
 
 class Settings(BaseSettings):

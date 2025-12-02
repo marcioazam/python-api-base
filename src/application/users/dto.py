@@ -10,7 +10,8 @@ For read/query operations, use read_model.users_read.dto instead.
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field, EmailStr, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
+import re
 
 
 class UserDTO(BaseModel):
@@ -34,10 +35,17 @@ class CreateUserDTO(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    email: EmailStr = Field(..., description="User email address")
+    email: str = Field(..., description="User email address", min_length=5, max_length=255)
     password: str = Field(..., min_length=8, description="User password")
     username: str | None = Field(default=None, min_length=3, max_length=50)
     display_name: str | None = Field(default=None, max_length=100)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        if not re.match(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", v):
+            raise ValueError("Invalid email format")
+        return v.lower()
 
 
 class UpdateUserDTO(BaseModel):
@@ -63,8 +71,15 @@ class ChangeEmailDTO(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    new_email: EmailStr = Field(..., description="New email address")
+    new_email: str = Field(..., description="New email address", min_length=5, max_length=255)
     password: str = Field(..., description="Current password for verification")
+
+    @field_validator("new_email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        if not re.match(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$", v):
+            raise ValueError("Invalid email format")
+        return v.lower()
 
 
 class UserListDTO(BaseModel):

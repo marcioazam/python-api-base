@@ -13,7 +13,7 @@ from typing import Any
 from collections.abc import Callable
 
 from .providers import InMemoryCacheProvider
-from .utils import generate_cache_key
+from core.shared.caching.utils import generate_cache_key
 
 logger = logging.getLogger(__name__)
 

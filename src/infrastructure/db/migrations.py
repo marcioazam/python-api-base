@@ -48,7 +48,7 @@ async def check_pending_migrations(engine: AsyncEngine) -> bool:
         current_rev = context.get_current_revision()
 
         config = get_alembic_config()
-        script = config.get_main_option("script_location")
+        config.get_main_option("script_location")
 
         # Get head revision from alembic
         from alembic.script import ScriptDirectory

@@ -12,7 +12,7 @@ from functools import wraps
 from typing import Any, Protocol, runtime_checkable
 from collections.abc import Callable
 
-from core.exceptions import AuthorizationError
+from core.errors import AuthorizationError
 
 logger = logging.getLogger(__name__)
 

@@ -1,0 +1,167 @@
+# Docker Compose for Full API Demo (Users, RBAC, Examples)
+# 
+# This configuration provides a complete testing environment
+# with PostgreSQL, Redis, and the API with all modules active.
+#
+# **Features:**
+# - Core: Users, Authentication, RBAC (permanent)
+# - Demo: ItemExample, PedidoExample (removable)
+#
+# Usage:
+#   docker-compose -f docker-compose.example.yml up -d
+#   docker-compose -f docker-compose.example.yml logs -f api
+#   docker-compose -f docker-compose.example.yml down -v
+#
+# Endpoints:
+#   - API: http://localhost:8000
+#   - Docs: http://localhost:8000/docs
+#   - Health: http://localhost:8000/health
+#   - Auth: http://localhost:8000/api/v1/auth/*
+#   - Users: http://localhost:8000/api/v1/users/*
+#   - Examples: http://localhost:8000/api/v1/examples/*
+
+version: "3.9"
+
+services:
+  # === PostgreSQL Database ===
+  postgres:
+    image: postgres:16-alpine
+    container_name: python-api-postgres
+    environment:
+      POSTGRES_USER: api_user
+      POSTGRES_PASSWORD: api_password
+      POSTGRES_DB: api_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U api_user -d api_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - api-network
+
+  # === Redis Cache ===
+  redis:
+    image: redis:7-alpine
+    container_name: python-api-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - api-network
+
+  # === Python API ===
+  api:
+    build:
+      context: ../..
+      dockerfile: deployments/docker/api.Dockerfile
+    container_name: python-api-example
+    environment:
+      # Database
+      DATABASE_URL: postgresql+asyncpg://api_user:api_password@postgres:5432/api_db
+      DATABASE_POOL_SIZE: 10
+      DATABASE_MAX_OVERFLOW: 20
+      
+      # Redis
+      REDIS_URL: redis://redis:6379/0
+      CACHE_TTL: 300
+      
+      # API Settings
+      API_ENV: development
+      API_DEBUG: "true"
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      API_RELOAD: "false"
+      
+      # Security
+      JWT_SECRET_KEY: example-secret-key-change-in-production
+      JWT_ALGORITHM: HS256
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      
+      # Rate Limiting
+      RATE_LIMIT_ENABLED: "true"
+      RATE_LIMIT_REQUESTS: 100
+      RATE_LIMIT_WINDOW: 60
+      
+      # CORS
+      CORS_ORIGINS: '["http://localhost:3000", "http://localhost:8080"]'
+      
+      # Logging
+      LOG_LEVEL: DEBUG
+      LOG_FORMAT: json
+      
+      # Observability
+      OTEL_ENABLED: "false"
+      METRICS_ENABLED: "true"
+      
+      # Features
+      ENABLE_EXAMPLES: "true"
+      MULTI_TENANCY_ENABLED: "true"
+      
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - api-network
+    volumes:
+      - ../../src:/app/src:ro
+      - ../../alembic:/app/alembic:ro
+
+  # === Database Migration ===
+  migrate:
+    build:
+      context: ../..
+      dockerfile: deployments/docker/api.Dockerfile
+    container_name: python-api-migrate
+    environment:
+      DATABASE_URL: postgresql+asyncpg://api_user:api_password@postgres:5432/api_db
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - api-network
+
+  # === Seed Data (Optional) ===
+  seed:
+    build:
+      context: ../..
+      dockerfile: deployments/docker/api.Dockerfile
+    container_name: python-api-seed
+    environment:
+      DATABASE_URL: postgresql+asyncpg://api_user:api_password@postgres:5432/api_db
+      API_ENV: development
+    command: ["python", "-m", "scripts.seed_examples"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - api-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  api-network:
+    driver: bridge

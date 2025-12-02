@@ -1,7 +1,7 @@
 """Database Migration Manager with rollback support."""
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Protocol
 from collections.abc import Callable, Awaitable
@@ -175,7 +175,7 @@ class MigrationManager:
             await self._backend.begin_transaction()
 
             await self._backend.execute_sql(migration.up_sql)
-            migration.applied_at = datetime.now(timezone.utc)
+            migration.applied_at = datetime.now(UTC)
             migration.status = MigrationStatus.APPLIED
             await self._backend.mark_applied(migration)
 
@@ -274,7 +274,7 @@ class MigrationManager:
 
     def generate_migration(self, name: str, diff: SchemaDiff) -> Migration:
         """Generate a migration from schema diff."""
-        version = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+        version = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
 
         return Migration(
             version=version,

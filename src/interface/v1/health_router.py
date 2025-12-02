@@ -1,7 +1,14 @@
 """Health check routes with configurable timeout and metrics.
 
+Provides Kubernetes-compatible health probes:
+- /health/live - Liveness probe
+- /health/ready - Readiness probe
+- /health/startup - Startup probe
+
 **Feature: advanced-reusability**
+**Feature: enterprise-infrastructure-2025**
 **Validates: Requirements 7.1, 7.2, 7.3, 7.4, 7.5**
+**Requirement: R6 - Kubernetes Health Checks**
 """
 
 import asyncio
@@ -52,6 +59,10 @@ class HealthResponse(BaseModel):
 _health_counter: Any = None
 _health_latency: Any = None
 _last_status: HealthStatus | None = None
+
+# Startup state tracking
+_startup_complete: bool = False
+_startup_checks_passed: dict[str, bool] = {}
 
 
 def _setup_metrics() -> None:
@@ -193,6 +204,58 @@ async def check_redis(request: Request) -> DependencyHealth:
         )
 
 
+async def check_minio(request: Request) -> DependencyHealth:
+    """Check MinIO connectivity (optional).
+
+    **Requirement: R6.2 - Readiness with MinIO**
+
+    Args:
+        request: FastAPI request with app state.
+
+    Returns:
+        MinIO health status.
+    """
+    try:
+        minio = getattr(request.app.state, "minio", None)
+        if minio is None:
+            return DependencyHealth(
+                status=HealthStatus.HEALTHY,
+                message="MinIO not configured (optional)",
+            )
+
+        start = time.perf_counter()
+        # Try to list buckets as health check
+        await asyncio.to_thread(minio.list_buckets)
+        latency = (time.perf_counter() - start) * 1000
+
+        return DependencyHealth(
+            status=HealthStatus.HEALTHY,
+            latency_ms=round(latency, 2),
+        )
+    except Exception as e:
+        return DependencyHealth(
+            status=HealthStatus.DEGRADED,
+            message=f"MinIO unavailable: {e}",
+        )
+
+
+def mark_startup_complete() -> None:
+    """Mark application startup as complete.
+
+    Call this after all initialization is done.
+
+    **Requirement: R6.3 - Startup probe**
+    """
+    global _startup_complete
+    _startup_complete = True
+    logger.info("Application startup complete")
+
+
+def is_startup_complete() -> bool:
+    """Check if startup is complete."""
+    return _startup_complete
+
+
 @router.get("/health/live", summary="Liveness check")
 async def liveness() -> dict[str, str]:
     """Check if the service is alive.
@@ -241,6 +304,9 @@ async def readiness(
 
     # Check Redis with timeout (optional)
     checks["redis"] = await _run_with_timeout(check_redis, timeout, request)
+
+    # Check MinIO with timeout (optional)
+    checks["minio"] = await _run_with_timeout(check_minio, timeout, request)
 
     # Determine overall status
     statuses = [check.status for check in checks.values()]

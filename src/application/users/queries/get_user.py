@@ -13,7 +13,7 @@ from application.common.cqrs.handlers import QueryHandler
 from domain.users.repositories import IUserRepository
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class GetUserByIdQuery(BaseQuery[dict[str, Any] | None]):
     """Query to get a user by ID."""
 
@@ -23,7 +23,7 @@ class GetUserByIdQuery(BaseQuery[dict[str, Any] | None]):
         return f"user:{self.user_id}"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class GetUserByEmailQuery(BaseQuery[dict[str, Any] | None]):
     """Query to get a user by email."""
 

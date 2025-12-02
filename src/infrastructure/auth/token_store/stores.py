@@ -189,7 +189,7 @@ class RedisTokenStore(RefreshTokenStore):
         jtis = await self._redis.smembers(self._user_key(user_id))
         count = 0
         # Use pipeline for atomicity
-        pipe = self._redis.pipeline()
+        self._redis.pipeline()
         for jti in jtis:
             jti_str = jti.decode() if isinstance(jti, bytes) else jti
             if await self.revoke(jti_str):

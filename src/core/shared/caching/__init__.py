@@ -7,7 +7,8 @@ Note: Cache implementations are in infrastructure/cache/.
 This module re-exports for convenience.
 """
 
-from infrastructure.cache.config import CacheConfig, CacheEntry
+from infrastructure.cache.config import CacheConfig
+from infrastructure.cache.policies import CacheEntry
 from infrastructure.cache.decorators import cached, get_default_cache
 from infrastructure.cache.providers import (
     InMemoryCacheProvider,

@@ -47,7 +47,7 @@ class RabbitMQBroker:
     ) -> bool:
         """Publish message to RabbitMQ exchange."""
         try:
-            payload = json.dumps(message).encode("utf-8")
+            json.dumps(message).encode("utf-8")
             # TODO: await self._channel.default_exchange.publish(...)
             logger.debug(f"Published to {exchange}/{routing_key}: {message}")
             return True
