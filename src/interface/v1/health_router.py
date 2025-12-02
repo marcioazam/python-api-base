@@ -98,12 +98,11 @@ def _emit_status_change_metric(
                 1,
                 {"status": new_status.value, "changed": "true"},
             )
-    else:
-        if _health_counter:
-            _health_counter.add(
-                1,
-                {"status": new_status.value, "changed": "false"},
-            )
+    elif _health_counter:
+        _health_counter.add(
+            1,
+            {"status": new_status.value, "changed": "false"},
+        )
 
     _last_status = new_status
 

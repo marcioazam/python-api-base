@@ -160,7 +160,9 @@ class PedidoExample(AuditableEntity[str]):
         ...     customer_id="cust-123",
         ...     customer_name="John Doe",
         ... )
-        >>> pedido.add_item(item_id="item-1", name="Widget", qty=2, price=Money(Decimal("50")))
+        >>> pedido.add_item(
+        ...     item_id="item-1", name="Widget", qty=2, price=Money(Decimal("50"))
+        ... )
         >>> pedido.confirm()
     """
 
@@ -251,7 +253,9 @@ class PedidoExample(AuditableEntity[str]):
     def remove_item(self, item_id: str) -> bool:
         """Remove an item from the order."""
         if self.status != PedidoStatus.PENDING:
-            raise ValueError(f"Cannot remove items from order in {self.status.value} status")
+            raise ValueError(
+                f"Cannot remove items from order in {self.status.value} status"
+            )
 
         original_count = len(self.items)
         self.items = [i for i in self.items if i.item_id != item_id]

@@ -93,9 +93,7 @@ class PaginationParams:
 
 def get_pagination_params(
     page: Annotated[int, Query(ge=1, description="Page number")] = 1,
-    page_size: Annotated[
-        int, Query(ge=1, le=100, description="Items per page")
-    ] = 20,
+    page_size: Annotated[int, Query(ge=1, le=100, description="Items per page")] = 20,
 ) -> PaginationParams:
     """Get validated pagination parameters.
 

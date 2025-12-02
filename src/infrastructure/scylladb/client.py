@@ -247,7 +247,9 @@ class ScyllaDBClient:
             for k, v in replication.items()
         )
 
-        query = f"CREATE KEYSPACE {'IF NOT EXISTS ' if if_not_exists else ''}{keyspace} "
+        query = (
+            f"CREATE KEYSPACE {'IF NOT EXISTS ' if if_not_exists else ''}{keyspace} "
+        )
         query += f"WITH replication = {{{replication_str}}}"
 
         await self.execute(query)

@@ -16,7 +16,6 @@ from typing import Any
 from pydantic import BaseModel, Field, field_validator, computed_field
 
 from domain.examples.item_example import ItemExampleStatus
-from domain.examples.pedido_example import PedidoStatus
 
 
 # === Money DTO ===

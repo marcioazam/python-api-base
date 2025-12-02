@@ -1,53 +1,127 @@
 """Core base classes for the application.
 
+Provides foundational patterns:
+- Domain: Entity, Aggregate, ValueObject
+- Events: DomainEvent, IntegrationEvent
+- Repository: IRepository, InMemoryRepository
+- CQRS: Command, Query
+- Patterns: Result, Specification, Validation
+
 **Feature: architecture-restructuring-2025**
-**Feature: python-api-base-2025-generics-audit**
 """
 
-# Lazy imports to avoid circular dependencies
+# Domain building blocks
+from core.base.domain import (
+    BaseEntity,
+    AuditableEntity,
+    VersionedEntity,
+    AuditableVersionedEntity,
+    ULIDEntity,
+    AggregateRoot,
+    BaseValueObject,
+)
+
+# Events
+from core.base.events import (
+    DomainEvent,
+    EntityCreatedEvent,
+    EntityUpdatedEvent,
+    EntityDeletedEvent,
+    EventBus,
+    IntegrationEvent,
+)
+
+# Repository
+from core.base.repository import (
+    IRepository,
+    InMemoryRepository,
+)
+
+# CQRS
+from core.base.command import BaseCommand
+from core.base.query import BaseQuery
+
+# Result pattern
+from core.base.result import Result, Ok, Err, collect_results
+
+# Specification pattern
+from core.base.specification import (
+    Specification,
+    AndSpecification,
+    OrSpecification,
+    NotSpecification,
+    TrueSpecification,
+    FalseSpecification,
+    PredicateSpecification,
+    AttributeSpecification,
+)
+
+# Validation
+from core.base.validation import (
+    Validator,
+    ValidationError,
+    FieldError,
+    CompositeValidator,
+    ChainedValidator,
+    PredicateValidator,
+    RangeValidator,
+    validate_all,
+)
+
+# Unit of Work
+from core.base.uow import UnitOfWork
+
+# Pagination
+from core.base.pagination import CursorPage, CursorPagination
+
 __all__ = [
-    # Aggregate & Entity
-    "AggregateRoot",
-    "AuditableEntity",
-    "AuditableVersionedEntity",
+    # Domain
     "BaseEntity",
-    "ULIDEntity",
+    "AuditableEntity",
     "VersionedEntity",
-    # Commands & Queries
-    "BaseCommand",
-    "BaseQuery",
-    # Domain Events
+    "AuditableVersionedEntity",
+    "ULIDEntity",
+    "AggregateRoot",
+    "BaseValueObject",
+    # Events
     "DomainEvent",
+    "EntityCreatedEvent",
+    "EntityUpdatedEvent",
+    "EntityDeletedEvent",
     "EventBus",
     "IntegrationEvent",
-    "event_bus",
-    # Result Pattern
-    "Err",
-    "Ok",
+    # Repository
+    "IRepository",
+    "InMemoryRepository",
+    # CQRS
+    "BaseCommand",
+    "BaseQuery",
+    # Result
     "Result",
+    "Ok",
+    "Err",
     "collect_results",
-    "result_from_dict",
+    # Specification
+    "Specification",
+    "AndSpecification",
+    "OrSpecification",
+    "NotSpecification",
+    "TrueSpecification",
+    "FalseSpecification",
+    "PredicateSpecification",
+    "AttributeSpecification",
     # Validation
-    "ChainedValidator",
-    "CompositeValidator",
+    "Validator",
+    "ValidationError",
     "FieldError",
+    "CompositeValidator",
+    "ChainedValidator",
     "PredicateValidator",
     "RangeValidator",
-    "ValidationError",
-    "Validator",
     "validate_all",
-    # Specification Pattern
-    "AndSpecification",
-    "AttributeSpecification",
-    "FalseSpecification",
-    "NotSpecification",
-    "OrSpecification",
-    "PredicateSpecification",
-    "Specification",
-    "TrueSpecification",
-    # Repository & UoW
-    "IRepository",
+    # UoW
     "UnitOfWork",
-    # Other
-    "BaseValueObject",
+    # Pagination
+    "CursorPage",
+    "CursorPagination",
 ]

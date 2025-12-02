@@ -11,7 +11,7 @@ Demonstrates:
 from decimal import Decimal
 
 from core.base.specification import Specification
-from domain.examples.item_example import ItemExample, ItemExampleStatus, Money
+from domain.examples.item_example import ItemExample, ItemExampleStatus
 from domain.examples.pedido_example import PedidoExample, PedidoStatus
 
 
@@ -22,10 +22,7 @@ class ItemExampleActiveSpec(Specification[ItemExample]):
     """Specification for active items."""
 
     def is_satisfied_by(self, candidate: ItemExample) -> bool:
-        return (
-            candidate.status == ItemExampleStatus.ACTIVE
-            and not candidate.is_deleted
-        )
+        return candidate.status == ItemExampleStatus.ACTIVE and not candidate.is_deleted
 
 
 class ItemExampleInStockSpec(Specification[ItemExample]):

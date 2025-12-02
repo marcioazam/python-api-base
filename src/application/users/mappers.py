@@ -4,8 +4,8 @@
 **Validates: Requirements 3.5**
 """
 
-from application.common.mapper import IMapper
-from application.users.dto import UserDTO, UserListDTO
+from application.common.base.mapper import IMapper
+from application.users.commands.dtos import UserDTO, UserListDTO
 from domain.users.aggregates import UserAggregate
 
 

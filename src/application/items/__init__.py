@@ -9,7 +9,7 @@ Provides CQRS handlers for Item aggregate:
 """
 
 from .commands import ItemUseCase
-from .dto import ItemCreate, ItemResponse, ItemUpdate
+from .queries.dtos import ItemCreate, ItemResponse, ItemUpdate
 
 __all__ = [
     "ItemCreate",

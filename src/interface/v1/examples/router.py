@@ -13,19 +13,16 @@ Demonstrates:
 **Feature: example-system-demo**
 """
 
-from typing import Annotated, Any
-from decimal import Decimal
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Header
-from pydantic import BaseModel
 
-from application.common.dto import ApiResponse, PaginatedResponse
+from application.common.base.dto import ApiResponse, PaginatedResponse
 from application.examples.dtos import (
     ItemExampleCreate,
     ItemExampleUpdate,
     ItemExampleResponse,
     PedidoExampleCreate,
-    PedidoExampleUpdate,
     PedidoExampleResponse,
     AddItemRequest,
     CancelPedidoRequest,

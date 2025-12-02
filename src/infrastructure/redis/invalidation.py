@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -141,7 +140,9 @@ class CacheInvalidator:
         """
         self._client = client
         self._strategy = strategy or PatternInvalidation()
-        self._listeners: list[Callable[[InvalidationEvent], Coroutine[Any, Any, None]]] = []
+        self._listeners: list[
+            Callable[[InvalidationEvent], Coroutine[Any, Any, None]]
+        ] = []
 
     def register_patterns(self, entity_type: str, patterns: list[str]) -> None:
         """Register cache patterns for an entity type.

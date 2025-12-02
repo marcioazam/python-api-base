@@ -14,7 +14,6 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel, Field
 
-from core.errors import ProblemDetail
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +29,9 @@ class CacheSetRequest(BaseModel):
     """Request to set cache value."""
 
     key: str = Field(..., min_length=1, max_length=256, examples=["user:123"])
-    value: dict[str, Any] = Field(..., examples=[{"name": "John", "email": "john@example.com"}])
+    value: dict[str, Any] = Field(
+        ..., examples=[{"name": "John", "email": "john@example.com"}]
+    )
     ttl: int | None = Field(default=3600, ge=1, le=86400, description="TTL in seconds")
 
 
@@ -348,7 +349,9 @@ async def storage_list(
                 "key": obj.key,
                 "size": obj.size,
                 "content_type": obj.content_type,
-                "last_modified": obj.last_modified.isoformat() if obj.last_modified else None,
+                "last_modified": obj.last_modified.isoformat()
+                if obj.last_modified
+                else None,
             }
             for obj in objects
         ],

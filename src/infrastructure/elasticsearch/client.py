@@ -113,7 +113,9 @@ class ElasticsearchClient:
             RuntimeError: If client is not connected
         """
         if self._client is None:
-            raise RuntimeError("Client not connected. Use 'async with' or call connect()")
+            raise RuntimeError(
+                "Client not connected. Use 'async with' or call connect()"
+            )
         return self._client
 
     async def connect(self) -> Self:

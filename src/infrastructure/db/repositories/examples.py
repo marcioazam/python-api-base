@@ -10,11 +10,9 @@ Demonstrates:
 **Feature: example-system-demo**
 """
 
-from decimal import Decimal
-from typing import Any
 import logging
 
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, false
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -95,7 +93,7 @@ class ItemExampleRepository:
         stmt = select(ItemExampleModel).where(
             and_(
                 ItemExampleModel.id == item_id,
-                ItemExampleModel.is_deleted == False,
+                ItemExampleModel.is_deleted.is_(false()),
             )
         )
         result = await self._session.execute(stmt)
@@ -107,7 +105,7 @@ class ItemExampleRepository:
         stmt = select(ItemExampleModel).where(
             and_(
                 ItemExampleModel.sku == sku,
-                ItemExampleModel.is_deleted == False,
+                ItemExampleModel.is_deleted.is_(false()),
             )
         )
         result = await self._session.execute(stmt)

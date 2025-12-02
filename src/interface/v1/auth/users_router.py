@@ -5,13 +5,12 @@
 """
 
 from datetime import datetime, UTC
-from typing import Annotated
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status, Header, Query
-from pydantic import BaseModel, EmailStr, Field
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, Field
 
-from application.common.dto import ApiResponse, PaginatedResponse
+from application.common.base.dto import ApiResponse, PaginatedResponse
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -65,7 +64,14 @@ _roles = {
         "id": str(uuid4()),
         "name": "admin",
         "description": "Full system administrator",
-        "permissions": ["read", "write", "delete", "admin", "manage_users", "manage_roles"],
+        "permissions": [
+            "read",
+            "write",
+            "delete",
+            "admin",
+            "manage_users",
+            "manage_roles",
+        ],
         "is_system": True,
     },
     "user": {
@@ -211,7 +217,9 @@ async def assign_role(
         raise HTTPException(status_code=404, detail="User not found")
 
     if data.role_name not in _roles:
-        raise HTTPException(status_code=400, detail=f"Role '{data.role_name}' not found")
+        raise HTTPException(
+            status_code=400, detail=f"Role '{data.role_name}' not found"
+        )
 
     if user_id not in _user_roles:
         _user_roles[user_id] = []

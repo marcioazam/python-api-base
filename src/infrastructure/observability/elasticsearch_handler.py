@@ -111,7 +111,9 @@ class ElasticsearchHandler:
             fallback_path: Path for fallback file when ES is unavailable
         """
         self._config = config
-        self._fallback_path = Path(fallback_path) if fallback_path else Path("logs/fallback.log")
+        self._fallback_path = (
+            Path(fallback_path) if fallback_path else Path("logs/fallback.log")
+        )
         self._buffer: list[dict[str, Any]] = []
         self._client: AsyncElasticsearch | None = None
         self._flush_task: asyncio.Task[None] | None = None
@@ -246,7 +248,8 @@ class ElasticsearchHandler:
         # Check for errors
         if response.get("errors"):
             error_count = sum(
-                1 for item in response.get("items", [])
+                1
+                for item in response.get("items", [])
                 if "error" in item.get("index", {})
             )
             self._logger.warning(f"Bulk index had {error_count} errors")

@@ -8,9 +8,7 @@ Demonstrates:
 **Feature: example-system-demo**
 """
 
-from decimal import Decimal
-
-from domain.examples.item_example import ItemExample, Money
+from domain.examples.item_example import ItemExample
 from domain.examples.pedido_example import PedidoExample, PedidoItemExample
 from application.examples.dtos import (
     ItemExampleResponse,

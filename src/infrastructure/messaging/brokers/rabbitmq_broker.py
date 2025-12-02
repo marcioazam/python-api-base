@@ -2,14 +2,31 @@
 
 **Feature: architecture-restructuring-2025**
 **Validates: Requirements 6.5**
+
+WARNING: This module is NOT IMPLEMENTED and should not be used in production.
+To implement RabbitMQ support, install aio-pika and complete the implementation.
+
+Installation:
+    pip install aio-pika
+
+Implementation guide:
+    https://aio-pika.readthedocs.io/
 """
 
-import json
 import logging
+import warnings
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Never
 
 logger = logging.getLogger(__name__)
+
+# Warn on import
+warnings.warn(
+    "RabbitMQBroker is not implemented. Do not use in production. "
+    "Install aio-pika and complete implementation or use alternative broker.",
+    category=UserWarning,
+    stacklevel=2,
+)
 
 
 @dataclass
@@ -18,49 +35,79 @@ class RabbitMQConfig:
 
     host: str = "localhost"
     port: int = 5672
-    username: str = "guest"
-    password: str = "guest"
+    username: str | None = None
+    password: str | None = None
     virtual_host: str = "/"
 
 
 class RabbitMQBroker:
-    """RabbitMQ message broker client."""
+    """RabbitMQ message broker client stub.
+
+    WARNING: This class is NOT IMPLEMENTED.
+    All methods raise NotImplementedError.
+
+    To implement:
+        1. Install aio-pika: pip install aio-pika
+        2. Initialize aio_pika.connect_robust() in connect()
+        3. Create channel in connect()
+        4. Implement publish() with channel.default_exchange.publish()
+        5. Implement declare_queue() with channel.declare_queue()
+        6. Implement consume() with queue.iterator()
+    """
 
     def __init__(self, config: RabbitMQConfig | None = None) -> None:
         self._config = config or RabbitMQConfig()
-        self._connection = None
-        self._channel = None
+        logger.warning(
+            "RabbitMQBroker initialized but NOT IMPLEMENTED. "
+            "All operations will raise NotImplementedError."
+        )
 
-    async def connect(self) -> None:
-        """Connect to RabbitMQ broker."""
-        logger.info(f"Connecting to RabbitMQ: {self._config.host}:{self._config.port}")
-        # TODO: Initialize aio_pika connection
+    async def connect(self) -> Never:
+        """Connect to RabbitMQ broker.
 
-    async def disconnect(self) -> None:
-        """Disconnect from RabbitMQ broker."""
-        if self._connection:
-            await self._connection.close()
-        logger.info("Disconnected from RabbitMQ")
+        Raises:
+            NotImplementedError: Always. This method is not implemented.
+        """
+        raise NotImplementedError(
+            "RabbitMQBroker.connect() not implemented. Install aio-pika and complete implementation."
+        )
+
+    async def disconnect(self) -> Never:
+        """Disconnect from RabbitMQ broker.
+
+        Raises:
+            NotImplementedError: Always. This method is not implemented.
+        """
+        raise NotImplementedError("RabbitMQBroker.disconnect() not implemented.")
 
     async def publish(
         self, exchange: str, routing_key: str, message: dict[str, Any]
-    ) -> bool:
-        """Publish message to RabbitMQ exchange."""
-        try:
-            json.dumps(message).encode("utf-8")
-            # TODO: await self._channel.default_exchange.publish(...)
-            logger.debug(f"Published to {exchange}/{routing_key}: {message}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to publish: {e}")
-            return False
+    ) -> Never:
+        """Publish message to RabbitMQ exchange.
 
-    async def declare_queue(self, queue_name: str, durable: bool = True) -> None:
-        """Declare a queue."""
-        # TODO: await self._channel.declare_queue(queue_name, durable=durable)
-        logger.info(f"Declared queue: {queue_name}")
+        Raises:
+            NotImplementedError: Always. This method is not implemented.
+        """
+        raise NotImplementedError(
+            f"RabbitMQBroker.publish() not implemented. Cannot publish to {exchange}/{routing_key}."
+        )
 
-    async def consume(self, queue_name: str):
-        """Consume messages from queue."""
-        # TODO: async for message in queue: yield message
-        pass
+    async def declare_queue(self, queue_name: str, durable: bool = True) -> Never:
+        """Declare a queue.
+
+        Raises:
+            NotImplementedError: Always. This method is not implemented.
+        """
+        raise NotImplementedError(
+            f"RabbitMQBroker.declare_queue() not implemented. Cannot declare {queue_name}."
+        )
+
+    async def consume(self, queue_name: str) -> Never:
+        """Consume messages from queue.
+
+        Raises:
+            NotImplementedError: Always. This method is not implemented.
+        """
+        raise NotImplementedError(
+            f"RabbitMQBroker.consume() not implemented. Cannot consume from {queue_name}."
+        )

@@ -23,6 +23,7 @@ from interface.middleware.production import (
     ResilienceConfig,
     setup_production_middleware,
 )
+from interface.middleware.security_headers import SecurityHeadersMiddleware
 from interface.v1.health_router import router as health_router, mark_startup_complete
 from interface.openapi import setup_openapi
 from core.errors import setup_exception_handlers
@@ -86,7 +87,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Cleanup
     if app.state.redis:
         await app.state.redis.close()
-    
+
     await lifecycle.run_shutdown_async()
     lifecycle.run_shutdown()
 
@@ -140,12 +141,49 @@ def _configure_middleware(app: FastAPI) -> None:
     )
 
     # CORS middleware
+    # Security validation: wildcard origins + credentials = security vulnerability
+    if "*" in settings.security.cors_origins:
+        error_msg = (
+            "CRITICAL SECURITY ERROR: CORS allow_credentials=True requires specific "
+            "origins, not wildcard ['*']. This combination allows any origin to send "
+            "credentials, enabling CSRF attacks. Set SECURITY__CORS_ORIGINS to specific "
+            "domains (e.g., ['https://app.example.com', 'https://admin.example.com'])"
+        )
+        logger.error("cors_security_violation", error=error_msg)
+        raise ValueError(error_msg)
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.security.cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+    )
+
+    # Security headers middleware
+    # Protects against XSS, clickjacking, MIME sniffing attacks
+    app.add_middleware(
+        SecurityHeadersMiddleware,
+        content_security_policy=(
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "img-src 'self' data: https:; "
+            "font-src 'self' data: https://cdn.jsdelivr.net; "
+            "connect-src 'self'; "
+            "frame-ancestors 'none'; "
+            "base-uri 'self'; "
+            "form-action 'self'"
+        ),
+        x_frame_options="DENY",
+        x_content_type_options="nosniff",
+        x_xss_protection="1; mode=block",
+        strict_transport_security="max-age=31536000; includeSubDomains; preload",
+        referrer_policy="strict-origin-when-cross-origin",
+        permissions_policy=(
+            "geolocation=(), microphone=(), camera=(), "
+            "payment=(), usb=(), magnetometer=(), gyroscope=()"
+        ),
     )
 
     # Production middleware stack (optional - enable as needed)
@@ -177,7 +215,9 @@ def create_app() -> FastAPI:
     settings = get_settings()
     logger = get_logger("main")
 
-    logger.info("creating_application", app_name=settings.app_name, version=settings.version)
+    logger.info(
+        "creating_application", app_name=settings.app_name, version=settings.version
+    )
 
     app = FastAPI(
         title=settings.app_name,

@@ -12,7 +12,11 @@ Provides enterprise-grade Redis client with:
 
 from infrastructure.redis.client import RedisClient
 from infrastructure.redis.config import RedisConfig
-from infrastructure.redis.circuit_breaker import CircuitBreaker, CircuitState, CircuitOpenError
+from infrastructure.redis.circuit_breaker import (
+    CircuitBreaker,
+    CircuitState,
+    CircuitOpenError,
+)
 from infrastructure.redis.invalidation import (
     CacheInvalidator,
     InvalidationEvent,

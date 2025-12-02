@@ -7,8 +7,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from datetime import timedelta
+from dataclasses import dataclass
 from typing import Any
 
 import httpx
@@ -22,7 +21,6 @@ from infrastructure.auth.oauth.provider import (
     Credentials,
     PasswordCredentials,
     OAuth2Credentials,
-    AuthError,
     InvalidTokenError,
 )
 
@@ -99,10 +97,12 @@ class Auth0Provider[TUser: BaseModel, TClaims: BaseModel](
             email: str
             name: str
 
+
         class Claims(BaseModel):
             sub: str
             email: str
             permissions: list[str]
+
 
         provider = Auth0Provider[User, Claims](
             config=Auth0Config(
@@ -338,7 +338,7 @@ class Auth0Provider[TUser: BaseModel, TClaims: BaseModel](
         for key, value in decoded.items():
             if key.startswith(self._namespace):
                 # Remove namespace prefix
-                clean_key = key[len(self._namespace):]
+                clean_key = key[len(self._namespace) :]
                 result[clean_key] = value
             else:
                 result[key] = value

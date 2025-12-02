@@ -140,10 +140,7 @@ class Task[TPayload, TResult]:
     @property
     def can_retry(self) -> bool:
         """Check if task can be retried."""
-        return (
-            self.status == TaskStatus.RETRYING
-            and self.attempt < self.max_attempts
-        )
+        return self.status == TaskStatus.RETRYING and self.attempt < self.max_attempts
 
     @property
     def is_terminal(self) -> bool:
@@ -167,7 +164,9 @@ class Task[TPayload, TResult]:
             "max_attempts": self.max_attempts,
             "created_at": self.created_at.isoformat(),
             "started_at": self.started_at.isoformat() if self.started_at else None,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "completed_at": self.completed_at.isoformat()
+            if self.completed_at
+            else None,
             "correlation_id": self.correlation_id,
             "last_error": self.last_error,
         }

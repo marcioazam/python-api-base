@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-from infrastructure.rbac.permission import Permission, PermissionSet
+from infrastructure.rbac.permission import Permission
 
 
 # =============================================================================

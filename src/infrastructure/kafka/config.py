@@ -31,9 +31,7 @@ class KafkaConfig:
         compression_type: Compression (none, gzip, snappy, lz4, zstd)
     """
 
-    bootstrap_servers: list[str] = field(
-        default_factory=lambda: ["localhost:9092"]
-    )
+    bootstrap_servers: list[str] = field(default_factory=lambda: ["localhost:9092"])
     client_id: str = "python-api-base"
     group_id: str = "python-api-base-group"
     auto_offset_reset: str = "earliest"

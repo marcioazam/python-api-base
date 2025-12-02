@@ -5,14 +5,13 @@
 """
 
 from datetime import datetime, timedelta, UTC
-from typing import Annotated
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from fastapi import APIRouter, HTTPException, status, Header
 from pydantic import BaseModel, Field, field_validator
 import re
 
-from application.common.dto import ApiResponse
+from application.common.base.dto import ApiResponse
 from core.shared.utils.password import hash_password, verify_password
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])

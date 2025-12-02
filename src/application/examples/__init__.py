@@ -19,10 +19,13 @@ from application.examples.dtos import (
     PedidoItemResponse,
     AddItemRequest,
 )
-from application.examples.use_cases import (
-    ItemExampleUseCase,
-    PedidoExampleUseCase,
+from application.examples.errors import (
+    UseCaseError,
+    NotFoundError,
+    ValidationError,
 )
+from application.examples.item_use_case import ItemExampleUseCase
+from application.examples.pedido_use_case import PedidoExampleUseCase
 
 __all__ = [
     # Item DTOs
@@ -36,6 +39,10 @@ __all__ = [
     "PedidoExampleResponse",
     "PedidoItemResponse",
     "AddItemRequest",
+    # Errors
+    "UseCaseError",
+    "NotFoundError",
+    "ValidationError",
     # Use Cases
     "ItemExampleUseCase",
     "PedidoExampleUseCase",

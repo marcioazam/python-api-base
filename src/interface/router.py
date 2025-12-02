@@ -15,7 +15,7 @@ from collections.abc import Callable, Sequence
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
-from application.common.dto import ApiResponse, PaginatedResponse
+from application.common.base.dto import ApiResponse, PaginatedResponse
 
 
 class RouteOperation(Enum):

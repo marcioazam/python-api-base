@@ -8,11 +8,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import timedelta
 from enum import Enum
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 import httpx
 from pydantic import BaseModel, ValidationError as PydanticValidationError
@@ -134,7 +133,7 @@ class RetryPolicy[TRequest]:
             Delay before next retry.
         """
         delay_seconds = self.base_delay.total_seconds() * (
-            self.exponential_base ** attempt
+            self.exponential_base**attempt
         )
         return timedelta(seconds=min(delay_seconds, self.max_delay.total_seconds()))
 
@@ -243,17 +242,21 @@ class HttpClient[TRequest: BaseModel, TResponse: BaseModel]:
             name: str
             email: str
 
+
         class UserResponse(BaseModel):
             id: str
             name: str
             email: str
+
 
         client = HttpClient[CreateUserRequest, UserResponse](
             config=HttpClientConfig(base_url="https://api.example.com"),
             response_type=UserResponse,
         )
 
-        user = await client.post("/users", CreateUserRequest(name="John", email="john@example.com"))
+        user = await client.post(
+            "/users", CreateUserRequest(name="John", email="john@example.com")
+        )
         ```
     """
 

@@ -4,7 +4,11 @@
       "Bash(find:*)",
       "Bash(python -m radon:*)",
       "Bash(python -m pytest:*)",
-      "Bash(python -c:*)"
+      "Bash(python -c:*)",
+      "Bash(chmod:*)",
+      "Bash(uv run:*)",
+      "Bash(python -m ruff check:*)",
+      "Bash(python -m mypy:*)"
     ],
     "deny": [],
     "ask": []

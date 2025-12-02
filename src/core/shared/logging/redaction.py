@@ -28,8 +28,6 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
 
-import structlog
-
 
 @dataclass
 class PIIPattern:
@@ -292,7 +290,7 @@ class RedactionProcessor:
             ...         name="custom_id",
             ...         pattern=re.compile(r"CUST-\\d{6}"),
             ...         replacement="CUST-******",
-            ...     )
+            ...     ),
             ... )
         """
         self.patterns[name] = pattern
@@ -322,9 +320,7 @@ def create_redaction_processor(
         Configured RedactionProcessor
 
     Example:
-        >>> processor = create_redaction_processor(
-        ...     extra_fields={"custom_secret"}
-        ... )
+        >>> processor = create_redaction_processor(extra_fields={"custom_secret"})
     """
     processor = RedactionProcessor(enabled=enabled)
 

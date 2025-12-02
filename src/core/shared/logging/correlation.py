@@ -7,7 +7,10 @@ through async call chains and appear in all log entries.
 **Requirement: R1 - Structured Logging Infrastructure**
 
 Example:
-    >>> from core.shared.logging.correlation import set_correlation_id, get_correlation_id
+    >>> from core.shared.logging.correlation import (
+    ...     set_correlation_id,
+    ...     get_correlation_id,
+    ... )
     >>> set_correlation_id("abc-123")
     >>> get_correlation_id()
     'abc-123'
@@ -22,9 +25,7 @@ from typing import Any
 import structlog
 
 # Context variable for correlation ID
-_correlation_id_var: ContextVar[str | None] = ContextVar(
-    "correlation_id", default=None
-)
+_correlation_id_var: ContextVar[str | None] = ContextVar("correlation_id", default=None)
 
 
 def generate_correlation_id() -> str:

@@ -131,11 +131,7 @@ class SQLAlchemyUserRepository(IUserRepository):
 
     async def count_active(self) -> int:
         """Count active users."""
-        stmt = (
-            select(func.count())
-            .select_from(UserModel)
-            .where(UserModel.is_active)
-        )
+        stmt = select(func.count()).select_from(UserModel).where(UserModel.is_active)
         result = await self._session.execute(stmt)
         return result.scalar_one()
 

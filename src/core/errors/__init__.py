@@ -1,10 +1,16 @@
 """Core error hierarchy.
 
+Provides structured error handling:
+- base/: Error hierarchy by layer (domain, application, infrastructure)
+- http/: HTTP/API error handling (RFC 7807, handlers, constants)
+- status: Operation status enums
+
 **Feature: architecture-restructuring-2025**
-**Feature: interface-layer-generics-review**
 """
 
-from core.errors.domain_errors import (
+# Base error hierarchy
+from core.errors.base import (
+    # Domain
     AppException,
     AuthenticationError,
     AuthorizationError,
@@ -14,8 +20,7 @@ from core.errors.domain_errors import (
     ErrorContext,
     RateLimitExceededError,
     ValidationError,
-)
-from core.errors.application_errors import (
+    # Application
     ApplicationError,
     CommandHandlerError,
     ConcurrencyError,
@@ -25,35 +30,37 @@ from core.errors.application_errors import (
     QueryHandlerError,
     TransactionError,
     UseCaseError,
-)
-from core.errors.infrastructure_errors import (
+    # Infrastructure
     InfrastructureError,
     DatabaseError,
     ExternalServiceError,
 )
-from core.errors.constants import (
+
+# HTTP/API
+from core.errors.http import (
+    # Problem Details
+    ProblemDetail,
+    ValidationErrorDetail,
+    PROBLEM_JSON_MEDIA_TYPE,
+    # Exception Handlers
+    setup_exception_handlers,
+    http_exception_handler,
+    validation_exception_handler,
+    generic_exception_handler,
+    # Constants
     HttpStatus,
     ErrorCode,
     ErrorCodes,
     ErrorMessages,
 )
+
+# Status enums
 from core.errors.status import (
     OperationStatus,
     ValidationStatus,
     EntityStatus,
     UserStatus,
     TaskStatus,
-)
-from core.errors.problem_details import (
-    ProblemDetail,
-    ValidationErrorDetail,
-    PROBLEM_JSON_MEDIA_TYPE,
-)
-from core.errors.exception_handlers import (
-    setup_exception_handlers,
-    http_exception_handler,
-    validation_exception_handler,
-    generic_exception_handler,
 )
 
 __all__ = [

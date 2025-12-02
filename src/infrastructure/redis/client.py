@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 from typing import Any, TypeVar, Generic
@@ -15,7 +14,7 @@ from collections.abc import Sequence
 from pydantic import BaseModel
 
 from infrastructure.redis.config import RedisConfig
-from infrastructure.redis.circuit_breaker import CircuitBreaker, CircuitOpenError
+from infrastructure.redis.circuit_breaker import CircuitBreaker
 from infrastructure.cache.providers import InMemoryCacheProvider
 
 logger = logging.getLogger(__name__)
@@ -133,7 +132,9 @@ class RedisClient(Generic[T]):
             return value.model_dump_json()
         return json.dumps(value, default=str)
 
-    def _deserialize(self, data: str | None, model: type[BaseModel] | None = None) -> Any:
+    def _deserialize(
+        self, data: str | None, model: type[BaseModel] | None = None
+    ) -> Any:
         """Deserialize JSON string to value.
 
         **Requirement: R1.6 - Pydantic model support**

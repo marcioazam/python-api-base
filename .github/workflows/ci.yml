@@ -27,9 +27,44 @@ env:
   UV_CACHE_DIR: ~/.cache/uv
 
 jobs:
+  validate-config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.UV_CACHE_DIR }}
+          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Validate configurations (strict mode)
+        run: uv run python scripts/validate-config.py --strict
+
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    needs: [validate-config]
     permissions:
       contents: read
     steps:
@@ -73,6 +108,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    needs: [validate-config]
     permissions:
       contents: read
     strategy:

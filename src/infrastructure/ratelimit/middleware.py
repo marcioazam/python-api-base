@@ -14,7 +14,7 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
-from infrastructure.ratelimit.config import RateLimit, RateLimitConfig
+from infrastructure.ratelimit.config import RateLimit
 from infrastructure.ratelimit.limiter import RateLimiter, RateLimitResult
 
 logger = logging.getLogger(__name__)
@@ -130,10 +130,10 @@ class RateLimitMiddleware[TClient](BaseHTTPMiddleware):
     Example:
         ```python
         app = FastAPI()
-        
+
         limiter = SlidingWindowLimiter[str](config)
         extractor = IPClientExtractor()
-        
+
         app.add_middleware(
             RateLimitMiddleware[str],
             limiter=limiter,
@@ -149,7 +149,8 @@ class RateLimitMiddleware[TClient](BaseHTTPMiddleware):
         extractor: ClientExtractor[TClient],
         endpoint_limits: dict[str, RateLimit] | None = None,
         exclude_paths: set[str] | None = None,
-        on_rate_limited: Callable[[RateLimitResult[TClient]], Awaitable[Response]] | None = None,
+        on_rate_limited: Callable[[RateLimitResult[TClient]], Awaitable[Response]]
+        | None = None,
     ) -> None:
         """Initialize middleware.
 
@@ -164,7 +165,12 @@ class RateLimitMiddleware[TClient](BaseHTTPMiddleware):
         super().__init__(app)
         self._limiter = limiter
         self._extractor = extractor
-        self._exclude_paths = exclude_paths or {"/health", "/metrics", "/docs", "/openapi.json"}
+        self._exclude_paths = exclude_paths or {
+            "/health",
+            "/metrics",
+            "/docs",
+            "/openapi.json",
+        }
         self._on_rate_limited = on_rate_limited
 
         if endpoint_limits:
@@ -302,8 +308,7 @@ def rate_limit[TClient](
         ```python
         @app.post("/upload")
         @rate_limit(limiter, RateLimit(5, timedelta(minutes=1)))
-        async def upload_file(file: UploadFile):
-            ...
+        async def upload_file(file: UploadFile): ...
         ```
     """
     from functools import wraps

@@ -74,8 +74,12 @@ def _make_cache_key(
 
 
 def _sync_cache_in_async_context[T](
-    provider: Any, cache_key: str, func: Callable[..., T], ttl: int | None,
-    args: tuple, kwargs: dict
+    provider: Any,
+    cache_key: str,
+    func: Callable[..., T],
+    ttl: int | None,
+    args: tuple,
+    kwargs: dict,
 ) -> T:
     """Handle sync function caching when in async context."""
     try:
@@ -94,8 +98,12 @@ def _sync_cache_in_async_context[T](
 
 
 def _sync_cache_direct[T](
-    provider: Any, cache_key: str, func: Callable[..., T], ttl: int | None,
-    args: tuple, kwargs: dict
+    provider: Any,
+    cache_key: str,
+    func: Callable[..., T],
+    ttl: int | None,
+    args: tuple,
+    kwargs: dict,
 ) -> T:
     """Handle sync function caching in sync context."""
     cached_value = asyncio.run(provider.get(cache_key))

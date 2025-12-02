@@ -32,7 +32,6 @@ class ScyllaDBRepository(Generic[T]):
         ...     __table_name__ = "users"
         ...     name: str
         ...     email: str
-        ...
         >>> repo = ScyllaDBRepository[User](client, User)
         >>> user = await repo.create(User(name="John", email="john@ex.com"))
         >>> found = await repo.get(user.id)
@@ -78,7 +77,9 @@ class ScyllaDBRepository(Generic[T]):
         query = f"INSERT INTO {self.table_name} ({cols_str}) VALUES ({placeholders})"
         await self._client.execute(query, tuple(data.values()))
 
-        logger.debug(f"Created entity in {self.table_name}", extra={"id": str(entity.id)})
+        logger.debug(
+            f"Created entity in {self.table_name}", extra={"id": str(entity.id)}
+        )
         return entity
 
     async def get(self, id: UUID) -> T | None:
@@ -140,7 +141,9 @@ class ScyllaDBRepository(Generic[T]):
         data = entity.to_dict()
 
         # Separate PK from other columns
-        pk_cols = set(self._entity_class.primary_key() + self._entity_class.clustering_key())
+        pk_cols = set(
+            self._entity_class.primary_key() + self._entity_class.clustering_key()
+        )
         update_cols = {k: v for k, v in data.items() if k not in pk_cols}
         pk_values = {k: v for k, v in data.items() if k in pk_cols}
 
@@ -157,7 +160,9 @@ class ScyllaDBRepository(Generic[T]):
 
         await self._client.execute(query, tuple(values))
 
-        logger.debug(f"Updated entity in {self.table_name}", extra={"id": str(entity.id)})
+        logger.debug(
+            f"Updated entity in {self.table_name}", extra={"id": str(entity.id)}
+        )
         return entity
 
     async def delete(self, id: UUID) -> bool:
@@ -311,7 +316,9 @@ class ScyllaDBRepository(Generic[T]):
             placeholders = ", ".join(["%s"] * len(columns))
             cols_str = ", ".join(columns)
 
-            query = f"INSERT INTO {self.table_name} ({cols_str}) VALUES ({placeholders})"
+            query = (
+                f"INSERT INTO {self.table_name} ({cols_str}) VALUES ({placeholders})"
+            )
             statements.append((query, tuple(data.values())))
 
         await self._client.execute_batch(statements, batch_type="UNLOGGED")

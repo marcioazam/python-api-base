@@ -9,7 +9,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, UTC
-from typing import Any, Protocol, runtime_checkable
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -204,10 +204,12 @@ class OAuthProvider[TUser: BaseModel, TClaims: BaseModel](ABC):
             email: str
             name: str
 
+
         class Claims(BaseModel):
             sub: str
             email: str
             roles: list[str]
+
 
         provider = KeycloakProvider[User, Claims](
             config=KeycloakConfig(...),

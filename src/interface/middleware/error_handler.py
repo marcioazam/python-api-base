@@ -12,7 +12,7 @@ from core.exceptions import (
     AuthenticationError,
     RateLimitExceededError,
 )
-from application.common.dto import ProblemDetail
+from application.common.base.dto import ProblemDetail
 
 logger = logging.getLogger(__name__)
 

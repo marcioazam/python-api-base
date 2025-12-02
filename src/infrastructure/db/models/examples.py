@@ -47,9 +47,7 @@ class ItemExampleModel(SQLModel, table=True):
     deleted_at: datetime | None = Field(default=None)
 
     # Relationships
-    pedido_items: list["PedidoItemExampleModel"] = Relationship(
-        back_populates="item"
-    )
+    pedido_items: list["PedidoItemExampleModel"] = Relationship(back_populates="item")
 
 
 class PedidoExampleModel(SQLModel, table=True):

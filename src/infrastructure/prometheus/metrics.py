@@ -10,7 +10,7 @@ import asyncio
 import functools
 import time
 from collections.abc import Callable
-from typing import Any, ParamSpec, TypeVar
+from typing import ParamSpec, TypeVar
 
 from infrastructure.prometheus.registry import get_registry
 
@@ -233,7 +233,10 @@ def count_exceptions(
             try:
                 return func(*args, **kwargs)
             except exception_type as e:
-                label_vals = {**(label_values or {}), "exception_type": type(e).__name__}
+                label_vals = {
+                    **(label_values or {}),
+                    "exception_type": type(e).__name__,
+                }
                 metric.labels(**label_vals).inc()
                 raise
 
@@ -242,7 +245,10 @@ def count_exceptions(
             try:
                 return await func(*args, **kwargs)
             except exception_type as e:
-                label_vals = {**(label_values or {}), "exception_type": type(e).__name__}
+                label_vals = {
+                    **(label_values or {}),
+                    "exception_type": type(e).__name__,
+                }
                 metric.labels(**label_vals).inc()
                 raise
 

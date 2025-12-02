@@ -47,7 +47,6 @@ class ElasticsearchDocument(BaseModel):
         >>> class UserDocument(ElasticsearchDocument):
         ...     name: str
         ...     email: str
-        ...
         >>> doc = UserDocument(name="John", email="john@example.com")
         >>> doc.to_dict()
         {'name': 'John', 'email': 'john@example.com', 'created_at': '...', 'updated_at': '...'}

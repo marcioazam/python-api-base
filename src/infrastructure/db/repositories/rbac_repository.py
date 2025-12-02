@@ -5,17 +5,13 @@
 """
 
 from datetime import datetime, UTC
-from typing import Any
 from uuid import uuid4
 import logging
 
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from infrastructure.db.models.rbac_models import RoleModel, UserRoleModel
-from infrastructure.db.models.users_models import UserModel
-from infrastructure.security.rbac import Role, Permission
 
 logger = logging.getLogger(__name__)
 

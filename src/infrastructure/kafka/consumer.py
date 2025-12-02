@@ -38,8 +38,9 @@ class KafkaConsumer(Generic[T]):
         >>> class UserEvent(BaseModel):
         ...     user_id: str
         ...     action: str
-        ...
-        >>> async with KafkaConsumer[UserEvent](config, "user-events", UserEvent) as consumer:
+        >>> async with KafkaConsumer[UserEvent](
+        ...     config, "user-events", UserEvent
+        ... ) as consumer:
         ...     async for message in consumer:
         ...         print(f"User {message.payload.user_id} did {message.payload.action}")
     """
@@ -133,7 +134,9 @@ class KafkaConsumer(Generic[T]):
             topic=record.topic,
             partition=record.partition,
             offset=record.offset,
-            timestamp=datetime.fromtimestamp(record.timestamp / 1000, UTC) if record.timestamp else None,
+            timestamp=datetime.fromtimestamp(record.timestamp / 1000, UTC)
+            if record.timestamp
+            else None,
             key=message.key,
             headers=message.headers,
         )
@@ -246,8 +249,12 @@ class KafkaConsumer(Generic[T]):
                     logger.error(
                         f"Handler error: {e}",
                         extra={
-                            "topic": message.metadata.topic if message.metadata else None,
-                            "offset": message.metadata.offset if message.metadata else None,
+                            "topic": message.metadata.topic
+                            if message.metadata
+                            else None,
+                            "offset": message.metadata.offset
+                            if message.metadata
+                            else None,
                         },
                     )
 

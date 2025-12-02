@@ -49,7 +49,6 @@ class KafkaMessage(BaseModel, Generic[T]):
         >>> class UserEvent(BaseModel):
         ...     user_id: str
         ...     action: str
-        ...
         >>> msg = KafkaMessage[UserEvent](
         ...     payload=UserEvent(user_id="123", action="login"),
         ...     key="user-123",

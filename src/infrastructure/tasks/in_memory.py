@@ -8,10 +8,9 @@ import asyncio
 import logging
 import time
 from collections.abc import Sequence
-from typing import Any
 
-from infrastructure.tasks.task import Task, TaskResult, TaskStatus, TaskPriority
-from infrastructure.tasks.protocols import TaskHandler, TaskQueue
+from infrastructure.tasks.task import Task, TaskResult, TaskStatus
+from infrastructure.tasks.protocols import TaskHandler
 from infrastructure.tasks.retry import RetryPolicy, DEFAULT_RETRY_POLICY
 
 logger = logging.getLogger(__name__)
@@ -103,9 +102,7 @@ class InMemoryTaskQueue[TPayload, TResult]:
             Next pending task or None if queue is empty.
         """
         try:
-            _, _, task_id = await asyncio.wait_for(
-                self._queue.get(), timeout=0.1
-            )
+            _, _, task_id = await asyncio.wait_for(self._queue.get(), timeout=0.1)
             task = self._tasks.get(task_id)
 
             if task and task.status == TaskStatus.PENDING:
@@ -128,9 +125,7 @@ class InMemoryTaskQueue[TPayload, TResult]:
     ) -> Sequence[Task[TPayload, TResult]]:
         """Get tasks by status."""
         return [
-            task
-            for task in list(self._tasks.values())[:limit]
-            if task.status == status
+            task for task in list(self._tasks.values())[:limit] if task.status == status
         ]
 
     async def cancel_task(self, task_id: str) -> bool:
@@ -266,8 +261,7 @@ class InMemoryTaskQueue[TPayload, TResult]:
     def pending_count(self) -> int:
         """Get count of pending tasks."""
         return sum(
-            1 for task in self._tasks.values()
-            if task.status == TaskStatus.PENDING
+            1 for task in self._tasks.values() if task.status == TaskStatus.PENDING
         )
 
     @property

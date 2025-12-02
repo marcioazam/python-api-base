@@ -7,11 +7,12 @@
 
 from typing import Final
 
-from core.exceptions import ValidationError
-from domain.entities.item import Item, ItemCreate, ItemResponse, ItemUpdate
-from application.common.mapper import IMapper
+from core.errors.domain_errors import ValidationError
+from domain.items.entities import ItemEntity as Item
+from application.items.queries.dtos import ItemCreate, ItemResponse, ItemUpdate
+from application.common.base.mapper import IMapper
 from core.base.repository import IRepository
-from core.shared.use_case import BaseUseCase
+from core.base.use_case import BaseUseCase
 
 
 class ItemUseCase(BaseUseCase[Item, ItemCreate, ItemUpdate, ItemResponse]):

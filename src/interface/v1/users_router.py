@@ -6,13 +6,13 @@
 
 from fastapi import APIRouter, HTTPException, status
 
-from application.users.dto import (
+from application.users.commands.dtos import (
     UserDTO,
     CreateUserDTO,
     UpdateUserDTO,
     UserListDTO,
 )
-from application.common.dto import PaginatedResponse
+from application.common.base.dto import PaginatedResponse
 
 router = APIRouter(prefix="/users", tags=["Users"])
 

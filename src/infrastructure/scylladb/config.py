@@ -50,7 +50,6 @@ class ScyllaDBConfig:
         Returns:
             Cluster configuration dict
         """
-        from cassandra import ConsistencyLevel
         from cassandra.policies import (
             DCAwareRoundRobinPolicy,
             TokenAwarePolicy,
@@ -66,6 +65,7 @@ class ScyllaDBConfig:
         # Auth
         if self.username and self.password:
             from cassandra.auth import PlainTextAuthProvider
+
             kwargs["auth_provider"] = PlainTextAuthProvider(
                 username=self.username,
                 password=self.password,
@@ -81,6 +81,7 @@ class ScyllaDBConfig:
         # SSL
         if self.ssl_enabled:
             import ssl
+
             ssl_context = ssl.create_default_context()
             if self.ssl_certfile:
                 ssl_context.load_cert_chain(
@@ -98,4 +99,5 @@ class ScyllaDBConfig:
             ConsistencyLevel enum value
         """
         from cassandra import ConsistencyLevel
+
         return getattr(ConsistencyLevel, self.consistency_level)

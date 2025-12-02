@@ -29,7 +29,6 @@ class ScyllaDBEntity(BaseModel):
         ...
         ...     name: str
         ...     email: str
-        ...
         >>> user = User(name="John", email="john@example.com")
     """
 
@@ -51,10 +50,9 @@ class ScyllaDBEntity(BaseModel):
         if not cls.__table_name__:
             # Default to class name in snake_case
             name = cls.__name__
-            return "".join(
-                f"_{c.lower()}" if c.isupper() else c
-                for c in name
-            ).lstrip("_")
+            return "".join(f"_{c.lower()}" if c.isupper() else c for c in name).lstrip(
+                "_"
+            )
         return cls.__table_name__
 
     @classmethod

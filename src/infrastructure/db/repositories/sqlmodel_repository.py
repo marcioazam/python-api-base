@@ -6,7 +6,7 @@ Uses PEP 695 type parameter syntax (Python 3.12+) for cleaner generic definition
 **Validates: Requirements 1.1, 14.2**
 """
 
-from typing import Any
+from typing import Any, ClassVar
 from collections.abc import Sequence
 
 from pydantic import BaseModel, ValidationError
@@ -27,7 +27,19 @@ class SQLModelRepository[
     """SQLModel repository implementation.
 
     Provides CRUD operations using SQLModel and async SQLAlchemy.
+
+    Security:
+        To prevent SQL injection through dynamic filters, subclasses MUST define
+        _allowed_filter_fields containing the whitelist of fields that can be filtered.
+
+        Example:
+            class UserRepository(SQLModelRepository[User, CreateUserDTO, UpdateUserDTO, str]):
+                _allowed_filter_fields: ClassVar[set[str]] = {"email", "username", "is_active"}
     """
+
+    # Whitelist of fields allowed for filtering (prevents SQL injection)
+    # Subclasses MUST override this to enable filtering
+    _allowed_filter_fields: ClassVar[set[str]] = set()
 
     def __init__(
         self,
@@ -84,8 +96,18 @@ class SQLModelRepository[
         if hasattr(self._model_class, "is_deleted"):
             base_query = base_query.where(self._model_class.is_deleted.is_(false()))
 
-        # Apply filters
+        # Apply filters with security validation
         if filters:
+            # Validate filters against whitelist to prevent SQL injection
+            invalid_fields = set(filters.keys()) - self._allowed_filter_fields
+            if invalid_fields:
+                msg = (
+                    f"Filtering by fields {invalid_fields} not allowed. "
+                    f"Allowed fields: {self._allowed_filter_fields or 'None (filtering disabled)'}. "
+                    f"Override _allowed_filter_fields in {self.__class__.__name__} to enable filtering."
+                )
+                raise AppValidationError(msg)
+
             for field, value in filters.items():
                 if hasattr(self._model_class, field):
                     base_query = base_query.where(

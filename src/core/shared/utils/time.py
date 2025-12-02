@@ -6,7 +6,6 @@ Provides timezone-aware datetime operations with UTC as the standard.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import overload
 
 # UTC timezone constant
 UTC = timezone.utc

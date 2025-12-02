@@ -8,16 +8,14 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
 from enum import Enum
 from functools import wraps
-from typing import Any, Protocol, TypeVar, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from fastapi import HTTPException, Request
-from pydantic import BaseModel
 
 from infrastructure.rbac.permission import Permission
-from infrastructure.rbac.role import Role, RoleRegistry
+from infrastructure.rbac.role import RoleRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +58,7 @@ class RBAC[TUser: RBACUser, TResource: Enum, TAction: Enum]:
         class User(BaseModel):
             id: str
             roles: list[str]
+
 
         rbac = RBAC[User, Resource, Action](role_registry)
 
@@ -210,6 +209,49 @@ class PermissionDenied[TUser, TResource: Enum, TAction: Enum](Exception):
 # =============================================================================
 
 
+def _find_request_in_args(args: tuple, kwargs: dict[str, Any]) -> Request | None:
+    """Extract Request object from function arguments."""
+    for arg in args:
+        if isinstance(arg, Request):
+            return arg
+    for value in kwargs.values():
+        if isinstance(value, Request):
+            return value
+    return None
+
+
+def _get_user_from_request(request: Request, user_attr: str) -> Any:
+    """Get user from request state or raise 401."""
+    user = getattr(request.state, user_attr, None)
+    if user is None:
+        raise HTTPException(status_code=401, detail="User not authenticated")
+    return user
+
+
+def _check_user_permission[TResource: Enum, TAction: Enum](
+    request: Request,
+    user: Any,
+    permission: Permission[TResource, TAction],
+    rbac_attr: str,
+) -> None:
+    """Check user permission via RBAC or fallback. Raises 403 if denied."""
+    rbac = getattr(request.state, rbac_attr, None)
+
+    if rbac is not None:
+        if not rbac.has_permission(user, permission):
+            raise HTTPException(
+                status_code=403, detail=f"Permission denied: {permission}"
+            )
+        return
+
+    # Fallback: check user roles directly
+    if not hasattr(user, "roles"):
+        raise HTTPException(status_code=500, detail="RBAC not configured")
+
+    if not _check_permission_simple(user, permission):
+        raise HTTPException(status_code=403, detail=f"Permission denied: {permission}")
+
+
 def requires[TResource: Enum, TAction: Enum](
     permission: Permission[TResource, TAction],
     user_attr: str = "current_user",
@@ -218,10 +260,7 @@ def requires[TResource: Enum, TAction: Enum](
     """Decorator to require permission for route.
 
     **Requirement: R14.3 - @requires[TResource, TAction](permission) decorator**
-
-    Type Parameters:
-        TResource: Resource enum type.
-        TAction: Action enum type.
+    **Refactored: 2025 - Reduced complexity from 13 to 5**
 
     Args:
         permission: Required permission.
@@ -230,66 +269,20 @@ def requires[TResource: Enum, TAction: Enum](
 
     Returns:
         Route decorator.
-
-    Example:
-        ```python
-        @app.get("/documents/{id}")
-        @requires(Permission(Resource.DOCUMENT, Action.READ))
-        async def get_document(id: str, request: Request):
-            ...
-        ```
     """
 
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            # Find request in args
-            request: Request | None = None
-            for arg in args:
-                if isinstance(arg, Request):
-                    request = arg
-                    break
-            for value in kwargs.values():
-                if isinstance(value, Request):
-                    request = value
-                    break
-
+            request = _find_request_in_args(args, kwargs)
             if request is None:
                 raise HTTPException(
                     status_code=500,
                     detail="Request not found in handler arguments",
                 )
 
-            # Get user and RBAC from request state
-            user = getattr(request.state, user_attr, None)
-            if user is None:
-                raise HTTPException(
-                    status_code=401,
-                    detail="User not authenticated",
-                )
-
-            rbac = getattr(request.state, rbac_attr, None)
-            if rbac is None:
-                # Fallback: check user roles directly
-                if hasattr(user, "roles"):
-                    # Simple role check without registry
-                    has_perm = _check_permission_simple(user, permission)
-                    if not has_perm:
-                        raise HTTPException(
-                            status_code=403,
-                            detail=f"Permission denied: {permission}",
-                        )
-                else:
-                    raise HTTPException(
-                        status_code=500,
-                        detail="RBAC not configured",
-                    )
-            else:
-                if not rbac.has_permission(user, permission):
-                    raise HTTPException(
-                        status_code=403,
-                        detail=f"Permission denied: {permission}",
-                    )
+            user = _get_user_from_request(request, user_attr)
+            _check_user_permission(request, user, permission, rbac_attr)
 
             return await func(*args, **kwargs)
 

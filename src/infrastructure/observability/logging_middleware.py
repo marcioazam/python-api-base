@@ -65,7 +65,9 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         """
         super().__init__(app)
         self._service_name = service_name
-        self._excluded_paths = set(excluded_paths or ["/health/live", "/health/ready", "/metrics"])
+        self._excluded_paths = set(
+            excluded_paths or ["/health/live", "/health/ready", "/metrics"]
+        )
         self._log_request_body = log_request_body
         self._log_response_body = log_response_body
         self._correlation_service = CorrelationService(
@@ -138,7 +140,9 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 status_code = response.status_code
 
                 # Add correlation headers to response
-                response_headers = self._correlation_service.get_response_headers(context)
+                response_headers = self._correlation_service.get_response_headers(
+                    context
+                )
                 for header_name, header_value in response_headers.items():
                     response.headers[header_name] = header_value
 

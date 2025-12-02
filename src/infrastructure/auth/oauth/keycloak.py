@@ -7,8 +7,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from datetime import timedelta
+from dataclasses import dataclass
 from typing import Any
 
 import httpx
@@ -22,7 +21,6 @@ from infrastructure.auth.oauth.provider import (
     Credentials,
     PasswordCredentials,
     OAuth2Credentials,
-    AuthError,
     InvalidTokenError,
 )
 
@@ -94,10 +92,12 @@ class KeycloakProvider[TUser: BaseModel, TClaims: BaseModel](
             email: str
             name: str
 
+
         class Claims(BaseModel):
             sub: str
             email: str
             realm_access: dict[str, list[str]]
+
 
         provider = KeycloakProvider[User, Claims](
             config=KeycloakConfig(

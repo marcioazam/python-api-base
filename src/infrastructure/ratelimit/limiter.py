@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, UTC
-from typing import Any, Generic, Hashable, Protocol, TypeVar, runtime_checkable
+from typing import Any, Hashable, Protocol, runtime_checkable
 
 from infrastructure.ratelimit.config import RateLimit, RateLimitConfig
 

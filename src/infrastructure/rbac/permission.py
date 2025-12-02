@@ -98,9 +98,11 @@ class Permission[TResource: Enum, TAction: Enum]:
             DOCUMENT = "document"
             REPORT = "report"
 
+
         class MyAction(str, Enum):
             READ = "read"
             WRITE = "write"
+
 
         # Create typed permission
         read_doc = Permission[MyResource, MyAction](

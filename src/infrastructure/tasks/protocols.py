@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Protocol, runtime_checkable
 
-from infrastructure.tasks.task import Task, TaskResult, TaskStatus
+from infrastructure.tasks.task import Task, TaskStatus
 
 
 @runtime_checkable
