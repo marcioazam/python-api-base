@@ -10,7 +10,7 @@ from typing import Any
 
 from core.shared.utils.ids import generate_ulid
 
-from core.errors.constants import ErrorCodes, ErrorMessages, HttpStatus
+from core.errors.http.constants import ErrorCodes, ErrorMessages, HttpStatus
 
 __all__ = [
     "AppException",

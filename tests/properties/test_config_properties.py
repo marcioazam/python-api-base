@@ -13,9 +13,9 @@ from hypothesis import strategies as st
 from pydantic import ValidationError
 
 try:
-    from my_app.core.config.settings import SecuritySettings, Settings, DatabaseSettings, ObservabilitySettings
+    from core.config.settings import SecuritySettings, Settings, DatabaseSettings, ObservabilitySettings
 except ImportError:
-    from my_app.core.config import SecuritySettings, Settings
+    from core.config import SecuritySettings, Settings
 
 
 class TestConfigValidation:
@@ -70,9 +70,9 @@ class TestConfigValidation:
         **Validates: Requirements 1.1**
         """
         try:
-            from my_app.core.config.settings import ObservabilitySettings
+            from core.config.settings import ObservabilitySettings
         except ImportError:
-            from my_app.core.config import ObservabilitySettings
+            from core.config import ObservabilitySettings
 
         with patch.dict(
             os.environ, {"OBSERVABILITY__LOG_LEVEL": log_level}, clear=False
@@ -92,9 +92,9 @@ class TestConfigValidation:
         a ValidationError.
         """
         try:
-            from my_app.core.config.settings import ObservabilitySettings
+            from core.config.settings import ObservabilitySettings
         except ImportError:
-            from my_app.core.config import ObservabilitySettings
+            from core.config import ObservabilitySettings
 
         with patch.dict(
             os.environ, {"OBSERVABILITY__LOG_LEVEL": log_level}, clear=False
@@ -132,9 +132,9 @@ class TestConfigValidation:
         DatabaseSettings SHALL accept the values.
         """
         try:
-            from my_app.core.config.settings import DatabaseSettings
+            from core.config.settings import DatabaseSettings
         except ImportError:
-            from my_app.core.config import DatabaseSettings
+            from core.config import DatabaseSettings
 
         with patch.dict(
             os.environ,
@@ -157,7 +157,7 @@ class TestConfigValidation:
         For any pool_size outside 1-100 range, DatabaseSettings SHALL
         raise a ValidationError.
         """
-        from my_app.core.config import DatabaseSettings
+        from core.config import DatabaseSettings
 
         with patch.dict(
             os.environ,

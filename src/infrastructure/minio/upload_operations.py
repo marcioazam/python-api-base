@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from io import BytesIO
 from typing import Any
 
-from core.base.result import Err, Ok, Result
+from core.base.patterns.result import Err, Ok, Result
 
 logger = logging.getLogger(__name__)
 

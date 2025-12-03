@@ -34,7 +34,7 @@ class ItemExampleModel(SQLModel, table=True):
     status: str = Field(default="active", max_length=20, index=True)
     category: str = Field(default="", max_length=100, index=True)
     tags: list[str] = Field(default_factory=list, sa_column=Column(JSON))
-    metadata: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    extra_data: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
 
     # Audit fields
     created_at: datetime = Field(default_factory=utc_now)
@@ -63,7 +63,7 @@ class PedidoExampleModel(SQLModel, table=True):
     shipping_address: str = Field(default="", max_length=500)
     notes: str = Field(default="", sa_column=Column(Text))
     tenant_id: str | None = Field(default=None, max_length=100, index=True)
-    metadata: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    extra_data: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
 
     # Audit fields
     created_at: datetime = Field(default_factory=utc_now)

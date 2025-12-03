@@ -1,13 +1,14 @@
 """Redis client with circuit breaker and Pydantic support.
 
+Main client interface that composes connection and operations management.
+
 **Feature: enterprise-infrastructure-2025**
 **Requirement: R1 - Redis Distributed Cache**
+**Refactored: 2025 - Split into modular components for maintainability**
 """
 
 from __future__ import annotations
 
-import json
-import logging
 from typing import Any, TypeVar, Generic
 from collections.abc import Sequence
 
@@ -15,9 +16,8 @@ from pydantic import BaseModel
 
 from infrastructure.redis.config import RedisConfig
 from infrastructure.redis.circuit_breaker import CircuitBreaker
-from infrastructure.cache.providers import InMemoryCacheProvider
-
-logger = logging.getLogger(__name__)
+from infrastructure.redis.connection import RedisConnection
+from infrastructure.redis.operations import RedisOperations
 
 T = TypeVar("T")
 
@@ -49,23 +49,12 @@ class RedisClient(Generic[T]):
             config: Redis configuration
         """
         self._config = config or RedisConfig()
-        self._redis: Any = None
-        self._connected = False
         self._circuit = CircuitBreaker(
             failure_threshold=self._config.circuit_breaker_threshold,
             reset_timeout=self._config.circuit_breaker_timeout,
         )
-        self._fallback: InMemoryCacheProvider[T] | None = None
-
-        if self._config.enable_fallback:
-            from infrastructure.cache.config import CacheConfig
-
-            self._fallback = InMemoryCacheProvider(
-                CacheConfig(
-                    default_ttl=self._config.default_ttl,
-                    key_prefix=self._config.key_prefix,
-                )
-            )
+        self._connection = RedisConnection(self._config, self._circuit)
+        self._operations = RedisOperations[T](self._connection)
 
     async def __aenter__(self) -> "RedisClient[T]":
         """Async context manager entry."""
@@ -84,83 +73,14 @@ class RedisClient(Generic[T]):
         Returns:
             True if connected successfully
         """
-        if self._connected:
-            return True
-
-        try:
-            import redis.asyncio as redis
-
-            self._redis = redis.from_url(
-                self._config.get_url(),
-                encoding="utf-8",
-                decode_responses=True,
-                **self._config.to_connection_kwargs(),
-            )
-            await self._redis.ping()
-            self._connected = True
-            logger.info("Redis connected", extra={"url": self._config.host})
-            return True
-
-        except ImportError:
-            logger.warning("redis package not installed")
-            return False
-        except Exception as e:
-            logger.warning(f"Redis connection failed: {e}")
-            await self._circuit.record_failure(e)
-            return False
+        return await self._connection.connect()
 
     async def close(self) -> None:
         """Close Redis connection."""
-        if self._redis is not None:
-            await self._redis.close()
-            self._redis = None
-            self._connected = False
-            logger.info("Redis connection closed")
-
-    def _make_key(self, key: str) -> str:
-        """Create full cache key with prefix."""
-        if self._config.key_prefix:
-            return f"{self._config.key_prefix}:{key}"
-        return key
-
-    def _serialize(self, value: Any) -> str:
-        """Serialize value to JSON string.
-
-        **Requirement: R1.6 - JSON serialization with Pydantic support**
-        """
-        if isinstance(value, BaseModel):
-            return value.model_dump_json()
-        return json.dumps(value, default=str)
-
-    def _deserialize(
-        self, data: str | None, model: type[BaseModel] | None = None
-    ) -> Any:
-        """Deserialize JSON string to value.
-
-        **Requirement: R1.6 - Pydantic model support**
-        """
-        if data is None:
-            return None
-
-        try:
-            if model is not None and issubclass(model, BaseModel):
-                return model.model_validate_json(data)
-            return json.loads(data)
-        except (json.JSONDecodeError, ValueError):
-            return None
-
-    async def _use_fallback(self) -> bool:
-        """Check if should use fallback cache."""
-        if not self._config.enable_fallback or self._fallback is None:
-            return False
-
-        if not self._connected:
-            return True
-
-        return not await self._circuit.can_execute()
+        await self._connection.close()
 
     # =========================================================================
-    # Core Operations
+    # Core Operations (delegated to operations)
     # =========================================================================
 
     async def get(
@@ -179,22 +99,7 @@ class RedisClient(Generic[T]):
         Returns:
             Cached value or None
         """
-        if await self._use_fallback():
-            return await self._fallback.get(key) if self._fallback else None
-
-        try:
-            full_key = self._make_key(key)
-            data = await self._redis.get(full_key)
-            await self._circuit.record_success()
-            return self._deserialize(data, model)
-
-        except Exception as e:
-            logger.warning(f"Redis get failed: {e}", extra={"key": key})
-            await self._circuit.record_failure(e)
-
-            if self._fallback:
-                return await self._fallback.get(key)
-            return None
+        return await self._operations.get(key, model)
 
     async def set(
         self,
@@ -215,38 +120,7 @@ class RedisClient(Generic[T]):
         Returns:
             True if successful
         """
-        if await self._use_fallback():
-            if self._fallback:
-                await self._fallback.set(key, value, ttl)
-                return True
-            return False
-
-        try:
-            full_key = self._make_key(key)
-            data = self._serialize(value)
-            effective_ttl = ttl if ttl is not None else self._config.default_ttl
-
-            if effective_ttl:
-                await self._redis.setex(full_key, effective_ttl, data)
-            else:
-                await self._redis.set(full_key, data)
-
-            await self._circuit.record_success()
-
-            # Also set in fallback for faster reads
-            if self._fallback:
-                await self._fallback.set(key, value, ttl)
-
-            return True
-
-        except Exception as e:
-            logger.warning(f"Redis set failed: {e}", extra={"key": key})
-            await self._circuit.record_failure(e)
-
-            if self._fallback:
-                await self._fallback.set(key, value, ttl)
-                return True
-            return False
+        return await self._operations.set(key, value, ttl)
 
     async def delete(self, key: str) -> bool:
         """Delete value from cache.
@@ -259,26 +133,7 @@ class RedisClient(Generic[T]):
         Returns:
             True if key was deleted
         """
-        if await self._use_fallback():
-            return await self._fallback.delete(key) if self._fallback else False
-
-        try:
-            full_key = self._make_key(key)
-            result = await self._redis.delete(full_key)
-            await self._circuit.record_success()
-
-            if self._fallback:
-                await self._fallback.delete(key)
-
-            return result > 0
-
-        except Exception as e:
-            logger.warning(f"Redis delete failed: {e}", extra={"key": key})
-            await self._circuit.record_failure(e)
-
-            if self._fallback:
-                return await self._fallback.delete(key)
-            return False
+        return await self._operations.delete(key)
 
     async def exists(self, key: str) -> bool:
         """Check if key exists.
@@ -291,25 +146,10 @@ class RedisClient(Generic[T]):
         Returns:
             True if key exists
         """
-        if await self._use_fallback():
-            return await self._fallback.exists(key) if self._fallback else False
-
-        try:
-            full_key = self._make_key(key)
-            result = await self._redis.exists(full_key)
-            await self._circuit.record_success()
-            return result > 0
-
-        except Exception as e:
-            logger.warning(f"Redis exists failed: {e}", extra={"key": key})
-            await self._circuit.record_failure(e)
-
-            if self._fallback:
-                return await self._fallback.exists(key)
-            return False
+        return await self._operations.exists(key)
 
     # =========================================================================
-    # Bulk Operations
+    # Bulk Operations (delegated to operations)
     # =========================================================================
 
     async def get_many(
@@ -326,33 +166,7 @@ class RedisClient(Generic[T]):
         Returns:
             Dictionary of key -> value
         """
-        if await self._use_fallback():
-            result = {}
-            if self._fallback:
-                for key in keys:
-                    value = await self._fallback.get(key)
-                    if value is not None:
-                        result[key] = value
-            return result
-
-        try:
-            full_keys = [self._make_key(k) for k in keys]
-            values = await self._redis.mget(full_keys)
-            await self._circuit.record_success()
-
-            result = {}
-            for key, value in zip(keys, values, strict=False):
-                if value is not None:
-                    deserialized = self._deserialize(value, model)
-                    if deserialized is not None:
-                        result[key] = deserialized
-
-            return result
-
-        except Exception as e:
-            logger.warning(f"Redis mget failed: {e}")
-            await self._circuit.record_failure(e)
-            return {}
+        return await self._operations.get_many(keys, model)
 
     async def set_many(
         self,
@@ -368,33 +182,7 @@ class RedisClient(Generic[T]):
         Returns:
             True if successful
         """
-        if await self._use_fallback():
-            if self._fallback:
-                for key, value in items.items():
-                    await self._fallback.set(key, value, ttl)
-                return True
-            return False
-
-        try:
-            pipe = self._redis.pipeline()
-            effective_ttl = ttl if ttl is not None else self._config.default_ttl
-
-            for key, value in items.items():
-                full_key = self._make_key(key)
-                data = self._serialize(value)
-                if effective_ttl:
-                    pipe.setex(full_key, effective_ttl, data)
-                else:
-                    pipe.set(full_key, data)
-
-            await pipe.execute()
-            await self._circuit.record_success()
-            return True
-
-        except Exception as e:
-            logger.warning(f"Redis mset failed: {e}")
-            await self._circuit.record_failure(e)
-            return False
+        return await self._operations.set_many(items, ttl)
 
     async def delete_pattern(self, pattern: str) -> int:
         """Delete all keys matching pattern.
@@ -407,39 +195,10 @@ class RedisClient(Generic[T]):
         Returns:
             Number of keys deleted
         """
-        if await self._use_fallback():
-            return await self._fallback.clear_pattern(pattern) if self._fallback else 0
-
-        try:
-            full_pattern = self._make_key(pattern)
-            cursor = 0
-            deleted = 0
-
-            while True:
-                cursor, keys = await self._redis.scan(
-                    cursor,
-                    match=full_pattern,
-                    count=100,
-                )
-                if keys:
-                    deleted += await self._redis.delete(*keys)
-                if cursor == 0:
-                    break
-
-            await self._circuit.record_success()
-            logger.info(
-                f"Pattern delete completed",
-                extra={"pattern": pattern, "deleted": deleted},
-            )
-            return deleted
-
-        except Exception as e:
-            logger.warning(f"Redis pattern delete failed: {e}")
-            await self._circuit.record_failure(e)
-            return 0
+        return await self._operations.delete_pattern(pattern)
 
     # =========================================================================
-    # Health & Stats
+    # Health & Stats (delegated to connection)
     # =========================================================================
 
     async def ping(self) -> bool:
@@ -448,11 +207,11 @@ class RedisClient(Generic[T]):
         Returns:
             True if Redis is reachable
         """
-        if not self._connected:
+        if not self._connection.is_connected:
             return False
 
         try:
-            await self._redis.ping()
+            await self._connection.client.ping()
             return True
         except Exception:
             return False
@@ -465,9 +224,9 @@ class RedisClient(Generic[T]):
     @property
     def is_connected(self) -> bool:
         """Check if connected to Redis."""
-        return self._connected
+        return self._connection.is_connected
 
     @property
     def is_using_fallback(self) -> bool:
         """Check if currently using fallback cache."""
-        return not self._connected or self._circuit.is_open
+        return not self._connection.is_connected or self._circuit.is_open

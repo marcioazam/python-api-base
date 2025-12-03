@@ -1,164 +1,214 @@
-"""Cache decorators.
+"""Cache decorators for use cases.
 
-**Feature: code-review-refactoring, Task 17.2: Refactor caching.py**
-**Feature: shared-modules-refactoring**
-**Refactored: 2025 - Reduced cached() complexity from 14 to 6**
-**Validates: Requirements 4.1, 4.2, 4.3, 5.5**
+**Feature: infrastructure-modules-integration-analysis**
+**Validates: Requirements 1.4**
+
+Provides decorators for caching use case method results.
 """
 
-import asyncio
-import functools
-import logging
-from concurrent.futures import ThreadPoolExecutor
-from typing import Any
-from collections.abc import Callable
+from __future__ import annotations
 
-from .providers import InMemoryCacheProvider
-from core.shared.caching.utils import generate_cache_key
+import functools
+import hashlib
+import json
+import logging
+from typing import Any, Callable, ParamSpec, TypeVar
+
+P = ParamSpec("P")
+T = TypeVar("T")
 
 logger = logging.getLogger(__name__)
 
-_default_cache: InMemoryCacheProvider | None = None
-_thread_pool: ThreadPoolExecutor | None = None
 
-CACHE_OPERATION_TIMEOUT = 5.0  # seconds
-
-
-def get_default_cache() -> InMemoryCacheProvider:
-    """Get or create the default in-memory cache."""
-    global _default_cache
-    if _default_cache is None:
-        _default_cache = InMemoryCacheProvider()
-    return _default_cache
-
-
-def _get_thread_pool() -> ThreadPoolExecutor:
-    """Get or create the thread pool for sync cache operations."""
-    global _thread_pool
-    if _thread_pool is None:
-        _thread_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="cache-")
-    return _thread_pool
-
-
-def _run_async_in_thread(coro: Any) -> Any:
-    """Run an async coroutine in a new event loop in a thread pool."""
-
-    def run_in_new_loop() -> Any:
-        loop = asyncio.new_event_loop()
-        try:
-            return loop.run_until_complete(coro)
-        finally:
-            loop.close()
-
-    pool = _get_thread_pool()
-    future = pool.submit(run_in_new_loop)
-    return future.result(timeout=CACHE_OPERATION_TIMEOUT)
-
-
-def _is_async_context() -> bool:
-    """Check if currently running in an async context."""
-    try:
-        asyncio.get_running_loop()
-        return True
-    except RuntimeError:
-        return False
-
-
-def _make_cache_key(
-    func: Callable, args: tuple, kwargs: dict, key_fn: Callable[..., str] | None
-) -> str:
-    """Generate cache key using custom function or default generator."""
-    if key_fn is not None:
-        return key_fn(*args, **kwargs)
-    return generate_cache_key(func, args, kwargs)
-
-
-def _sync_cache_in_async_context[T](
-    provider: Any,
-    cache_key: str,
-    func: Callable[..., T],
-    ttl: int | None,
-    args: tuple,
-    kwargs: dict,
-) -> T:
-    """Handle sync function caching when in async context."""
-    try:
-        cached_value = _run_async_in_thread(provider.get(cache_key))
-        if cached_value is not None:
-            return cached_value
-        result = func(*args, **kwargs)
-        _run_async_in_thread(provider.set(cache_key, result, ttl))
-        return result
-    except (TimeoutError, Exception) as e:
-        logger.warning(
-            "Cache operation failed, executing without cache",
-            extra={"cache_key": cache_key, "error": str(e)},
-        )
-        return func(*args, **kwargs)
-
-
-def _sync_cache_direct[T](
-    provider: Any,
-    cache_key: str,
-    func: Callable[..., T],
-    ttl: int | None,
-    args: tuple,
-    kwargs: dict,
-) -> T:
-    """Handle sync function caching in sync context."""
-    cached_value = asyncio.run(provider.get(cache_key))
-    if cached_value is not None:
-        return cached_value
-    result = func(*args, **kwargs)
-    asyncio.run(provider.set(cache_key, result, ttl))
-    return result
-
-
-def cached[T, **P](
-    ttl: int | None = 3600,
-    key_fn: Callable[..., str] | None = None,
-    cache_provider: Any | None = None,
+def cached(
+    key_prefix: str,
+    ttl: int = 3600,
+    key_builder: Callable[..., str] | None = None,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
-    """Decorator for caching function results.
+    """Cache decorator for use case methods.
 
-    Supports both sync and async functions.
+    **Feature: infrastructure-modules-integration-analysis**
+    **Validates: Requirements 1.4**
 
     Args:
-        ttl: Time-to-live in seconds. None for no expiration.
-        key_fn: Custom function to generate cache key.
-        cache_provider: Cache provider instance. Uses default if None.
+        key_prefix: Prefix for cache keys
+        ttl: Time to live in seconds (default: 1 hour)
+        key_builder: Optional function to build cache key from args
 
     Returns:
-        Decorated function with caching.
+        Decorated function with caching
+
+    Example:
+        >>> class ItemUseCase:
+        ...     @cached("item", ttl=300)
+        ...     async def get(self, item_id: str) -> Item:
+        ...         return await self.repo.get(item_id)
     """
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(func)
-        async def async_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            provider = cache_provider or get_default_cache()
-            cache_key = _make_cache_key(func, args, kwargs, key_fn)
+        async def wrapper(self: Any, *args: P.args, **kwargs: P.kwargs) -> T:
+            # Get redis client from self if available
+            redis = getattr(self, "_redis", None) or getattr(self, "redis", None)
 
-            cached_value = await provider.get(cache_key)
-            if cached_value is not None:
-                return cached_value
+            if redis is None:
+                # No cache available, execute directly
+                return await func(self, *args, **kwargs)
 
-            result = await func(*args, **kwargs)
-            await provider.set(cache_key, result, ttl)
+            # Build cache key
+            if key_builder:
+                cache_key = key_builder(*args, **kwargs)
+            else:
+                # Default key builder: prefix:first_arg or prefix:hash(args)
+                if args:
+                    cache_key = f"{key_prefix}:{args[0]}"
+                else:
+                    key_data = json.dumps(kwargs, sort_keys=True, default=str)
+                    key_hash = hashlib.md5(key_data.encode()).hexdigest()[:8]
+                    cache_key = f"{key_prefix}:{key_hash}"
+
+            # Try to get from cache
+            try:
+                cached_value = await redis.get(cache_key)
+                if cached_value is not None:
+                    logger.debug("cache_hit", key=cache_key)
+                    return cached_value
+            except Exception as e:
+                logger.warning("cache_get_error", key=cache_key, error=str(e))
+
+            # Cache miss - execute function
+            logger.debug("cache_miss", key=cache_key)
+            result = await func(self, *args, **kwargs)
+
+            # Store in cache
+            try:
+                await redis.set(cache_key, result, ttl)
+                logger.debug("cache_set", key=cache_key, ttl=ttl)
+            except Exception as e:
+                logger.warning("cache_set_error", key=cache_key, error=str(e))
+
             return result
 
+        return wrapper
+
+    return decorator
+
+
+def invalidate_cache(
+    key_prefix: str,
+    key_builder: Callable[..., str] | None = None,
+) -> Callable[[Callable[P, T]], Callable[P, T]]:
+    """Decorator to invalidate cache after method execution.
+
+    **Feature: infrastructure-modules-integration-analysis**
+    **Validates: Requirements 1.4**
+
+    Args:
+        key_prefix: Prefix for cache keys to invalidate
+        key_builder: Optional function to build cache key from args
+
+    Returns:
+        Decorated function that invalidates cache after execution
+
+    Example:
+        >>> class ItemUseCase:
+        ...     @invalidate_cache("item")
+        ...     async def update(self, item_id: str, data: dict) -> Item:
+        ...         return await self.repo.update(item_id, data)
+    """
+
+    def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(func)
-        def sync_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            provider = cache_provider or get_default_cache()
-            cache_key = _make_cache_key(func, args, kwargs, key_fn)
+        async def wrapper(self: Any, *args: P.args, **kwargs: P.kwargs) -> T:
+            # Execute function first
+            result = await func(self, *args, **kwargs)
 
-            if _is_async_context():
-                return _sync_cache_in_async_context(
-                    provider, cache_key, func, ttl, args, kwargs
-                )
-            return _sync_cache_direct(provider, cache_key, func, ttl, args, kwargs)
+            # Get redis client from self if available
+            redis = getattr(self, "_redis", None) or getattr(self, "redis", None)
 
-        if asyncio.iscoroutinefunction(func):
-            return async_wrapper  # type: ignore
-        return sync_wrapper  # type: ignore
+            if redis is None:
+                return result
+
+            # Build cache key to invalidate
+            if key_builder:
+                cache_key = key_builder(*args, **kwargs)
+            else:
+                if args:
+                    cache_key = f"{key_prefix}:{args[0]}"
+                else:
+                    # Can't determine key, skip invalidation
+                    return result
+
+            # Invalidate cache
+            try:
+                await redis.delete(cache_key)
+                logger.debug("cache_invalidated", key=cache_key)
+            except Exception as e:
+                logger.warning("cache_invalidate_error", key=cache_key, error=str(e))
+
+            return result
+
+        return wrapper
+
+    return decorator
+
+
+# Global default cache instance
+_default_cache: Any | None = None
+
+
+def get_default_cache() -> Any | None:
+    """Get the default cache instance.
+
+    Returns:
+        Default cache instance or None if not configured.
+    """
+    return _default_cache
+
+
+def set_default_cache(cache: Any) -> None:
+    """Set the default cache instance.
+
+    Args:
+        cache: Cache instance to use as default.
+    """
+    global _default_cache
+    _default_cache = cache
+
+
+def invalidate_pattern(
+    pattern: str,
+) -> Callable[[Callable[P, T]], Callable[P, T]]:
+    """Decorator to invalidate cache by pattern after method execution.
+
+    **Feature: infrastructure-modules-integration-analysis**
+    **Validates: Requirements 1.4**
+
+    Args:
+        pattern: Pattern for cache keys to invalidate (e.g., "item:*")
+
+    Returns:
+        Decorated function that invalidates cache pattern after execution
+    """
+
+    def decorator(func: Callable[P, T]) -> Callable[P, T]:
+        @functools.wraps(func)
+        async def wrapper(self: Any, *args: P.args, **kwargs: P.kwargs) -> T:
+            result = await func(self, *args, **kwargs)
+
+            redis = getattr(self, "_redis", None) or getattr(self, "redis", None)
+
+            if redis is None:
+                return result
+
+            try:
+                deleted = await redis.delete_pattern(pattern)
+                logger.debug("cache_pattern_invalidated", pattern=pattern, count=deleted)
+            except Exception as e:
+                logger.warning("cache_pattern_error", pattern=pattern, error=str(e))
+
+            return result
+
+        return wrapper
 
     return decorator

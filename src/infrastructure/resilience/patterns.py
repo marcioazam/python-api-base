@@ -12,7 +12,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Protocol, runtime_checkable
 
-from core.base.result import Err, Ok, Result
+from core.base.patterns.result import Err, Ok, Result
 
 
 class CircuitState(Enum):

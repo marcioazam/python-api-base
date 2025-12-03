@@ -34,11 +34,11 @@ from infrastructure.tasks.retry import (
 from infrastructure.tasks.in_memory import InMemoryTaskQueue
 from infrastructure.tasks.rabbitmq import (
     RabbitMQConfig,
+    RabbitMQRpcClient,
     RabbitMQTaskQueue,
     RabbitMQWorker,
-    RabbitMQRpcClient,
-    TaskHandle,
     TaskError,
+    TaskHandle,
 )
 
 __all__ = [

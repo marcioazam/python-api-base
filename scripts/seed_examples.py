@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 async def seed_items(session) -> list[str]:
     """Create sample items."""
-    from domain.examples.item_example import ItemExample, Money, ItemExampleStatus
+    from domain.examples.item.entity import ItemExample, Money, ItemExampleStatus
     from infrastructure.db.repositories.examples import ItemExampleRepository
 
     repo = ItemExampleRepository(session)
@@ -99,7 +99,7 @@ async def seed_items(session) -> list[str]:
 
 async def seed_pedidos(session, item_ids: list[str]) -> None:
     """Create sample orders."""
-    from domain.examples.pedido_example import PedidoExample
+    from domain.examples.pedido.entity import PedidoExample
     from infrastructure.db.repositories.examples import (
         ItemExampleRepository,
         PedidoExampleRepository,

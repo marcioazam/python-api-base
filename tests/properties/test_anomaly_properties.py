@@ -7,7 +7,7 @@
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_app.infrastructure.observability.anomaly import (
+from infrastructure.observability.anomaly import (
     Anomaly,
     AnomalyConfig,
     AnomalyDetector,

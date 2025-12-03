@@ -9,8 +9,8 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 try:
-    from my_app.infrastructure.cache.local_cache import LRUCache
-    from my_app.infrastructure.cache.providers import InMemoryCacheProvider
+    from infrastructure.cache.local_cache import LRUCache
+    from infrastructure.cache.providers import InMemoryCacheProvider
 except ImportError:
     pytest.skip("my_app modules not available", allow_module_level=True)
 

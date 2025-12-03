@@ -7,19 +7,64 @@ security headers, rate limiting, request logging, and error handling.
 **Validates: Requirements 13, 16, 18, 19, 22**
 
 Import individual modules directly to avoid circular imports:
-    from interface.middleware.security_headers import SecurityHeadersMiddleware
-    from interface.middleware.cors_manager import CORSManager
+    from interface.middleware.security import SecurityHeadersMiddleware, CORSManager
+    from interface.middleware.logging import RequestLoggingMiddleware
+    from interface.middleware.request import RequestIdMiddleware
     from interface.middleware.production import setup_production_middleware
 """
 
-# Lazy imports to avoid circular dependencies
+# Security middleware
+from interface.middleware.security import (
+    CORSManager,
+    CORSPolicy,
+    SecurityHeadersMiddleware,
+)
+
+# Request processing middleware
+from interface.middleware.request import (
+    RequestIDMiddleware,
+    RequestSizeLimitMiddleware,
+    TimeoutConfig,
+    TimeoutMiddleware,
+)
+
+# Logging middleware
+from interface.middleware.logging import (
+    RequestLoggerMiddleware,
+    app_exception_handler,
+    create_problem_detail,
+    register_exception_handlers,
+)
+
+# Production middleware
+from interface.middleware.production import (
+    AuditConfig,
+    AuditMiddleware,
+    FeatureFlagMiddleware,
+    MultitenancyConfig,
+    MultitenancyMiddleware,
+    ResilienceConfig,
+    ResilienceMiddleware,
+    is_feature_enabled,
+    setup_production_middleware,
+)
+
 __all__ = [
-    # Core middleware
+    # Security
     "SecurityHeadersMiddleware",
     "CORSManager",
     "CORSPolicy",
+    # Request
+    "RequestIDMiddleware",
     "RequestSizeLimitMiddleware",
-    # Production middleware (Req 13, 16, 18, 19, 22)
+    "TimeoutConfig",
+    "TimeoutMiddleware",
+    # Logging
+    "RequestLoggerMiddleware",
+    "app_exception_handler",
+    "create_problem_detail",
+    "register_exception_handlers",
+    # Production
     "AuditConfig",
     "AuditMiddleware",
     "FeatureFlagMiddleware",

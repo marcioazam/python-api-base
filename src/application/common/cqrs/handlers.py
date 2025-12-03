@@ -9,9 +9,9 @@ Uses PEP 695 type parameter syntax (Python 3.12+) for cleaner generic definition
 
 from abc import ABC, abstractmethod
 
-from core.base.command import BaseCommand
-from core.base.query import BaseQuery
-from core.base.result import Result
+from core.base.cqrs.command import BaseCommand
+from core.base.cqrs.query import BaseQuery
+from core.base.patterns.result import Result
 
 
 class CommandHandler[TCommand: BaseCommand, TResult](ABC):

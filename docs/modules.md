@@ -431,7 +431,12 @@ infrastructure/redis/
 ```
 infrastructure/resilience/
 ├── __init__.py
-└── patterns.py      # CircuitBreaker, Retry, Bulkhead, Timeout
+├── patterns.py          # Implementações base
+├── circuit_breaker.py   # CircuitBreaker, CircuitBreakerConfig, CircuitState
+├── bulkhead.py          # Bulkhead, BulkheadConfig, BulkheadRegistry, BulkheadStats
+├── retry_pattern.py     # Retry, RetryConfig, ExponentialBackoff
+├── timeout.py           # Timeout, TimeoutConfig
+└── fallback.py          # Fallback
 ```
 
 **Exports:**
@@ -450,16 +455,33 @@ from infrastructure.resilience import (
     TimeoutConfig,
     Fallback,
 )
+
+# Ou imports específicos por módulo:
+from infrastructure.resilience.circuit_breaker import CircuitBreaker, CircuitState
+from infrastructure.resilience.bulkhead import Bulkhead, BulkheadRegistry, BulkheadRejectedError
 ```
 
 ### 4.12 `infrastructure.storage`
 
-**Propósito:** Abstração de file storage.
+**Propósito:** Abstração de file storage com providers.
 
 ```
 infrastructure/storage/
 ├── __init__.py
-└── handlers.py      # FileUploadHandler, FileValidator
+├── file_upload.py       # FileUploadHandler, FileValidator, FileInfo
+├── minio_provider.py    # MinIOStorageProvider (implementa FileStorage)
+└── memory_provider.py   # InMemoryStorageProvider (para testes)
+```
+
+**Exports:**
+```python
+from infrastructure.storage import (
+    FileUploadHandler,
+    FileValidator,
+    FileInfo,
+    MinIOStorageProvider,
+    InMemoryStorageProvider,
+)
 ```
 
 ### 4.13 `infrastructure.tasks`

@@ -17,7 +17,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from pydantic import BaseModel
 
-from my_app.application.common.batch import (
+from application.common.batch import (
     BatchConfig,
     BatchErrorStrategy,
     BatchOperationBuilder,

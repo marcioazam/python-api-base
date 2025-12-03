@@ -1,8 +1,21 @@
 """User management routes for admin operations.
 
+**DEPRECATED**: This module uses mock storage and is replaced by
+`interface.v1.users_router` which uses CQRS with real persistence.
+This file is kept for reference only and will be removed in a future version.
+
 **Feature: core-rbac-system**
 **Part of: Core API (permanent)**
 """
+
+import warnings
+
+warnings.warn(
+    "interface.v1.auth.users_router is deprecated. "
+    "Use interface.v1.users_router instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 from datetime import datetime, UTC
 from uuid import uuid4
@@ -138,7 +151,7 @@ async def list_users(
         ],
         total=len(users),
         page=page,
-        page_size=page_size,
+        size=page_size,
     )
 
 

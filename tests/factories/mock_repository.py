@@ -27,7 +27,7 @@ from unittest.mock import AsyncMock, MagicMock, Mock
 
 from pydantic import BaseModel
 
-from my_app.core.base.repository import IRepository
+from core.base.repository import IRepository
 
 T = TypeVar("T", bound=BaseModel)
 CreateT = TypeVar("CreateT", bound=BaseModel)

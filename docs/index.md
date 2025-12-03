@@ -1,160 +1,107 @@
 # Python API Base - Documentação
 
-## Índice de Documentação
+> **Última atualização:** Dezembro 2025 | **Versão:** 1.0.0
 
-Bem-vindo à documentação completa do Python API Base Framework.
+Bem-vindo à documentação completa do Python API Base Framework - um framework REST API enterprise-grade construído com FastAPI, seguindo Clean Architecture e Domain-Driven Design.
 
----
+## Quick Start
 
-## Documentos Disponíveis
+| Ação | Link |
+|------|------|
+| 🚀 Começar | [Getting Started](guides/getting-started.md) |
+| 🏗️ Arquitetura | [Architecture Overview](architecture.md) |
+| 📚 API Reference | [API Documentation](api/index.md) |
+| 🧪 Testes | [Testing Guide](testing/index.md) |
 
-### Visão Geral
-
-| Documento | Descrição |
-|-----------|-----------|
-| [Overview](overview.md) | Visão geral do sistema e características principais |
-| [PRD](prd.md) | Product Requirements Document - requisitos e roadmap |
-
-### Arquitetura
-
-| Documento | Descrição |
-|-----------|-----------|
-| [Architecture](architecture.md) | Arquitetura detalhada do sistema |
-| [Layers](layers.md) | Descrição das camadas e regras de dependência |
-| [Components](components.md) | Componentes do sistema e suas interfaces |
-| [Modules](modules.md) | Módulos e suas responsabilidades |
-| [Patterns](patterns.md) | Padrões de implementação (Specification, CQRS, Repository, Resilience) |
-
-### Referência Técnica
-
-| Documento | Descrição |
-|-----------|-----------|
-| [Libraries](libraries.md) | Bibliotecas e dependências utilizadas |
-| [API Reference](api/README.md) | Documentação da API REST |
-| [Security](api/security.md) | Práticas de segurança |
-| [Versioning](api/versioning.md) | Estratégias de versionamento |
-
-### Guias
-
-| Documento | Descrição |
-|-----------|-----------|
-| [Getting Started](getting-started.md) | Guia de início rápido |
-| [Configuration](configuration.md) | Configuração do sistema |
-| [Deployment](deployment.md) | Guia de deploy |
-| [Testing](testing.md) | Guia de testes (unit, property-based, integration) |
-| [Bounded Context Guide](guides/bounded-context-guide.md) | Como criar um novo bounded context |
-| [Integration Guide](guides/integration-guide.md) | Como adicionar novas integrações |
-
-### Operações
-
-| Documento | Descrição |
-|-----------|-----------|
-| [Monitoring](monitoring.md) | Métricas, traces e logs |
-| [Runbooks](runbooks/README.md) | Procedimentos operacionais |
-
-### ADRs (Architecture Decision Records)
-
-| ADR | Título |
-|-----|--------|
-| [ADR-001](adr/ADR-001-jwt-authentication.md) | JWT Authentication Strategy |
-| [ADR-002](adr/ADR-002-rbac-implementation.md) | RBAC Implementation |
-| [ADR-003](adr/ADR-003-api-versioning.md) | API Versioning Strategy |
-| [ADR-004](adr/ADR-004-token-revocation.md) | Token Revocation via Redis |
-| [ADR-005](adr/ADR-005-repository-pattern.md) | Generic Repository Pattern |
-| [ADR-006](adr/ADR-006-specification-pattern.md) | Specification Pattern |
-| [ADR-007](adr/ADR-007-cqrs-implementation.md) | CQRS Implementation |
-| [ADR-008](adr/ADR-008-cache-strategy.md) | Cache Strategy |
-| [ADR-009](adr/ADR-009-resilience-patterns.md) | Resilience Patterns |
-| [ADR-010](adr/ADR-010-error-handling.md) | Error Handling (RFC 7807) |
-| [ADR-011](adr/ADR-011-observability-stack.md) | Observability Stack |
-| [ADR-012](adr/ADR-012-clean-architecture.md) | Clean Architecture Layers |
-
-### Runbooks
-
-| Runbook | Descrição |
-|---------|-----------|
-| [Database Connection Issues](runbooks/database-connection-issues.md) | Problemas de conexão com banco |
-| [Cache Failures](runbooks/cache-failures.md) | Falhas de cache Redis |
-| [Circuit Breaker Open](runbooks/circuit-breaker-open.md) | Circuit breaker aberto |
-
----
-
-## Estrutura do Projeto
+## Documentation Map
 
 ```
-python-api-base/
-├── src/                    # Código fonte
-│   ├── core/              # Kernel da aplicação
-│   ├── domain/            # Camada de domínio
-│   ├── application/       # Camada de aplicação
-│   ├── infrastructure/    # Camada de infraestrutura
-│   ├── interface/         # Camada de interface
-│   └── main.py            # Entry point
-├── tests/                  # Testes
-│   ├── unit/              # Testes unitários
-│   ├── integration/       # Testes de integração
-│   ├── properties/        # Property-based tests
-│   └── e2e/               # Testes end-to-end
-├── docs/                   # Documentação
-│   ├── adr/               # Architecture Decision Records
-│   ├── api/               # Documentação de API
-│   ├── guides/            # Guias de implementação
-│   └── runbooks/          # Procedimentos operacionais
-├── deployments/            # Configurações de deploy
-│   ├── docker/            # Docker configs
-│   ├── k8s/               # Kubernetes manifests
-│   ├── helm/              # Helm charts
-│   └── terraform/         # Infrastructure as Code
-├── scripts/                # Scripts utilitários
-└── alembic/                # Database migrations
+📁 docs/
+├── 📖 Core Docs          → overview.md, architecture.md, getting-started.md
+├── 🏛️ Layers             → layers/ (core, domain, application, infrastructure, interface)
+├── 🔌 API                → api/ (REST, GraphQL, WebSocket)
+├── 📋 ADRs               → adr/ (Architecture Decision Records)
+├── 🛠️ Guides             → guides/ (contributing, integration, testing)
+├── ⚙️ Operations         → operations/ (deployment, monitoring, runbooks)
+├── 🧪 Testing            → testing/ (unit, integration, property, e2e)
+├── 🔧 Infrastructure     → infrastructure/ (PostgreSQL, Redis, Kafka, MinIO)
+└── 📝 Templates          → templates/ (ADR, runbook, module, test)
 ```
 
----
+## By Role
 
-## Quick Links
+### 👨‍💻 Developers
+- [Getting Started](guides/getting-started.md) - Setup e primeiro endpoint
+- [Layer Documentation](layers/index.md) - Entenda cada camada
+- [Patterns](patterns.md) - Padrões de implementação
+- [Testing Guide](testing/index.md) - Como testar
+- [Contributing](guides/contributing.md) - Como contribuir
 
-### Desenvolvimento
+### 🏗️ Architects
+- [Architecture](architecture.md) - Visão geral da arquitetura
+- [ADRs](adr/README.md) - Decisões arquiteturais
+- [Components](components.md) - Componentes do sistema
+- [Modules](modules.md) - Módulos e dependências
 
-- [Instalação](getting-started.md#instalação)
-- [Configuração](configuration.md)
-- [Executando localmente](getting-started.md#executando)
-- [Testes](testing.md)
-- [Contributing](../CONTRIBUTING.md)
+### 🔧 DevOps/SRE
+- [Deployment](operations/deployment.md) - Guia de deploy
+- [Monitoring](operations/monitoring.md) - Observabilidade
+- [Runbooks](operations/runbooks/README.md) - Procedimentos operacionais
+- [Scaling](operations/scaling.md) - Escalabilidade
 
-### API
+### 🔒 Security
+- [Security Guide](guides/security-guide.md) - Práticas de segurança
+- [API Security](api/security.md) - Segurança de API
+- [RBAC](adr/ADR-002-rbac-implementation.md) - Controle de acesso
 
-- [Swagger UI](http://localhost:8000/docs)
-- [ReDoc](http://localhost:8000/redoc)
-- [OpenAPI Spec](http://localhost:8000/openapi.json)
+## Architecture Layers
 
-### Operações
+| Layer | Responsabilidade | Documentação |
+|-------|------------------|--------------|
+| **Core** | Configuração, Protocolos, DI | [docs/layers/core/](layers/core/index.md) |
+| **Domain** | Entidades, Value Objects, Specifications | [docs/layers/domain/](layers/domain/index.md) |
+| **Application** | Use Cases, CQRS, DTOs | [docs/layers/application/](layers/application/index.md) |
+| **Infrastructure** | Database, Cache, Messaging | [docs/layers/infrastructure/](layers/infrastructure/index.md) |
+| **Interface** | REST API, GraphQL, WebSocket | [docs/layers/interface/](layers/interface/index.md) |
 
-- [Health Checks](api/README.md#health-checks)
-- [Métricas](monitoring.md#prometheus-metrics)
-- [Logs](monitoring.md#structured-logs)
-- [Runbooks](runbooks/README.md)
+## Key Patterns
 
----
+| Padrão | Descrição | Documentação |
+|--------|-----------|--------------|
+| Specification | Regras de negócio composáveis | [patterns.md#specification](patterns.md#1-specification-pattern) |
+| CQRS | Separação leitura/escrita | [patterns.md#cqrs](patterns.md#2-cqrs-pattern) |
+| Repository | Abstração de persistência | [patterns.md#repository](patterns.md#3-repository-pattern) |
+| Resilience | Circuit Breaker, Retry, Bulkhead | [patterns.md#resilience](patterns.md#4-resilience-patterns) |
 
-## Stack Tecnológica
+## ADRs (Architecture Decision Records)
 
-| Categoria | Tecnologia |
-|-----------|------------|
-| Framework | FastAPI 0.115+ |
-| Linguagem | Python 3.12+ |
-| ORM | SQLAlchemy 2.0+ / SQLModel |
-| Validação | Pydantic 2.9+ |
-| Database | PostgreSQL 15+ |
-| Cache | Redis 7+ |
-| Messaging | Kafka / RabbitMQ |
-| Search | Elasticsearch 8+ |
-| Storage | MinIO / S3 |
-| Observability | OpenTelemetry / Prometheus |
-| Testes | pytest / Hypothesis |
+| ADR | Título | Status |
+|-----|--------|--------|
+| [ADR-001](adr/ADR-001-jwt-authentication.md) | JWT Authentication | ✅ Accepted |
+| [ADR-002](adr/ADR-002-rbac-implementation.md) | RBAC Implementation | ✅ Accepted |
+| [ADR-003](adr/ADR-003-api-versioning.md) | API Versioning | ✅ Accepted |
+| [ADR-005](adr/ADR-005-repository-pattern.md) | Repository Pattern | ✅ Accepted |
+| [ADR-006](adr/ADR-006-specification-pattern.md) | Specification Pattern | ✅ Accepted |
+| [ADR-007](adr/ADR-007-cqrs-implementation.md) | CQRS Implementation | ✅ Accepted |
+| [ADR-012](adr/ADR-012-clean-architecture.md) | Clean Architecture | ✅ Accepted |
 
----
+[Ver todos os ADRs →](adr/README.md)
 
-## Conformidade
+## Tech Stack
+
+| Categoria | Tecnologia | Versão |
+|-----------|------------|--------|
+| Framework | FastAPI | 0.115+ |
+| Linguagem | Python | 3.12+ |
+| ORM | SQLAlchemy + SQLModel | 2.0+ |
+| Validação | Pydantic | 2.9+ |
+| Database | PostgreSQL | 15+ |
+| Cache | Redis | 7+ |
+| Messaging | Kafka / RabbitMQ | - |
+| Observability | OpenTelemetry + Prometheus | - |
+| Testes | pytest + Hypothesis | 8.3+ / 6.115+ |
+
+## Compliance
 
 | Padrão | Status |
 |--------|--------|
@@ -165,20 +112,35 @@ python-api-base/
 | RFC 8594 (Deprecation Headers) | ✅ |
 | OpenAPI 3.1 | ✅ |
 
----
+## Project Structure
 
-## Contribuindo
+```
+python-api-base/
+├── src/                    # Código fonte
+│   ├── core/              # Kernel (config, DI, protocols)
+│   ├── domain/            # Entidades e regras de negócio
+│   ├── application/       # Use cases e DTOs
+│   ├── infrastructure/    # Implementações (DB, cache, etc)
+│   ├── interface/         # API (routers, middleware)
+│   └── main.py            # Entry point
+├── tests/                  # Testes (unit, integration, property, e2e)
+├── docs/                   # Documentação
+├── deployments/            # Docker, K8s, Terraform
+├── scripts/                # Scripts utilitários
+└── alembic/                # Database migrations
+```
+
+## Quick Links
+
+- 📖 [Swagger UI](http://localhost:8000/docs)
+- 📖 [ReDoc](http://localhost:8000/redoc)
+- 📖 [OpenAPI Spec](http://localhost:8000/openapi.json)
+- 🐙 [GitHub Repository](https://github.com/example/python-api-base)
+
+## Contributing
 
 Veja [CONTRIBUTING.md](../CONTRIBUTING.md) para diretrizes completas.
 
-1. Fork o repositório
-2. Crie uma branch (`git checkout -b feature/nova-feature`)
-3. Commit suas mudanças (`git commit -am 'Add nova feature'`)
-4. Push para a branch (`git push origin feature/nova-feature`)
-5. Abra um Pull Request
-
----
-
-## Licença
+## License
 
 MIT License - veja [LICENSE](../LICENSE) para detalhes.

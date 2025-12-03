@@ -3,6 +3,7 @@
 Provides type-safe Kafka producer and consumer with PEP 695 generics.
 
 **Feature: observability-infrastructure**
+**Feature: kafka-workflow-integration**
 **Requirement: R3 - Generic Kafka Producer/Consumer**
 **Requirement: R3.1 - Transactional Producer with Exactly-Once Semantics**
 """
@@ -18,6 +19,16 @@ from infrastructure.kafka.producer import (
 )
 from infrastructure.kafka.consumer import KafkaConsumer
 from infrastructure.kafka.message import KafkaMessage, MessageMetadata
+from infrastructure.kafka.event_publisher import (
+    DomainEvent,
+    EventPublisher,
+    KafkaEventPublisher,
+    NoOpEventPublisher,
+    ItemCreatedEvent,
+    ItemUpdatedEvent,
+    ItemDeletedEvent,
+    create_event_publisher,
+)
 
 __all__ = [
     # Config
@@ -34,4 +45,13 @@ __all__ = [
     # Message
     "KafkaMessage",
     "MessageMetadata",
+    # Event Publisher
+    "DomainEvent",
+    "EventPublisher",
+    "KafkaEventPublisher",
+    "NoOpEventPublisher",
+    "ItemCreatedEvent",
+    "ItemUpdatedEvent",
+    "ItemDeletedEvent",
+    "create_event_publisher",
 ]

@@ -104,7 +104,7 @@ def test_property_2_file_size_compliance():
 @settings(max_examples=100)
 def test_property_3_exception_serialization_consistency(message, error_code, status_code):
     """Property 3: AppException.to_dict() produces consistent structure."""
-    from my_app.core.exceptions import AppException
+    from core.exceptions import AppException
     
     exc = AppException(
         message=message,
@@ -134,7 +134,7 @@ def test_property_3_exception_serialization_consistency(message, error_code, sta
 @settings(max_examples=100)
 def test_property_4_jwt_required_claims(user_id):
     """Property 4: JWT tokens contain required claims (sub, exp, iat, jti)."""
-    from my_app.core.auth.jwt import JWTService
+    from core.auth.jwt import JWTService
     
     secret = "a" * 32  # Minimum 32 chars
     service = JWTService(secret_key=secret)
@@ -159,7 +159,7 @@ def test_property_4_jwt_required_claims(user_id):
 @settings(max_examples=100)
 def test_property_5_secret_key_entropy_rejection(short_key):
     """Property 5: Secret keys shorter than 32 chars are rejected."""
-    from my_app.core.auth.jwt import JWTService
+    from core.auth.jwt import JWTService
     
     with pytest.raises(ValueError, match="at least 32 characters"):
         JWTService(secret_key=short_key)
@@ -180,7 +180,7 @@ def test_property_5_secret_key_entropy_rejection(short_key):
 @settings(max_examples=50)
 def test_property_6_password_hash_format(password):
     """Property 6: Password hashes use Argon2id format."""
-    from my_app.shared.utils.password import hash_password
+    from core.shared.utils.password import hash_password
     
     hashed = hash_password(password)
     assert hashed.startswith("$argon2id$"), f"Hash should start with $argon2id$: {hashed[:20]}"
@@ -195,7 +195,7 @@ def test_property_6_password_hash_format(password):
 def test_property_7_cors_wildcard_warning():
     """Property 7: Wildcard CORS in production triggers warning."""
     import logging
-    from my_app.core.config import SecuritySettings
+    from core.config import SecuritySettings
     
     with patch.dict(os.environ, {"ENVIRONMENT": "production"}):
         with patch.object(logging.getLogger("my_app.core.config"), "warning") as mock_warn:
@@ -218,7 +218,7 @@ def test_property_8_security_headers_presence():
     """Property 8: Security headers middleware adds required headers."""
     from starlette.testclient import TestClient
     from fastapi import FastAPI
-    from my_app.adapters.api.middleware.security_headers import SecurityHeadersMiddleware
+    from interface.api.middleware.security_headers import SecurityHeadersMiddleware
     
     app = FastAPI()
     app.add_middleware(SecurityHeadersMiddleware)
@@ -286,7 +286,7 @@ def test_property_10_soft_delete_behavior():
 @settings(max_examples=50)
 def test_property_11_12_lifecycle_hook_order(num_hooks):
     """Property 11 & 12: Hooks execute in correct order."""
-    from my_app.core.container import LifecycleManager
+    from core.container import LifecycleManager
     
     manager = LifecycleManager()
     execution_order = []
@@ -371,7 +371,7 @@ def test_property_14_secretstr_redaction(secret):
 
 def test_property_15_url_credential_redaction():
     """Property 15: URL credentials are redacted."""
-    from my_app.core.config import redact_url_credentials
+    from core.config import redact_url_credentials
     
     test_cases = [
         ("postgresql://user:secret123@localhost/db", "secret123"),
@@ -397,7 +397,7 @@ def test_property_15_url_credential_redaction():
 @settings(max_examples=100)
 def test_property_16_rate_limit_format_validation(invalid_format):
     """Property 16: Invalid rate limit formats are rejected."""
-    from my_app.core.config import RATE_LIMIT_PATTERN
+    from core.config import RATE_LIMIT_PATTERN
     
     # Invalid formats should not match
     assert not RATE_LIMIT_PATTERN.match(invalid_format), f"Should reject: {invalid_format}"
@@ -420,7 +420,7 @@ def test_property_16_rate_limit_format_validation(invalid_format):
 @settings(max_examples=100)
 def test_property_17_validation_error_normalization(field_errors):
     """Property 17: Dict errors are normalized to list format."""
-    from my_app.core.exceptions import ValidationError
+    from core.exceptions import ValidationError
     
     exc = ValidationError(errors=field_errors)
     result = exc.to_dict()
@@ -446,7 +446,7 @@ def test_property_17_validation_error_normalization(field_errors):
 @settings(max_examples=100)
 def test_property_18_result_pattern_unwrap_safety(error_msg):
     """Property 18: Err.unwrap() raises ValueError."""
-    from my_app.shared.result import Err
+    from core.shared.result import Err
     
     err = Err(error_msg)
     
@@ -462,7 +462,7 @@ def test_property_18_result_pattern_unwrap_safety(error_msg):
 
 def test_property_19_token_expiration_check():
     """Property 19: Expired tokens raise TokenExpiredError."""
-    from my_app.core.auth.jwt import JWTService, TokenExpiredError, SystemTimeSource
+    from core.auth.jwt import JWTService, TokenExpiredError, SystemTimeSource
     from datetime import datetime, timedelta, timezone
     
     class PastTimeSource:
@@ -498,7 +498,7 @@ def test_property_19_token_expiration_check():
 
 def test_property_20_refresh_token_replay_protection():
     """Property 20: Used refresh tokens are rejected on second use."""
-    from my_app.core.auth.jwt import JWTService, TokenRevokedError
+    from core.auth.jwt import JWTService, TokenRevokedError
     
     secret = "a" * 32
     service = JWTService(secret_key=secret)

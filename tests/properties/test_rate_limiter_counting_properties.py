@@ -9,7 +9,7 @@ from hypothesis import given, settings, assume
 from hypothesis import strategies as st
 
 try:
-    from my_app.infrastructure.security.sliding_window import (
+    from infrastructure.security.sliding_window import (
         SlidingWindowConfig,
         SlidingWindowRateLimiter,
         RateLimitResult,

@@ -1,14 +1,23 @@
-"""feature_flags service."""
+"""feature_flags service.
 
-import hashlib
+Refactored with Strategy pattern for extensible flag evaluation.
+
+**Feature: application-layer-improvements-2025**
+**Validates: Strategy pattern refactoring**
+"""
+
 import logging
 from datetime import datetime, UTC
 from typing import Any
-from collections.abc import Callable
 from pydantic import BaseModel
 from .enums import FlagStatus
 from .models import EvaluationContext
 from .config import FlagConfig
+from .strategies import (
+    StrategyChain,
+    CustomRuleStrategy,
+    create_default_strategy_chain,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,24 +39,33 @@ class FlagEvaluation(BaseModel):
 
 
 class FeatureFlagService:
-    """Feature flag service.
+    """Feature flag service with strategy-based evaluation.
 
     Provides feature flag management with:
+    - Extensible evaluation strategies
     - Percentage-based rollouts
     - User targeting
     - Group targeting
     - Custom rules
+
+    **Refactored: 2025 - Strategy pattern for extensibility**
     """
 
-    def __init__(self, seed: int | None = None) -> None:
+    def __init__(
+        self,
+        seed: int | None = None,
+        strategy_chain: StrategyChain | None = None,
+    ) -> None:
         """Initialize feature flag service.
 
         Args:
-            seed: Random seed for consistent hashing.
+            seed: Random seed for consistent hashing (used in default chain).
+            strategy_chain: Optional custom strategy chain. If not provided,
+                          uses default chain with standard strategies.
         """
         self._flags: dict[str, FlagConfig] = {}
-        self._custom_rules: dict[str, Callable[[EvaluationContext], bool]] = {}
         self._seed = seed or 0
+        self._strategy_chain = strategy_chain or create_default_strategy_chain(self._seed)
 
     def register_flag(self, config: FlagConfig) -> None:
         """Register a feature flag.
@@ -93,15 +111,27 @@ class FeatureFlagService:
     def set_custom_rule(
         self,
         flag_key: str,
-        rule: Callable[[EvaluationContext], bool],
+        rule: Any,
     ) -> None:
         """Set a custom evaluation rule for a flag.
 
         Args:
             flag_key: Flag key.
-            rule: Custom rule function.
+            rule: Custom rule function that takes EvaluationContext and returns bool.
         """
-        self._custom_rules[flag_key] = rule
+        # Find CustomRuleStrategy in chain and register rule
+        for strategy in self._strategy_chain._strategies:
+            if isinstance(strategy, CustomRuleStrategy):
+                strategy.register_rule(flag_key, rule)
+                return
+
+        logger.warning(
+            "custom_rule_strategy_not_found",
+            extra={
+                "flag_key": flag_key,
+                "operation": "SET_CUSTOM_RULE_WARNING",
+            },
+        )
 
     def is_enabled(
         self,
@@ -120,136 +150,58 @@ class FeatureFlagService:
         evaluation = self.evaluate(key, context)
         return bool(evaluation.value)
 
-    def _check_custom_rule(
-        self, key: str, context: EvaluationContext, flag: FlagConfig
-    ) -> FlagEvaluation | None:
-        """Check custom rule. Returns evaluation if matched, None otherwise."""
-        if key not in self._custom_rules:
-            return None
-        try:
-            if self._custom_rules[key](context):
-                return FlagEvaluation(
-                    flag_key=key, value=flag.enabled_value, reason="Custom rule matched"
-                )
-        except Exception as e:
-            logger.warning(
-                f"Custom rule evaluation failed for flag '{key}': {e}",
-                exc_info=True,
-                extra={"flag_key": key, "user_id": context.user_id},
-            )
-        return None
-
-    def _check_targeting(
-        self, key: str, context: EvaluationContext, flag: FlagConfig
-    ) -> FlagEvaluation | None:
-        """Check user and group targeting. Returns evaluation if matched."""
-        if context.user_id and context.user_id in flag.user_ids:
-            return FlagEvaluation(
-                flag_key=key,
-                value=flag.enabled_value,
-                reason=f"User {context.user_id} targeted",
-            )
-        if context.groups:
-            matching = set(context.groups) & set(flag.groups)
-            if matching:
-                return FlagEvaluation(
-                    flag_key=key,
-                    value=flag.enabled_value,
-                    reason=f"Group {list(matching)[0]} targeted",
-                )
-        return None
-
-    def _check_percentage(
-        self, key: str, context: EvaluationContext, flag: FlagConfig
-    ) -> FlagEvaluation | None:
-        """Check percentage rollout. Returns evaluation if in rollout."""
-        if flag.status == FlagStatus.PERCENTAGE and flag.percentage > 0:
-            if self._is_in_percentage(key, context.user_id, flag.percentage):
-                return FlagEvaluation(
-                    flag_key=key,
-                    value=flag.enabled_value,
-                    reason=f"In {flag.percentage}% rollout",
-                )
-        return None
-
     def evaluate(
         self,
         key: str,
         context: EvaluationContext | None = None,
     ) -> FlagEvaluation:
-        """Evaluate a feature flag.
+        """Evaluate a feature flag using strategy chain.
 
-        **Refactored: 2025 - Reduced complexity from 12 to 6**
+        **Refactored: 2025 - Strategy pattern for extensibility (complexity: 3)**
+
+        Args:
+            key: Flag key to evaluate.
+            context: Evaluation context (user, groups, attributes).
+
+        Returns:
+            Flag evaluation result with value, reason, and default flag.
+
+        Example:
+            >>> service = FeatureFlagService()
+            >>> context = EvaluationContext(user_id="123", groups=["beta"])
+            >>> result = service.evaluate("new_feature", context)
+            >>> if result.value:
+            ...     # Feature enabled
         """
         context = context or EvaluationContext()
 
         flag = self._flags.get(key)
         if not flag:
+            logger.debug(
+                "flag_not_found",
+                extra={
+                    "flag_key": key,
+                    "operation": "FLAG_EVALUATION",
+                },
+            )
             return FlagEvaluation(
                 flag_key=key, value=False, reason="Flag not found", is_default=True
             )
 
-        if flag.status == FlagStatus.DISABLED:
-            return FlagEvaluation(
-                flag_key=key,
-                value=flag.default_value,
-                reason="Flag disabled",
-                is_default=True,
-            )
+        # Delegate evaluation to strategy chain
+        value, reason = self._strategy_chain.evaluate(flag, context)
 
-        if flag.status == FlagStatus.ENABLED:
-            return FlagEvaluation(
-                flag_key=key, value=flag.enabled_value, reason="Flag enabled"
-            )
-
-        # Check rules in order: custom → targeting → percentage
-        for check in [
-            self._check_custom_rule,
-            self._check_targeting,
-            self._check_percentage,
-        ]:
-            result = check(key, context, flag)
-            if result:
-                return result
+        # Determine if default value was returned
+        is_default = value == flag.default_value and (
+            flag.status == FlagStatus.DISABLED or reason == "No matching rules"
+        )
 
         return FlagEvaluation(
             flag_key=key,
-            value=flag.default_value,
-            reason="No matching rules",
-            is_default=True,
+            value=value,
+            reason=reason,
+            is_default=is_default,
         )
-
-    def _is_in_percentage(
-        self,
-        flag_key: str,
-        user_id: str | None,
-        percentage: float,
-    ) -> bool:
-        """Check if user is in percentage rollout.
-
-        Uses consistent hashing so same user always gets same result.
-
-        Args:
-            flag_key: Flag key.
-            user_id: User ID.
-            percentage: Rollout percentage.
-
-        Returns:
-            True if user is in rollout.
-        """
-        if percentage >= 100:
-            return True
-        if percentage <= 0:
-            return False
-
-        # Use consistent hashing (MD5 not for security, just distribution)
-        hash_input = f"{flag_key}:{user_id or 'anonymous'}:{self._seed}"
-        hash_value = int(
-            hashlib.md5(hash_input.encode(), usedforsecurity=False).hexdigest(), 16
-        )
-        bucket = hash_value % 100
-
-        return bucket < percentage
 
     def enable_flag(self, key: str) -> bool:
         """Enable a flag.

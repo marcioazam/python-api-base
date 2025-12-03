@@ -12,7 +12,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from core.base.pagination import CursorPage
+from core.base.patterns.pagination import CursorPage
 
 
 class IRepository[

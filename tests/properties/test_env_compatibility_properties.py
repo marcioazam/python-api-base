@@ -10,7 +10,7 @@ from hypothesis import given, settings, assume
 from hypothesis import strategies as st
 
 try:
-    from my_app.core.config.settings import Settings, get_settings
+    from core.config.settings import Settings, get_settings
 except ImportError:
     pytest.skip("my_app modules not available", allow_module_level=True)
 

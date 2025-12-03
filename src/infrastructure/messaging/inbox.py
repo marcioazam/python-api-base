@@ -8,12 +8,14 @@ Ensures messages are processed exactly once using an inbox table.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Protocol, runtime_checkable
-import hashlib
-import json
+
+from infrastructure.errors import MessagingError
 
 
 class InboxStatus(str, Enum):
@@ -263,7 +265,7 @@ class MockMessageHandler:
     async def handle(self, message_type: str, payload: dict[str, Any]) -> None:
         """Handle a message."""
         if self._should_fail:
-            raise RuntimeError("Handler failed")
+            raise MessagingError("Handler failed")
         self._handled.append((message_type, payload))
 
     @property

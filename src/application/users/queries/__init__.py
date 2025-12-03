@@ -8,6 +8,8 @@ from application.users.queries.get_user import (
     GetUserByEmailQuery,
     GetUserByIdHandler,
     GetUserByEmailHandler,
+    ListUsersQuery,
+    ListUsersHandler,
 )
 
 __all__ = [
@@ -15,4 +17,6 @@ __all__ = [
     "GetUserByEmailQuery",
     "GetUserByIdHandler",
     "GetUserByIdQuery",
+    "ListUsersHandler",
+    "ListUsersQuery",
 ]

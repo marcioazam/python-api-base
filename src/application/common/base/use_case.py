@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 from typing import Any, overload
 
 from application.common.base.dto import PaginatedResponse
-from core.base.result import Result, Ok, Err
+from core.base.patterns.result import Result, Ok, Err
 
 logger = logging.getLogger(__name__)
 

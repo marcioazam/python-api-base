@@ -13,9 +13,9 @@ from typing import Any
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from core.base.result import Ok, Err, Result, ok, err
-from application.common.dto import PaginatedResponse
-from domain.common.specification import (
+from core.base.patterns.result import Ok, Err, Result, ok, err
+from application.common.base.dto import PaginatedResponse
+from domain.common.specification.specification import (
     Specification,
     AndSpecification,
     OrSpecification,
@@ -355,7 +355,7 @@ class TestValueObjectImmutability:
         **Feature: python-api-base-2025-review, Property 11: Value Object Immutability**
         **Validates: Requirements 106.1**
         """
-        from core.base.value_object import EntityId
+        from core.base.domain.value_object import EntityId
         
         try:
             entity_id = EntityId(ulid)
@@ -407,8 +407,8 @@ class TestAggregateEventCollection:
         **Feature: python-api-base-2025-review, Property 12: Aggregate Event Collection**
         **Validates: Requirements 107.2**
         """
-        from core.base.aggregate_root import AggregateRoot
-        from core.base.domain_event import EntityCreatedEvent
+        from core.base.domain.aggregate_root import AggregateRoot
+        from core.base.events.domain_event import EntityCreatedEvent
         
         class TestAggregate(AggregateRoot[str]):
             pass
@@ -433,8 +433,8 @@ class TestAggregateEventCollection:
         **Feature: python-api-base-2025-review, Property 12: Aggregate Event Collection**
         **Validates: Requirements 107.2**
         """
-        from core.base.aggregate_root import AggregateRoot
-        from core.base.domain_event import EntityCreatedEvent
+        from core.base.domain.aggregate_root import AggregateRoot
+        from core.base.events.domain_event import EntityCreatedEvent
         
         class TestAggregate(AggregateRoot[str]):
             pass
@@ -520,8 +520,8 @@ class TestCommandBusHandlerRegistration:
         **Feature: python-api-base-2025-review, Property 7: Command Bus Handler Registration**
         **Validates: Requirements 10.1, 109.1**
         """
-        from application.common.bus import CommandBus, Command
-        from core.base.result import Ok, Result
+        from application.common.cqrs.command_bus import CommandBus, Command
+        from core.base.patterns.result import Ok, Result
         
         class TestCommand(Command[int, str]):
             def __init__(self, value: int) -> None:
@@ -664,17 +664,18 @@ class TestCircuitBreakerStateTransitions:
         **Feature: python-api-base-2025-review, Property 9: Circuit Breaker State Transitions**
         **Validates: Requirements 119.3**
         """
-        from infrastructure.resilience.circuit_breaker import (
+        from infrastructure.resilience.patterns import (
             CircuitBreaker,
+            CircuitBreakerConfig,
             CircuitState,
         )
         
-        cb = CircuitBreaker(
-            name="test",
+        config = CircuitBreakerConfig(
             failure_threshold=threshold,
             success_threshold=1,
-            recovery_timeout=30.0,
+            timeout_seconds=30.0,
         )
+        cb = CircuitBreaker(config)
         
         assert cb.state == CircuitState.CLOSED
         
@@ -692,24 +693,22 @@ class TestCircuitBreakerStateTransitions:
         **Feature: python-api-base-2025-review, Property 9: Circuit Breaker State Transitions**
         **Validates: Requirements 119.3**
         """
-        from infrastructure.resilience.circuit_breaker import (
+        from infrastructure.resilience.patterns import (
             CircuitBreaker,
+            CircuitBreakerConfig,
             CircuitState,
         )
         
-        cb = CircuitBreaker(
-            name="test",
+        config = CircuitBreakerConfig(
             failure_threshold=1,
             success_threshold=threshold,
-            recovery_timeout=0.0,  # Immediate recovery for testing
+            timeout_seconds=0.0,  # Immediate recovery for testing
         )
+        cb = CircuitBreaker(config)
         
         # Open the circuit
         cb.record_failure()
-        assert cb.state == CircuitState.OPEN
-        
-        # Transition to half-open (by checking if request allowed)
-        cb._should_allow_request()
+        # With timeout=0, state transitions to HALF_OPEN immediately on check
         assert cb.state == CircuitState.HALF_OPEN
         
         # Record successes
@@ -739,21 +738,26 @@ class TestRetryDecoratorAttemptCount:
         **Feature: python-api-base-2025-review, Property 13: Retry Decorator Attempt Count**
         **Validates: Requirements 118.2**
         """
-        from infrastructure.resilience.retry import retry, RetryExhaustedError
+        from infrastructure.resilience.patterns import Retry, RetryConfig
+        from core.base.patterns.result import Err
         
         attempt_count = 0
         
-        @retry(max_attempts=max_attempts, backoff_base=0.001, exceptions=(ValueError,))
         async def failing_function() -> None:
             nonlocal attempt_count
             attempt_count += 1
             raise ValueError("Always fails")
         
-        with pytest.raises(RetryExhaustedError) as exc_info:
-            asyncio.run(failing_function())
+        config = RetryConfig(
+            max_attempts=max_attempts,
+            base_delay_seconds=0.001,
+        )
+        retry = Retry(config)
+        
+        result = asyncio.run(retry.execute(failing_function, (ValueError,)))
         
         assert attempt_count == max_attempts
-        assert exc_info.value.attempts == max_attempts
+        assert isinstance(result, Err)
 
 
 # =============================================================================
@@ -776,7 +780,7 @@ class TestQueryBusCaching:
         **Feature: python-api-base-2025-review, Property 14: Query Bus Caching**
         **Validates: Requirements 110.2**
         """
-        from application.common.bus import QueryBus, Query
+        from application.common.cqrs.query_bus import QueryBus, Query
         
         class TestQuery(Query[str]):
             def __init__(self, param: str) -> None:

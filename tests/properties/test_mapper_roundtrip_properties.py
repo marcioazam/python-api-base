@@ -1,27 +1,24 @@
 """Property-based tests for Domain-DTO mapper round-trip.
 
-**Feature: architecture-restructuring-2025, Property 6: Domain-DTO Mapper Round-Trip**
-**Validates: Requirements 3.5**
+**Feature: users-module-integration-fix, Property 1: Mapper Round-Trip Preserves Data**
+**Validates: Requirements 4.1, 4.2, 4.3**
 """
 
-from datetime import datetime, UTC, timedelta
+from datetime import datetime, UTC
 
 import pytest
-from hypothesis import given, settings
+from hypothesis import given, settings, HealthCheck
 from hypothesis import strategies as st
 
-try:
-    from my_app.application.users.mappers import UserMapper
-    from my_app.application.users.dto import UserDTO
-    from my_app.domain.users.aggregates import UserAggregate
-except ImportError:
-    pytest.skip("my_app modules not available", allow_module_level=True)
+from application.users.commands.mapper import UserMapper
+from application.users.commands.dtos import UserDTO
+from domain.users.aggregates import UserAggregate
 
 
 # Strategies for generating test data
-email_strategy = st.emails()
-username_strategy = st.text(min_size=3, max_size=50, alphabet="abcdefghijklmnopqrstuvwxyz0123456789_")
-display_name_strategy = st.text(min_size=1, max_size=100, alphabet="abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+email_strategy = st.from_regex(r"[a-z]{3,10}@[a-z]{3,8}\.(com|org|net)", fullmatch=True)
+username_strategy = st.text(min_size=3, max_size=20, alphabet="abcdefghijklmnopqrstuvwxyz0123456789_")
+display_name_strategy = st.text(min_size=1, max_size=50, alphabet="abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 user_id_strategy = st.text(min_size=10, max_size=26, alphabet="0123456789ABCDEFGHJKMNPQRSTVWXYZ")
 datetime_strategy = st.datetimes(
     min_value=datetime(2020, 1, 1),
@@ -33,7 +30,7 @@ datetime_strategy = st.datetimes(
 class TestUserMapperRoundTrip:
     """Property tests for UserMapper round-trip conversion."""
 
-    @settings(max_examples=20)
+    @settings(max_examples=100, suppress_health_check=[HealthCheck.too_slow])
     @given(
         user_id=user_id_strategy,
         email=email_strategy,
@@ -56,11 +53,11 @@ class TestUserMapperRoundTrip:
         updated_at: datetime,
     ) -> None:
         """
-        **Feature: architecture-restructuring-2025, Property 6: Domain-DTO Mapper Round-Trip**
+        **Feature: users-module-integration-fix, Property 1: Mapper Round-Trip Preserves Data**
         
         For any UserAggregate, converting to DTO SHALL preserve all
         public fields that are part of the DTO contract.
-        **Validates: Requirements 3.5**
+        **Validates: Requirements 4.1, 4.2, 4.3**
         """
         aggregate = UserAggregate(
             id=user_id,
@@ -87,7 +84,7 @@ class TestUserMapperRoundTrip:
         assert dto.created_at == created_at
         assert dto.updated_at == updated_at
 
-    @settings(max_examples=20)
+    @settings(max_examples=100, suppress_health_check=[HealthCheck.too_slow])
     @given(
         user_id=user_id_strategy,
         email=email_strategy,
@@ -110,9 +107,11 @@ class TestUserMapperRoundTrip:
         updated_at: datetime,
     ) -> None:
         """
+        **Feature: users-module-integration-fix, Property 1: Mapper Round-Trip Preserves Data**
+        
         For any UserDTO, converting to aggregate SHALL preserve all
         fields that are part of the aggregate.
-        **Validates: Requirements 3.5**
+        **Validates: Requirements 4.1, 4.2, 4.3**
         """
         dto = UserDTO(
             id=user_id,
@@ -138,7 +137,7 @@ class TestUserMapperRoundTrip:
         assert aggregate.created_at == created_at
         assert aggregate.updated_at == updated_at
 
-    @settings(max_examples=20)
+    @settings(max_examples=100, suppress_health_check=[HealthCheck.too_slow])
     @given(
         user_id=user_id_strategy,
         email=email_strategy,
@@ -161,9 +160,11 @@ class TestUserMapperRoundTrip:
         updated_at: datetime,
     ) -> None:
         """
+        **Feature: users-module-integration-fix, Property 1: Mapper Round-Trip Preserves Data**
+        
         For any UserAggregate, converting to DTO and back SHALL produce
         an equivalent aggregate (excluding password_hash which is not in DTO).
-        **Validates: Requirements 3.5**
+        **Validates: Requirements 4.1, 4.2, 4.3**
         """
         original = UserAggregate(
             id=user_id,
@@ -194,7 +195,7 @@ class TestUserMapperRoundTrip:
     def test_none_aggregate_raises_value_error(self) -> None:
         """
         For None aggregate input, to_dto SHALL raise ValueError.
-        **Validates: Requirements 3.5**
+        **Validates: Requirements 4.1**
         """
         mapper = UserMapper()
         
@@ -204,7 +205,7 @@ class TestUserMapperRoundTrip:
     def test_none_dto_raises_value_error(self) -> None:
         """
         For None DTO input, to_entity SHALL raise ValueError.
-        **Validates: Requirements 3.5**
+        **Validates: Requirements 4.2**
         """
         mapper = UserMapper()
         
@@ -214,7 +215,7 @@ class TestUserMapperRoundTrip:
     def test_wrong_type_aggregate_raises_type_error(self) -> None:
         """
         For wrong type aggregate input, to_dto SHALL raise TypeError.
-        **Validates: Requirements 3.5**
+        **Validates: Requirements 4.1**
         """
         mapper = UserMapper()
         
@@ -224,7 +225,7 @@ class TestUserMapperRoundTrip:
     def test_wrong_type_dto_raises_type_error(self) -> None:
         """
         For wrong type DTO input, to_entity SHALL raise TypeError.
-        **Validates: Requirements 3.5**
+        **Validates: Requirements 4.2**
         """
         mapper = UserMapper()
         

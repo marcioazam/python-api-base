@@ -10,14 +10,14 @@ from hypothesis import given, settings, assume
 from hypothesis import strategies as st
 
 try:
-    from my_app.infrastructure.security.audit_log import (
+    from infrastructure.security.audit_log import (
         AuditEntry,
         AuditAction,
         AuditResult,
         AuditFilters,
         InMemoryAuditLogger,
     )
-    from my_app.shared.utils.ids import generate_ulid
+    from core.shared.utils.ids import generate_ulid
 except ImportError:
     pytest.skip("my_app modules not available", allow_module_level=True)
 

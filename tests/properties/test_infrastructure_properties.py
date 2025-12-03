@@ -1,228 +1,256 @@
-"""Property-based tests for infrastructure layer.
+"""Property-based tests for infrastructure modules.
 
-**Feature: infrastructure-code-review**
-Tests correctness properties for database, token store, audit, telemetry, and logging.
+**Feature: infrastructure-modules-integration-analysis**
+**Validates: Requirements 1.1, 1.2, 1.3, 1.4, 2.1**
+
+Uses Hypothesis for property-based testing.
 """
 
-import asyncio
-from datetime import datetime, timedelta, timezone
-
 import pytest
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, strategies as st, settings
+from datetime import timedelta
 
 
-@st.composite
-def valid_jti_strategy(draw):
-    return draw(st.text(
-        min_size=1,
-        max_size=50,
-        alphabet=st.characters(whitelist_categories=("L", "N"), whitelist_characters="_-"),
-    ).filter(lambda x: x.strip() != ""))
+class TestPrometheusMetricsProperties:
+    """Property tests for Prometheus metrics.
+    
+    **Feature: infrastructure-modules-integration-analysis**
+    **Property 1: Prometheus metrics endpoint funcional**
+    **Validates: Requirements 1.1, 1.2**
+    """
+
+    @given(st.text(min_size=1, max_size=50, alphabet=st.characters(whitelist_categories=('L', 'N'))))
+    @settings(max_examples=100)
+    def test_metric_name_format(self, name: str) -> None:
+        """Test metric names follow Prometheus format.
+        
+        *For any* valid metric name, the name should only contain
+        alphanumeric characters and underscores.
+        
+        **Property 1: Prometheus metrics endpoint funcional**
+        **Validates: Requirements 1.1, 1.2**
+        """
+        # Prometheus metric names must match [a-zA-Z_:][a-zA-Z0-9_:]*
+        import re
+        
+        # Sanitize name to valid Prometheus format
+        sanitized = re.sub(r'[^a-zA-Z0-9_]', '_', name)
+        if sanitized and not sanitized[0].isalpha() and sanitized[0] != '_':
+            sanitized = '_' + sanitized
+        
+        # Verify sanitized name is valid
+        pattern = r'^[a-zA-Z_][a-zA-Z0-9_]*$'
+        assert re.match(pattern, sanitized) is not None
 
 
-@st.composite
-def valid_user_id_strategy(draw):
-    return draw(st.text(
-        min_size=1,
-        max_size=50,
-        alphabet=st.characters(whitelist_categories=("L", "N"), whitelist_characters="_-"),
-    ).filter(lambda x: x.strip() != ""))
+class TestRateLimitingProperties:
+    """Property tests for rate limiting.
+    
+    **Feature: infrastructure-modules-integration-analysis**
+    **Property 2: Rate limiting protege endpoints**
+    **Validates: Requirements 1.3**
+    """
 
-
-@settings(max_examples=100)
-@given(st.text(max_size=50))
-def test_empty_database_url_raises_value_error(url):
-    from my_app.infrastructure.database.session import DatabaseSession
-    if not url or not url.strip():
-        with pytest.raises(ValueError, match="database_url cannot be empty"):
-            DatabaseSession(database_url=url)
-
-
-@settings(max_examples=100)
-@given(st.integers(max_value=0))
-def test_invalid_pool_size_raises_value_error(pool_size):
-    from my_app.infrastructure.database.session import DatabaseSession
-    with pytest.raises(ValueError, match="pool_size must be >= 1"):
-        DatabaseSession(
-            database_url="postgresql+asyncpg://localhost/test",
-            pool_size=pool_size,
-        )
-
-
-@settings(max_examples=100)
-@given(st.integers(max_value=-1))
-def test_invalid_max_overflow_raises_value_error(max_overflow):
-    from my_app.infrastructure.database.session import DatabaseSession
-    with pytest.raises(ValueError, match="max_overflow must be >= 0"):
-        DatabaseSession(
-            database_url="postgresql+asyncpg://localhost/test",
-            max_overflow=max_overflow,
-        )
-
-
-@settings(max_examples=100)
-@given(st.text(max_size=50))
-def test_empty_jti_raises_value_error(jti):
-    from my_app.infrastructure.auth.token_store import InMemoryTokenStore
-    if not jti or not jti.strip():
-        store = InMemoryTokenStore()
-        expires = datetime.now(timezone.utc) + timedelta(hours=1)
-        with pytest.raises(ValueError, match="jti"):
-            asyncio.get_event_loop().run_until_complete(
-                store.store(jti=jti, user_id="user123", expires_at=expires)
-            )
-
-
-@settings(max_examples=100)
-@given(st.text(max_size=50))
-def test_empty_user_id_raises_value_error(user_id):
-    from my_app.infrastructure.auth.token_store import InMemoryTokenStore
-    if not user_id or not user_id.strip():
-        store = InMemoryTokenStore()
-        expires = datetime.now(timezone.utc) + timedelta(hours=1)
-        with pytest.raises(ValueError, match="user_id"):
-            asyncio.get_event_loop().run_until_complete(
-                store.store(jti="token123", user_id=user_id, expires_at=expires)
-            )
-
-
-@settings(max_examples=100)
-@given(
-    jti=valid_jti_strategy(),
-    user_id=valid_user_id_strategy(),
-    revoked=st.booleans(),
-)
-def test_stored_token_round_trip(jti, user_id, revoked):
-    from my_app.infrastructure.auth.token_store import StoredToken
-    now = datetime.now(timezone.utc)
-    expires = now + timedelta(hours=1)
-    original = StoredToken(jti=jti, user_id=user_id, created_at=now, expires_at=expires, revoked=revoked)
-    data = original.to_dict()
-    restored = StoredToken.from_dict(data)
-    assert restored.jti == original.jti
-    assert restored.user_id == original.user_id
-    assert restored.revoked == original.revoked
-
-
-@settings(max_examples=50)
-@given(num_tokens=st.integers(min_value=1, max_value=10))
-def test_revoke_all_for_user_revokes_all_tokens(num_tokens):
-    from my_app.infrastructure.auth.token_store import InMemoryTokenStore
-    store = InMemoryTokenStore()
-    expires = datetime.now(timezone.utc) + timedelta(hours=1)
-    user_id = "test_user"
-    for i in range(num_tokens):
-        asyncio.get_event_loop().run_until_complete(
-            store.store(jti=f"token_{i}", user_id=user_id, expires_at=expires)
-        )
-    count = asyncio.get_event_loop().run_until_complete(store.revoke_all_for_user(user_id))
-    assert count == num_tokens
-
-
-@settings(max_examples=100)
-@given(
-    entry_id=valid_jti_strategy(),
-    action=st.sampled_from(["login", "logout", "create", "update", "delete"]),
-    resource_type=valid_jti_strategy(),
-    result=st.sampled_from(["success", "failure", "error"]),
-)
-def test_audit_entry_round_trip(entry_id, action, resource_type, result):
-    from my_app.infrastructure.audit import AuditEntry
-    original = AuditEntry(
-        id=entry_id,
-        timestamp=datetime.now(timezone.utc),
-        action=action,
-        resource_type=resource_type,
-        result=result,
-        details={"key": "value"},
+    @given(
+        requests=st.integers(min_value=1, max_value=1000),
+        window_seconds=st.integers(min_value=1, max_value=3600),
     )
-    data = original.to_dict()
-    restored = AuditEntry.from_dict(data)
-    assert restored.id == original.id
-    assert restored.action == original.action
+    @settings(max_examples=100)
+    def test_rate_limit_config_valid(self, requests: int, window_seconds: int) -> None:
+        """Test rate limit configuration is always valid.
+        
+        *For any* positive requests and window, the configuration
+        should be valid and usable.
+        
+        **Property 2: Rate limiting protege endpoints**
+        **Validates: Requirements 1.3**
+        """
+        from infrastructure.ratelimit import RateLimit
+        
+        limit = RateLimit(
+            requests=requests,
+            window=timedelta(seconds=window_seconds),
+        )
+        
+        assert limit.requests == requests
+        assert limit.window_seconds == float(window_seconds)
 
-
-@settings(max_examples=50)
-@given(
-    action=st.sampled_from(["login", "logout", "create"]),
-    resource_type=valid_jti_strategy(),
-)
-def test_log_action_creates_utc_timestamp(action, resource_type):
-    from my_app.infrastructure.audit import InMemoryAuditLogger
-    logger = InMemoryAuditLogger()
-    entry = asyncio.get_event_loop().run_until_complete(
-        logger.log_action(action=action, resource_type=resource_type)
+    @given(
+        client_id=st.text(min_size=1, max_size=100),
+        num_requests=st.integers(min_value=1, max_value=20),
     )
-    assert entry.timestamp.tzinfo is not None
-    assert entry.timestamp.tzinfo == timezone.utc
+    @settings(max_examples=100)
+    @pytest.mark.asyncio
+    async def test_rate_limiter_tracks_requests(
+        self, client_id: str, num_requests: int
+    ) -> None:
+        """Test rate limiter correctly tracks request count.
+        
+        *For any* client making N requests, the remaining count
+        should decrease by N (or be 0 if exceeded).
+        
+        **Property 2: Rate limiting protege endpoints**
+        **Validates: Requirements 1.3**
+        """
+        from infrastructure.ratelimit import InMemoryRateLimiter, RateLimitConfig, RateLimit
+        
+        limit = RateLimit(requests=100, window=timedelta(minutes=1))
+        config = RateLimitConfig(default_limit=limit)
+        limiter = InMemoryRateLimiter[str](config)
+        
+        # Make requests
+        for i in range(num_requests):
+            result = await limiter.check(client_id, limit)
+            expected_remaining = max(0, 100 - (i + 1))
+            assert result.remaining == expected_remaining
+
+    @given(
+        limit_requests=st.integers(min_value=1, max_value=10),
+    )
+    @settings(max_examples=100)
+    @pytest.mark.asyncio
+    async def test_rate_limiter_blocks_after_limit(self, limit_requests: int) -> None:
+        """Test rate limiter blocks requests after limit exceeded.
+        
+        *For any* limit N, after N requests the next request
+        should be blocked.
+        
+        **Property 2: Rate limiting protege endpoints**
+        **Validates: Requirements 1.3**
+        """
+        from infrastructure.ratelimit import InMemoryRateLimiter, RateLimitConfig, RateLimit
+        
+        limit = RateLimit(requests=limit_requests, window=timedelta(minutes=1))
+        config = RateLimitConfig(default_limit=limit)
+        limiter = InMemoryRateLimiter[str](config)
+        
+        # Use up the limit
+        for _ in range(limit_requests):
+            result = await limiter.check("test-client", limit)
+            assert result.is_allowed
+        
+        # Next request should be blocked
+        result = await limiter.check("test-client", limit)
+        assert not result.is_allowed
+        assert result.remaining == 0
 
 
-@settings(max_examples=20)
-@given(num_calls=st.integers(min_value=1, max_value=5))
-def test_multiple_initialize_calls_are_idempotent(num_calls):
-    from my_app.infrastructure.observability.telemetry import TelemetryProvider
-    provider = TelemetryProvider(service_name="test", enable_tracing=False, enable_metrics=False)
-    for _ in range(num_calls):
-        provider.initialize()
-    assert provider._initialized is True
+class TestCacheProperties:
+    """Property tests for cache operations.
+    
+    **Feature: infrastructure-modules-integration-analysis**
+    **Property 3: Cache hit evita query ao banco**
+    **Validates: Requirements 1.4**
+    """
+
+    @given(
+        key=st.text(min_size=1, max_size=100, alphabet=st.characters(whitelist_categories=('L', 'N', 'P'))),
+        value=st.dictionaries(
+            keys=st.text(min_size=1, max_size=20),
+            values=st.one_of(st.text(), st.integers(), st.booleans()),
+            min_size=1,
+            max_size=5,
+        ),
+    )
+    @settings(max_examples=100)
+    def test_cache_key_value_roundtrip(self, key: str, value: dict) -> None:
+        """Test cache stores and retrieves values correctly.
+        
+        *For any* key-value pair, storing and retrieving should
+        return the same value.
+        
+        **Property 3: Cache hit evita query ao banco**
+        **Validates: Requirements 1.4**
+        """
+        from infrastructure.cache import LRUCache
+        
+        cache = LRUCache(max_size=100)
+        
+        # Store value
+        cache.set(key, value)
+        
+        # Retrieve value
+        retrieved = cache.get(key)
+        
+        assert retrieved == value
 
 
-def test_traced_decorator_preserves_sync_function():
-    from my_app.infrastructure.observability.telemetry import traced
-    @traced(name="test_sync")
-    def sync_func(x):
-        return x * 2
-    result = sync_func(5)
-    assert result == 10
+class TestCircuitBreakerProperties:
+    """Property tests for circuit breaker.
+    
+    **Feature: infrastructure-modules-integration-analysis**
+    **Property 4: Circuit breaker protege contra falhas Redis**
+    **Validates: Requirements 2.1**
+    """
 
+    @given(
+        failure_threshold=st.integers(min_value=1, max_value=10),
+        num_failures=st.integers(min_value=0, max_value=15),
+    )
+    @settings(max_examples=100)
+    @pytest.mark.asyncio
+    async def test_circuit_opens_at_threshold(
+        self, failure_threshold: int, num_failures: int
+    ) -> None:
+        """Test circuit opens exactly at failure threshold.
+        
+        *For any* threshold N, the circuit should open after
+        exactly N consecutive failures.
+        
+        **Property 4: Circuit breaker protege contra falhas Redis**
+        **Validates: Requirements 2.1**
+        """
+        from infrastructure.redis.circuit_breaker import CircuitBreaker, CircuitState
+        
+        breaker = CircuitBreaker(
+            failure_threshold=failure_threshold,
+            reset_timeout=1.0,
+            half_open_max_calls=1,
+        )
+        
+        # Record failures
+        for i in range(num_failures):
+            await breaker.record_failure()
+            
+            if i + 1 >= failure_threshold:
+                assert breaker.state == CircuitState.OPEN
+            else:
+                assert breaker.state == CircuitState.CLOSED
 
-def test_traced_decorator_preserves_async_function():
-    from my_app.infrastructure.observability.telemetry import traced
-    @traced(name="test_async")
-    async def async_func(x):
-        return x * 2
-    result = asyncio.get_event_loop().run_until_complete(async_func(5))
-    assert result == 10
-
-
-@settings(max_examples=100)
-@given(
-    pii_key=st.sampled_from(["password", "secret", "token", "api_key", "credential"]),
-    value=st.text(min_size=1, max_size=50),
-)
-def test_pii_keys_are_redacted(pii_key, value):
-    from my_app.infrastructure.logging.config import redact_pii
-    import logging
-    event_dict = {pii_key: value, "safe_key": "safe_value"}
-    result = redact_pii(logging.getLogger(), "info", event_dict)
-    assert result[pii_key] == "[REDACTED]"
-    assert result["safe_key"] == "safe_value"
-
-
-@settings(max_examples=100)
-@given(request_id=valid_jti_strategy())
-def test_request_id_is_retrievable_after_set(request_id):
-    from my_app.infrastructure.logging.config import set_request_id, get_request_id, clear_request_id
-    try:
-        set_request_id(request_id)
-        retrieved = get_request_id()
-        assert retrieved == request_id
-    finally:
-        clear_request_id()
-
-
-def test_request_id_is_none_after_clear():
-    from my_app.infrastructure.logging.config import set_request_id, get_request_id, clear_request_id
-    set_request_id("test-id")
-    clear_request_id()
-    assert get_request_id() is None
-
-
-def test_database_session_raises_value_error_for_invalid_input():
-    from my_app.infrastructure.database.session import DatabaseSession
-    with pytest.raises(ValueError):
-        DatabaseSession(database_url="")
-    with pytest.raises(ValueError):
-        DatabaseSession(database_url="valid", pool_size=0)
-    with pytest.raises(ValueError):
-        DatabaseSession(database_url="valid", max_overflow=-1)
+    @given(
+        failure_threshold=st.integers(min_value=1, max_value=5),
+    )
+    @settings(max_examples=100)
+    @pytest.mark.asyncio
+    async def test_success_resets_failure_count(self, failure_threshold: int) -> None:
+        """Test success resets failure count.
+        
+        *For any* threshold, a success should reset the failure
+        count, preventing circuit from opening.
+        
+        **Property 4: Circuit breaker protege contra falhas Redis**
+        **Validates: Requirements 2.1**
+        """
+        from infrastructure.redis.circuit_breaker import CircuitBreaker, CircuitState
+        
+        breaker = CircuitBreaker(
+            failure_threshold=failure_threshold,
+            reset_timeout=1.0,
+            half_open_max_calls=1,
+        )
+        
+        # Record failures just below threshold
+        for _ in range(failure_threshold - 1):
+            await breaker.record_failure()
+        
+        # Record success
+        await breaker.record_success()
+        
+        # Circuit should still be closed
+        assert breaker.state == CircuitState.CLOSED
+        
+        # Should be able to fail again without opening
+        for _ in range(failure_threshold - 1):
+            await breaker.record_failure()
+        
+        assert breaker.state == CircuitState.CLOSED

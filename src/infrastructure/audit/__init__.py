@@ -4,34 +4,35 @@
 **Validates: Requirements 22.1-22.5**
 """
 
-from .trail import (
-    AuditAction,
-    AuditExporter,
+from infrastructure.audit.trail import AuditAction, AuditRecord, compute_changes
+from infrastructure.audit.storage import AuditStore, InMemoryAuditStore
+from infrastructure.audit.filters import (
     AuditQuery,
     AuditQueryFilters,
-    AuditRecord,
-    AuditStore,
-    compute_changes,
-    CsvAuditExporter,
-    CsvExportConfig,
+    AuditExporter,
     ExportFormat,
-    InMemoryAuditStore,
     JsonAuditExporter,
     JsonExportConfig,
+    CsvAuditExporter,
+    CsvExportConfig,
 )
 
 __all__ = [
+    # Core
     "AuditAction",
-    "AuditExporter",
+    "AuditRecord",
+    "compute_changes",
+    # Storage
+    "AuditStore",
+    "InMemoryAuditStore",
+    # Query and Filters
     "AuditQuery",
     "AuditQueryFilters",
-    "AuditRecord",
-    "AuditStore",
-    "compute_changes",
-    "CsvAuditExporter",
-    "CsvExportConfig",
+    # Export
+    "AuditExporter",
     "ExportFormat",
-    "InMemoryAuditStore",
     "JsonAuditExporter",
     "JsonExportConfig",
+    "CsvAuditExporter",
+    "CsvExportConfig",
 ]

@@ -16,8 +16,8 @@ from sqlalchemy import select, and_, false
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from domain.examples.item_example import ItemExample, ItemExampleStatus, Money
-from domain.examples.pedido_example import (
+from domain.examples.item.entity import ItemExample, ItemExampleStatus, Money
+from domain.examples.pedido.entity import (
     PedidoExample,
     PedidoItemExample,
     PedidoStatus,
@@ -56,7 +56,7 @@ class ItemExampleRepository:
             status=ItemExampleStatus(model.status),
             category=model.category,
             tags=model.tags or [],
-            metadata=model.metadata or {},
+            metadata=model.extra_data or {},
             created_by=model.created_by,
             updated_by=model.updated_by,
         )
@@ -79,7 +79,7 @@ class ItemExampleRepository:
             status=entity.status.value,
             category=entity.category,
             tags=entity.tags,
-            metadata=entity.metadata,
+            extra_data=entity.metadata,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
             created_by=entity.created_by,
@@ -137,7 +137,7 @@ class ItemExampleRepository:
             model.status = entity.status.value
             model.category = entity.category
             model.tags = entity.tags
-            model.metadata = entity.metadata
+            model.extra_data = entity.metadata
             model.updated_at = entity.updated_at
             model.updated_by = entity.updated_by
             model.is_deleted = entity.is_deleted
@@ -170,7 +170,7 @@ class ItemExampleRepository:
         status: str | None = None,
     ) -> list[ItemExample]:
         """Get all items with pagination and filtering."""
-        conditions = [ItemExampleModel.is_deleted == False]
+        conditions = [ItemExampleModel.is_deleted.is_(false())]
 
         if category:
             conditions.append(ItemExampleModel.category == category)
@@ -214,7 +214,7 @@ class PedidoExampleRepository:
             shipping_address=model.shipping_address,
             notes=model.notes,
             tenant_id=model.tenant_id,
-            metadata=model.metadata or {},
+            metadata=model.extra_data or {},
             created_by=model.created_by,
             updated_by=model.updated_by,
         )
@@ -250,7 +250,7 @@ class PedidoExampleRepository:
             shipping_address=entity.shipping_address,
             notes=entity.notes,
             tenant_id=entity.tenant_id,
-            metadata=entity.metadata,
+            extra_data=entity.metadata,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
             created_by=entity.created_by,
@@ -282,7 +282,7 @@ class PedidoExampleRepository:
             .where(
                 and_(
                     PedidoExampleModel.id == pedido_id,
-                    PedidoExampleModel.is_deleted == False,
+                    PedidoExampleModel.is_deleted.is_(false()),
                 )
             )
             .options(selectinload(PedidoExampleModel.items))
@@ -316,7 +316,7 @@ class PedidoExampleRepository:
             model.status = entity.status.value
             model.shipping_address = entity.shipping_address
             model.notes = entity.notes
-            model.metadata = entity.metadata
+            model.extra_data = entity.metadata
             model.updated_at = entity.updated_at
             model.updated_by = entity.updated_by
             model.is_deleted = entity.is_deleted
@@ -354,7 +354,7 @@ class PedidoExampleRepository:
         tenant_id: str | None = None,
     ) -> list[PedidoExample]:
         """Get all orders with pagination and filtering."""
-        conditions = [PedidoExampleModel.is_deleted == False]
+        conditions = [PedidoExampleModel.is_deleted.is_(false())]
 
         if customer_id:
             conditions.append(PedidoExampleModel.customer_id == customer_id)

@@ -1,4 +1,4 @@
-"""Get user query and handler.
+"""Get user queries and handlers.
 
 **Feature: architecture-restructuring-2025**
 **Validates: Requirements 3.2**
@@ -7,10 +7,10 @@
 from dataclasses import dataclass
 from typing import Any
 
-from core.base.query import BaseQuery
-from core.base.result import Result, Ok, Err
+from core.base.cqrs.query import BaseQuery
+from core.base.patterns.result import Result, Ok, Err
 from application.common.cqrs.handlers import QueryHandler
-from domain.users.repositories import IUserRepository
+from domain.users.repositories import IUserRepository, IUserReadRepository
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -67,5 +67,39 @@ class GetUserByEmailHandler(QueryHandler[GetUserByEmailQuery, dict[str, Any] | N
             if user is None:
                 return Ok(None)
             return Ok(user.model_dump())
+        except Exception as e:
+            return Err(e)
+
+
+@dataclass(frozen=True, kw_only=True)
+class ListUsersQuery(BaseQuery[list[dict[str, Any]]]):
+    """Query to list users with pagination."""
+
+    page: int = 1
+    page_size: int = 20
+    include_inactive: bool = False
+
+    def get_cache_key(self) -> str:
+        return f"users:list:{self.page}:{self.page_size}:{self.include_inactive}"
+
+
+class ListUsersHandler(QueryHandler[ListUsersQuery, list[dict[str, Any]]]):
+    """Handler for ListUsersQuery."""
+
+    def __init__(self, read_repository: IUserReadRepository) -> None:
+        self._read_repository = read_repository
+
+    async def handle(
+        self, query: ListUsersQuery
+    ) -> Result[list[dict[str, Any]], Exception]:
+        """Handle list users query."""
+        try:
+            offset = (query.page - 1) * query.page_size
+            users = await self._read_repository.list_all(
+                limit=query.page_size,
+                offset=offset,
+                include_inactive=query.include_inactive,
+            )
+            return Ok(users)
         except Exception as e:
             return Err(e)

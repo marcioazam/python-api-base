@@ -46,7 +46,6 @@ REFACTORED_PACKAGES_PHASE2: list[str] = [
     "src/my_app/infrastructure/auth/token_store",
     "src/my_app/infrastructure/observability/telemetry",
     # Adapters
-    "src/my_app/adapters/api/websocket/types",
     "src/my_app/adapters/api/routes/auth",
 ]
 
@@ -75,7 +74,6 @@ REFACTORED_MODULES_PHASE2: list[str] = [
     "my_app.shared.graphql_federation",
     "my_app.infrastructure.auth.token_store",
     "my_app.infrastructure.observability.telemetry",
-    "my_app.adapters.api.websocket.types",
     "my_app.adapters.api.routes.auth",
 ]
 

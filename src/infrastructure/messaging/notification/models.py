@@ -9,7 +9,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Protocol
 
-from core.base.result import Result
+from core.base.patterns.result import Result
 
 
 class NotificationStatus(Enum):

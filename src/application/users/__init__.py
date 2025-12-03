@@ -25,7 +25,7 @@ from .queries import (
     GetUserByIdHandler,
     GetUserByEmailHandler,
 )
-from .mappers import UserMapper
+from .commands.mapper import UserMapper
 from .read_model import UserReadDTO, UserListReadDTO, UserSearchResultDTO
 from .read_model.projections import UserProjectionHandler, UserReadModelProjector
 

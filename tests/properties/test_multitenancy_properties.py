@@ -7,7 +7,7 @@
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_app.application.multitenancy import (
+from application.services.multitenancy import (
     TenantContext,
     get_current_tenant,
     set_current_tenant,

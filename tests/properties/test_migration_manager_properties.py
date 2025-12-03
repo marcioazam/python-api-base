@@ -8,7 +8,7 @@ import pytest
 from hypothesis import given, strategies as st, settings
 from datetime import datetime
 
-from my_app.infrastructure.db.migration_manager import (
+from infrastructure.db.migration_manager import (
     Migration,
     MigrationManager,
     MigrationStatus,

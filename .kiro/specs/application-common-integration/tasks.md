@@ -1,0 +1,201 @@
+# Implementation Plan
+
+- [x] 1. Unify Error Handling
+  - [x] 1.1 Refactor shared errors to use common exceptions
+    - Update `src/application/examples/shared/errors.py` to extend from `application.common.base.exceptions`
+    - Ensure backward compatibility with existing code
+    - _Requirements: 1.1, 1.2, 1.3_
+  - [x] 1.2 Write property test for error hierarchy
+    - **Property 1: Error Hierarchy Consistency**
+    - **Validates: Requirements 1.1**
+  - [x] 1.3 Write property test for NotFoundError details
+    - **Property 2: NotFoundError Contains Entity Information**
+    - **Validates: Requirements 1.2**
+  - [x] 1.4 Write property test for ValidationError field errors
+    - **Property 3: ValidationError Contains Field Errors**
+    - **Validates: Requirements 1.3**
+
+- [x] 2. Implement ItemExample CQRS Commands
+  - [x] 2.1 Create ItemExample command definitions
+    - Create `src/application/examples/item/commands.py`
+    - Define CreateItemCommand, UpdateItemCommand, DeleteItemCommand
+    - Use dataclass with frozen=True for immutability
+    - _Requirements: 2.1, 2.2, 2.3_
+  - [x] 2.2 Create ItemExample command handlers
+    - Create `src/application/examples/item/handlers.py`
+    - Implement CreateItemCommandHandler extending CommandHandler
+    - Implement UpdateItemCommandHandler extending CommandHandler
+    - Implement DeleteItemCommandHandler extending CommandHandler
+    - Use Result pattern for error handling
+    - _Requirements: 2.1, 2.2, 2.3_
+  - [x] 2.3 Write property test for command dispatch
+    - **Property 4: Command Dispatch Invokes Handler**
+    - **Validates: Requirements 2.1, 2.2, 2.3**
+
+- [x] 3. Implement ItemExample CQRS Queries
+  - [x] 3.1 Create ItemExample query definitions
+    - Create `src/application/examples/item/queries.py`
+    - Define GetItemQuery, ListItemsQuery
+    - Include pagination parameters in ListItemsQuery
+    - _Requirements: 2.4, 2.5_
+  - [x] 3.2 Write property test for query dispatch
+    - **Property 5: Query Dispatch Returns Handler Result**
+    - **Validates: Requirements 2.4, 2.5**
+
+- [x] 4. Implement PedidoExample CQRS Commands
+  - [x] 4.1 Create PedidoExample command definitions
+    - Create `src/application/examples/pedido/commands.py`
+    - Define CreatePedidoCommand, AddItemToPedidoCommand, ConfirmPedidoCommand, CancelPedidoCommand
+    - _Requirements: 3.1, 3.2, 3.3, 3.4_
+  - [x] 4.2 Create PedidoExample command handlers
+    - Create `src/application/examples/pedido/handlers.py`
+    - Implement handlers for all pedido commands
+    - Handle cross-entity validation (item availability)
+    - _Requirements: 3.1, 3.2, 3.3, 3.4_
+
+- [x] 5. Implement PedidoExample CQRS Queries
+  - [x] 5.1 Create PedidoExample query definitions and handlers
+    - Create `src/application/examples/pedido/queries.py`
+    - Define GetPedidoQuery, ListPedidosQuery
+    - Implement query handlers
+    - _Requirements: 3.5, 3.6_
+
+- [x] 6. Checkpoint - Verify CQRS Implementation
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 7. Refactor Mappers to Implement IMapper
+  - [x] 7.1 Update ItemExampleMapper to implement IMapper
+    - Modify `src/application/examples/item/mapper.py`
+    - Implement IMapper[ItemExample, ItemExampleResponse]
+    - Add to_entity method for import scenarios
+    - _Requirements: 4.1, 4.3_
+  - [x] 7.2 Update PedidoExampleMapper to implement IMapper
+    - Modify `src/application/examples/pedido/mapper.py`
+    - Implement IMapper[PedidoExample, PedidoExampleResponse]
+    - _Requirements: 4.2, 4.3_
+  - [x] 7.3 Write property test for mapper round-trip
+    - **Property 7: Mapper Round-Trip Preserves Data**
+    - **Validates: Requirements 4.1, 4.2**
+  - [x] 7.4 Write property test for batch mapping
+    - **Property 8: Batch Mapping Preserves Count**
+    - **Validates: Requirements 4.3**
+
+- [x] 8. Configure Middleware Pipeline
+  - [x] 8.1 Create examples CQRS bootstrap module
+    - Create `src/infrastructure/di/examples_bootstrap.py`
+    - Configure CommandBus with LoggingMiddleware
+    - Configure RetryMiddleware with exponential backoff
+    - Configure CircuitBreakerMiddleware
+    - Register all command handlers
+    - _Requirements: 5.1, 5.2, 5.3, 5.5_
+  - [x] 8.2 Create validation rules for commands
+    - Add validators for CreateItemCommand (required fields, SKU format)
+    - Add validators for CreatePedidoCommand (required fields, email format)
+    - Configure ValidationMiddleware with validators
+    - _Requirements: 5.4_
+  - [x] 8.3 Write property test for retry middleware
+    - **Property 9: Retry Middleware Retries Transient Failures**
+    - **Validates: Requirements 5.2**
+  - [x] 8.4 Write property test for circuit breaker
+    - **Property 10: Circuit Breaker Opens After Threshold**
+    - **Validates: Requirements 5.3**
+  - [x] 8.5 Write property test for validation middleware
+    - **Property 11: Validation Middleware Rejects Invalid Commands**
+    - **Validates: Requirements 5.4**
+
+- [x] 9. Checkpoint - Verify Middleware Integration
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 10. Integrate Event Publishing
+  - [x] 10.1 Configure EventBus in bootstrap
+    - Add TypedEventBus to DI container
+    - Subscribe event handlers for logging/auditing
+    - Wire EventBus to command handlers
+    - _Requirements: 2.6_
+  - [x] 10.2 Write property test for event publishing
+    - **Property 6: Successful Command Publishes Events**
+    - **Validates: Requirements 2.6**
+
+- [x] 11. Implement Batch Operations for ItemExample
+  - [x] 11.1 Create ItemExample batch repository
+    - Create `src/application/examples/item/batch.py`
+    - Implement batch create, update, delete using BatchRepository
+    - Add progress tracking callback support
+    - _Requirements: 6.1, 6.2, 6.3, 6.4_
+  - [x] 11.2 Write property test for batch operations
+    - **Property 12: Batch Operations Process All Items**
+    - **Validates: Requirements 6.5**
+
+- [x] 12. Implement Data Export/Import for ItemExample
+  - [x] 12.1 Create ItemExample export service
+    - Create `src/application/examples/item/export.py`
+    - Implement DataSerializer for ItemExample
+    - Support JSON, CSV, JSONL formats
+    - _Requirements: 7.1, 7.2, 7.3_
+  - [x] 12.2 Create ItemExample import service
+    - Implement import for all supported formats
+    - Return ImportResult with counts
+    - _Requirements: 7.4_
+  - [x] 12.3 Write property test for export-import round trip
+    - **Property 13: Export-Import Round Trip**
+    - **Validates: Requirements 7.1, 7.2, 7.3, 7.4**
+  - [x] 12.4 Write property test for checksum integrity
+    - **Property 14: Export Checksum Integrity**
+    - **Validates: Requirements 7.5**
+
+- [x] 13. Refactor API Router with DI
+  - [x] 13.1 Update examples router to use CQRS
+    - Modify `src/interface/v1/examples/router.py`
+    - Inject CommandBus and QueryBus via dependencies
+    - Replace direct use case calls with command/query dispatch
+    - _Requirements: 8.1_
+  - [x] 13.2 Update response handling
+    - Ensure all responses use ApiResponse/PaginatedResponse
+    - Implement ProblemDetail error responses
+    - _Requirements: 8.2, 8.3_
+  - [x] 13.3 Add batch and export endpoints
+    - POST /items/batch - bulk create
+    - DELETE /items/batch - bulk delete
+    - GET /items/export?format=json|csv|jsonl
+    - POST /items/import
+    - _Requirements: 6.1, 7.1_
+  - [x] 13.4 Write property test for API response wrapper
+    - **Property 15: API Response Wrapper Consistency**
+    - **Validates: Requirements 8.2**
+  - [x] 13.5 Write property test for pagination
+    - **Property 16: Pagination Metadata Correctness**
+    - **Validates: Requirements 8.4**
+
+- [x] 14. Update DI Container
+  - [x] 14.1 Register example components in container
+    - Update `src/infrastructure/di/app_container.py`
+    - Add example CommandBus and QueryBus providers
+    - Add example repository providers
+    - _Requirements: 8.1_
+  - [x] 14.2 Update dependencies module
+    - Update `src/interface/dependencies.py`
+    - Add dependencies for example CQRS buses
+    - _Requirements: 8.1_
+
+- [x] 15. Checkpoint - Verify Full Integration
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 16. Create Integration Tests
+  - [x] 16.1 Create ItemExample API integration tests
+    - Create `tests/integration/examples/test_item_api.py`
+    - Test full CRUD cycle through API
+    - Test error responses
+    - _Requirements: 9.3_
+  - [x] 16.2 Create PedidoExample API integration tests
+    - Create `tests/integration/examples/test_pedido_api.py`
+    - Test order lifecycle (create, add items, confirm, cancel)
+    - _Requirements: 9.3_
+
+- [x] 17. Update Module Exports
+  - [x] 17.1 Update example module __init__ files
+    - Export new commands, queries, handlers
+    - Ensure backward compatibility
+    - _Requirements: 8.1_
+
+- [x] 18. Final Checkpoint - Complete Verification
+  - Ensure all tests pass, ask the user if questions arise.

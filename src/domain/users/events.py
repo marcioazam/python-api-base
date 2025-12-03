@@ -7,7 +7,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from core.base.domain_event import DomainEvent
+from core.base.events.domain_event import DomainEvent
 
 try:
     from core.shared.utils.time import utc_now

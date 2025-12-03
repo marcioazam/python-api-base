@@ -7,7 +7,7 @@
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_app.infrastructure.db.saga import (
+from infrastructure.db.saga import (
     Saga,
     SagaBuilder,
     SagaContext,
@@ -645,7 +645,7 @@ class TestSagaBackwardCompatibility:
         **Feature: code-review-refactoring, Property 1: Backward Compatibility**
         **Validates: Requirements 1.2, 1.4**
         """
-        from my_app.infrastructure.db.saga import (
+        from infrastructure.db.saga import (
             CompensationAction,
             Saga,
             SagaBuilder,
@@ -677,7 +677,7 @@ class TestSagaBackwardCompatibility:
         **Feature: code-review-refactoring, Property 1: Backward Compatibility**
         **Validates: Requirements 1.2, 1.4**
         """
-        from my_app.infrastructure.db.saga import SagaContext
+        from infrastructure.db.saga import SagaContext
 
         ctx = SagaContext(saga_id="test", data={"initial": "data"})
 

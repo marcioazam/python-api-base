@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 
 from pydantic import BaseModel
 
-from infrastructure.httpclient.client import (
+from infrastructure.httpclient import (
     HttpClient,
     HttpClientConfig,
     HttpError,

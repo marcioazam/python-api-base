@@ -19,7 +19,7 @@ class TestEntityTimestampsTimezoneAware:
 
     def test_audit_log_timestamp_is_timezone_aware(self) -> None:
         """AuditLogDB timestamp field has UTC timezone."""
-        from my_app.domain.entities.audit_log import AuditLogDB
+        from domain.entities.audit_log import AuditLogDB
 
         audit_log = AuditLogDB(
             action="test_action",
@@ -34,7 +34,7 @@ class TestEntityTimestampsTimezoneAware:
 
     def test_item_timestamps_are_timezone_aware(self) -> None:
         """Item timestamp fields have UTC timezone."""
-        from my_app.domain.entities.item import Item
+        from domain.entities.item import Item
 
         item = Item(
             name="Test Item",
@@ -48,7 +48,7 @@ class TestEntityTimestampsTimezoneAware:
 
     def test_role_timestamps_are_timezone_aware(self) -> None:
         """RoleDB timestamp fields have UTC timezone."""
-        from my_app.domain.entities.role import RoleDB
+        from domain.entities.role import RoleDB
 
         role = RoleDB(name="test_role")
 
@@ -59,7 +59,7 @@ class TestEntityTimestampsTimezoneAware:
 
     def test_user_role_timestamp_is_timezone_aware(self) -> None:
         """UserRoleDB assigned_at field has UTC timezone."""
-        from my_app.domain.entities.role import UserRoleDB
+        from domain.entities.role import UserRoleDB
 
         user_role = UserRoleDB(
             user_id="01HXYZ123456789ABCDEFGHIJK",
@@ -78,7 +78,7 @@ class TestEntityTimestampsTimezoneAware:
         self, name: str, price: float
     ) -> None:
         """Item datetime serialization includes timezone info."""
-        from my_app.domain.entities.item import Item
+        from domain.entities.item import Item
 
         item = Item(name=name, price=price)
         
@@ -111,7 +111,7 @@ class TestValueObjectEquality:
         self, amount: Decimal, currency: str
     ) -> None:
         """Two Money objects with same attributes are equal."""
-        from my_app.domain.value_objects.money import Money
+        from domain.value_objects.money import Money
 
         money1 = Money(amount, currency)
         money2 = Money(amount, currency)
@@ -141,7 +141,7 @@ class TestValueObjectEquality:
         self, amount1: Decimal, amount2: Decimal
     ) -> None:
         """Two Money objects with different amounts are not equal."""
-        from my_app.domain.value_objects.money import Money
+        from domain.value_objects.money import Money
 
         money1 = Money(amount1, "USD")
         money2 = Money(amount2, "USD")
@@ -160,7 +160,7 @@ class TestValueObjectEquality:
     @settings(max_examples=100)
     def test_money_inequality_different_currencies(self, amount: Decimal) -> None:
         """Two Money objects with different currencies are not equal."""
-        from my_app.domain.value_objects.money import Money
+        from domain.value_objects.money import Money
 
         money_usd = Money(amount, "USD")
         money_eur = Money(amount, "EUR")
@@ -173,7 +173,7 @@ class TestValueObjectEquality:
     @settings(max_examples=100)
     def test_entity_id_equality_by_value(self, ulid: str) -> None:
         """Two EntityId objects with same value are equal."""
-        from my_app.domain.value_objects.entity_id import EntityId
+        from domain.value_objects.entity_id import EntityId
 
         id1 = EntityId(ulid)
         id2 = EntityId(ulid)
@@ -187,7 +187,7 @@ class TestValueObjectEquality:
     @settings(max_examples=100)
     def test_entity_id_case_insensitive(self, ulid: str) -> None:
         """EntityId normalizes to uppercase for consistent equality."""
-        from my_app.domain.value_objects.entity_id import EntityId
+        from domain.value_objects.entity_id import EntityId
 
         id_upper = EntityId(ulid.upper())
         id_lower = EntityId(ulid.lower())
@@ -201,7 +201,7 @@ class TestValueObjectEquality:
     @settings(max_examples=100)
     def test_typed_ids_with_same_value_are_not_equal(self, ulid: str) -> None:
         """Different typed IDs with same value are not equal (type safety)."""
-        from my_app.domain.value_objects.entity_id import ItemId, RoleId, UserId
+        from domain.value_objects.entity_id import ItemId, RoleId, UserId
 
         item_id = ItemId(ulid)
         role_id = RoleId(ulid)
@@ -214,7 +214,7 @@ class TestValueObjectEquality:
 
     def test_entity_id_rejects_invalid_ulid(self) -> None:
         """EntityId rejects invalid ULID formats."""
-        from my_app.domain.value_objects.entity_id import EntityId
+        from domain.value_objects.entity_id import EntityId
 
         invalid_ulids = [
             "",  # Empty

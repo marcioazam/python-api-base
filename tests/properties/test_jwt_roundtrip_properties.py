@@ -10,7 +10,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 try:
-    from my_app.infrastructure.security.token_service import (
+    from infrastructure.security.token_service import (
         HS256Provider,
         InvalidKeyError,
     )

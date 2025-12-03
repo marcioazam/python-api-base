@@ -8,7 +8,7 @@ These errors are specific to the application layer (CQRS handlers, use cases).
 
 from typing import Any
 
-from core.errors.domain_errors import AppException, ErrorContext
+from core.errors.base.domain_errors import AppException, ErrorContext
 
 __all__ = [
     "ApplicationError",

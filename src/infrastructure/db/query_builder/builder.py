@@ -18,7 +18,7 @@ from infrastructure.db.query_builder.conditions import (
     SortClause,
     SortDirection,
 )
-from domain.common.specification import Specification
+from domain.common.specification.specification import Specification
 
 
 @dataclass(slots=True)

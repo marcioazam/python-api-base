@@ -1,229 +1,34 @@
 """Generic HTTP client with PEP 695 type parameters.
 
+Main client interface that composes error handling and resilience patterns.
+
 **Feature: enterprise-generics-2025**
 **Requirement: R9 - Generic HTTP Client with Resilience**
+**Refactored: 2025 - Split into modular components for maintainability**
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import dataclass, field
-from datetime import timedelta
-from enum import Enum
 from typing import Any
 
 import httpx
 from pydantic import BaseModel, ValidationError as PydanticValidationError
 
+from infrastructure.httpclient.errors import (
+    CircuitBreakerError,
+    HttpError,
+    TimeoutError,
+    ValidationError,
+)
+from infrastructure.httpclient.resilience import (
+    CircuitBreaker,
+    CircuitState,
+    HttpClientConfig,
+)
+
 logger = logging.getLogger(__name__)
-
-
-# =============================================================================
-# Error Types
-# =============================================================================
-
-
-class HttpError[TRequest](Exception):
-    """Base HTTP error with request context.
-
-    Type Parameters:
-        TRequest: Request type that caused the error.
-
-    **Requirement: R9.6 - Typed errors with request context**
-    """
-
-    def __init__(
-        self,
-        message: str,
-        request: TRequest | None = None,
-        status_code: int | None = None,
-        response_body: str | None = None,
-    ) -> None:
-        super().__init__(message)
-        self.request = request
-        self.status_code = status_code
-        self.response_body = response_body
-
-
-class TimeoutError[TRequest](HttpError[TRequest]):
-    """Timeout error with request context.
-
-    **Requirement: R9.6 - Typed TimeoutError[TRequest]**
-    """
-
-    def __init__(
-        self,
-        request: TRequest,
-        timeout: timedelta,
-    ) -> None:
-        super().__init__(
-            f"Request timed out after {timeout.total_seconds()}s",
-            request=request,
-        )
-        self.timeout = timeout
-
-
-class ValidationError[TResponse](Exception):
-    """Response validation error.
-
-    **Requirement: R9.3 - Typed ValidationError[TResponse]**
-    """
-
-    def __init__(
-        self,
-        message: str,
-        response_type: type[TResponse],
-        raw_response: dict[str, Any],
-        validation_errors: list[dict[str, Any]],
-    ) -> None:
-        super().__init__(message)
-        self.response_type = response_type
-        self.raw_response = raw_response
-        self.validation_errors = validation_errors
-
-
-class CircuitBreakerError[TRequest](HttpError[TRequest]):
-    """Circuit breaker is open error.
-
-    **Requirement: R9.4 - Circuit breaker integration**
-    """
-
-    pass
-
-
-# =============================================================================
-# Configuration
-# =============================================================================
-
-
-class CircuitState(Enum):
-    """Circuit breaker states."""
-
-    CLOSED = "closed"
-    OPEN = "open"
-    HALF_OPEN = "half_open"
-
-
-@dataclass(frozen=True, slots=True)
-class RetryPolicy[TRequest]:
-    """Retry policy configuration.
-
-    **Requirement: R9.5 - Typed RetryPolicy[TRequest]**
-
-    Type Parameters:
-        TRequest: Request type this policy applies to.
-    """
-
-    max_retries: int = 3
-    base_delay: timedelta = field(default_factory=lambda: timedelta(seconds=1))
-    max_delay: timedelta = field(default_factory=lambda: timedelta(seconds=30))
-    exponential_base: float = 2.0
-    retry_on_status: frozenset[int] = field(
-        default_factory=lambda: frozenset({429, 500, 502, 503, 504})
-    )
-
-    def get_delay(self, attempt: int) -> timedelta:
-        """Calculate delay for retry attempt.
-
-        Args:
-            attempt: Current attempt number (0-based).
-
-        Returns:
-            Delay before next retry.
-        """
-        delay_seconds = self.base_delay.total_seconds() * (
-            self.exponential_base**attempt
-        )
-        return timedelta(seconds=min(delay_seconds, self.max_delay.total_seconds()))
-
-
-@dataclass(frozen=True, slots=True)
-class CircuitBreakerConfig:
-    """Circuit breaker configuration."""
-
-    failure_threshold: int = 5
-    success_threshold: int = 3
-    timeout: timedelta = field(default_factory=lambda: timedelta(seconds=30))
-
-
-@dataclass
-class HttpClientConfig:
-    """HTTP client configuration.
-
-    **Requirement: R9 - Client configuration**
-    """
-
-    base_url: str = ""
-    timeout: timedelta = field(default_factory=lambda: timedelta(seconds=30))
-    retry_policy: RetryPolicy[Any] = field(default_factory=RetryPolicy)
-    circuit_breaker: CircuitBreakerConfig = field(default_factory=CircuitBreakerConfig)
-    headers: dict[str, str] = field(default_factory=dict)
-    verify_ssl: bool = True
-
-
-# =============================================================================
-# Circuit Breaker
-# =============================================================================
-
-
-class CircuitBreaker:
-    """Circuit breaker for HTTP client.
-
-    **Requirement: R9.4 - CircuitBreaker[TRequest, TResponse]**
-    """
-
-    def __init__(self, config: CircuitBreakerConfig) -> None:
-        self._config = config
-        self._state = CircuitState.CLOSED
-        self._failure_count = 0
-        self._success_count = 0
-        self._last_failure_time: float | None = None
-
-    @property
-    def state(self) -> CircuitState:
-        """Get current circuit state."""
-        return self._state
-
-    @property
-    def is_closed(self) -> bool:
-        """Check if circuit allows requests."""
-        if self._state == CircuitState.OPEN:
-            # Check if timeout has passed
-            if self._last_failure_time is not None:
-                import time
-
-                elapsed = time.time() - self._last_failure_time
-                if elapsed >= self._config.timeout.total_seconds():
-                    self._state = CircuitState.HALF_OPEN
-                    return True
-            return False
-        return True
-
-    def record_success(self) -> None:
-        """Record successful request."""
-        self._failure_count = 0
-        if self._state == CircuitState.HALF_OPEN:
-            self._success_count += 1
-            if self._success_count >= self._config.success_threshold:
-                self._state = CircuitState.CLOSED
-                self._success_count = 0
-
-    def record_failure(self) -> None:
-        """Record failed request."""
-        import time
-
-        self._failure_count += 1
-        self._last_failure_time = time.time()
-
-        if self._failure_count >= self._config.failure_threshold:
-            self._state = CircuitState.OPEN
-            self._success_count = 0
-
-
-# =============================================================================
-# Generic HTTP Client
-# =============================================================================
 
 
 class HttpClient[TRequest: BaseModel, TResponse: BaseModel]:

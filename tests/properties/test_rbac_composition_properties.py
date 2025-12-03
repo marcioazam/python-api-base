@@ -9,7 +9,7 @@ from hypothesis import given, settings, assume
 from hypothesis import strategies as st
 
 try:
-    from my_app.infrastructure.security.rbac import (
+    from infrastructure.security.rbac import (
         RBACService,
         RBACUser,
         Role,

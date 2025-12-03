@@ -38,14 +38,16 @@ from core.base.repository import (
 )
 
 # CQRS
-from core.base.command import BaseCommand
-from core.base.query import BaseQuery
+from core.base.cqrs import BaseCommand, BaseQuery
 
-# Result pattern
-from core.base.result import Result, Ok, Err, collect_results
-
-# Specification pattern
-from core.base.specification import (
+# Patterns
+from core.base.patterns import (
+    # Result
+    Result,
+    Ok,
+    Err,
+    collect_results,
+    # Specification
     Specification,
     AndSpecification,
     OrSpecification,
@@ -54,10 +56,7 @@ from core.base.specification import (
     FalseSpecification,
     PredicateSpecification,
     AttributeSpecification,
-)
-
-# Validation
-from core.base.validation import (
+    # Validation
     Validator,
     ValidationError,
     FieldError,
@@ -66,13 +65,12 @@ from core.base.validation import (
     PredicateValidator,
     RangeValidator,
     validate_all,
+    # UoW
+    UnitOfWork,
+    # Pagination
+    CursorPage,
+    CursorPagination,
 )
-
-# Unit of Work
-from core.base.uow import UnitOfWork
-
-# Pagination
-from core.base.pagination import CursorPage, CursorPagination
 
 __all__ = [
     # Domain

@@ -11,7 +11,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from my_app.shared.caching import (
+from core.shared.caching import (
     CacheConfig,
     CacheEntry,
     InMemoryCacheProvider,

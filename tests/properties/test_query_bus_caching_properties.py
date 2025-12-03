@@ -13,7 +13,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 try:
-    from my_app.application.common.bus import QueryBus, Query, HandlerNotFoundError
+    from application.common.bus import QueryBus, Query, HandlerNotFoundError
 except ImportError:
     pytest.skip("my_app.application.common.bus not available", allow_module_level=True)
 

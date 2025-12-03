@@ -25,8 +25,8 @@ from uuid import uuid4
 import pytest
 from hypothesis import given, settings, strategies as st, assume
 
-from core.base.result import Ok, Err, Result
-from core.base.validation import (
+from core.base.patterns.result import Ok, Err, Result
+from core.base.patterns.validation import (
     FieldError,
     ValidationError,
     Validator,
@@ -388,7 +388,7 @@ class TestRateLimitingEnforcement:
         self, max_requests: int, window_seconds: int
     ) -> None:
         """Rate limiter allows requests up to the limit."""
-        from infrastructure.security.sliding_window import (
+        from infrastructure.security.rate_limit.sliding_window import (
             SlidingWindowRateLimiter,
             SlidingWindowConfig,
         )
@@ -412,13 +412,13 @@ class TestRateLimitingEnforcement:
             # (sliding window may allow slightly more in edge cases)
             assert allowed_count >= max_requests
 
-        asyncio.get_event_loop().run_until_complete(run_test())
+        asyncio.run(run_test())
 
     @given(max_requests=st.integers(min_value=1, max_value=50))
     @settings(max_examples=30)
     def test_rate_limit_blocks_after_limit(self, max_requests: int) -> None:
         """Rate limiter blocks requests after limit exceeded."""
-        from infrastructure.security.sliding_window import (
+        from infrastructure.security.rate_limit.sliding_window import (
             SlidingWindowRateLimiter,
             SlidingWindowConfig,
         )
@@ -442,7 +442,7 @@ class TestRateLimitingEnforcement:
             result = await limiter.is_allowed(client_id)
             assert not result.allowed
 
-        asyncio.get_event_loop().run_until_complete(run_test())
+        asyncio.run(run_test())
 
 
 # === Property 28: Rate Limit Reset ===
@@ -460,7 +460,7 @@ class TestRateLimitReset:
         self, max_requests: int
     ) -> None:
         """Rate limit result includes reset timing information."""
-        from infrastructure.security.sliding_window import (
+        from infrastructure.security.rate_limit.sliding_window import (
             SlidingWindowRateLimiter,
             SlidingWindowConfig,
         )
@@ -480,13 +480,13 @@ class TestRateLimitReset:
             assert result.remaining >= 0
             assert result.remaining <= max_requests
 
-        asyncio.get_event_loop().run_until_complete(run_test())
+        asyncio.run(run_test())
 
     @given(max_requests=st.integers(min_value=2, max_value=10))
     @settings(max_examples=20)
     def test_remaining_decrements_correctly(self, max_requests: int) -> None:
         """Remaining count decrements with each request."""
-        from infrastructure.security.sliding_window import (
+        from infrastructure.security.rate_limit.sliding_window import (
             SlidingWindowRateLimiter,
             SlidingWindowConfig,
         )
@@ -507,7 +507,7 @@ class TestRateLimitReset:
             result2 = await limiter.is_allowed(client_id)
             assert result2.remaining < result1.remaining
 
-        asyncio.get_event_loop().run_until_complete(run_test())
+        asyncio.run(run_test())
 
 
 # === Property 29: Tenant Context Isolation ===

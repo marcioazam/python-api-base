@@ -6,10 +6,8 @@ Provides type-safe Elasticsearch operations with PEP 695 generics.
 **Requirement: R2 - Generic Elasticsearch Client**
 """
 
-from infrastructure.elasticsearch.client import (
-    ElasticsearchClient,
-    ElasticsearchClientConfig,
-)
+from infrastructure.elasticsearch.client import ElasticsearchClient
+from infrastructure.elasticsearch.config import ElasticsearchClientConfig
 from infrastructure.elasticsearch.repository import (
     ElasticsearchRepository,
     SearchQuery,

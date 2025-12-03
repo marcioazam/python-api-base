@@ -14,7 +14,7 @@ from hypothesis import given, settings, assume
 from hypothesis import strategies as st
 
 try:
-    from my_app.core.config.logging import (
+    from core.config.logging import (
         configure_logging,
         get_logger,
         set_request_id,

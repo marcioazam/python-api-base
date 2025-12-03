@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Awaitable, Callable, Sequence
 from typing import Any
 
-from core.base.result import Err, Result
+from core.base.patterns.result import Err, Result
 
 logger = logging.getLogger(__name__)
 

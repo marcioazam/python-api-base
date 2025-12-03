@@ -5,6 +5,8 @@
 """
 
 import logging
+
+from infrastructure.errors import DatabaseError
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -133,10 +135,10 @@ def get_database_session() -> DatabaseSession:
         DatabaseSession: Database session manager.
 
     Raises:
-        RuntimeError: If database not initialized.
+        DatabaseError: If database not initialized.
     """
     if _db_session is None:
-        raise RuntimeError("Database not initialized. Call init_database first.")
+        raise DatabaseError("Database not initialized. Call init_database first.")
     return _db_session
 
 
@@ -173,3 +175,33 @@ async def close_database() -> None:
     if _db_session is not None:
         await _db_session.close()
         _db_session = None
+
+
+async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
+    """Get async session for FastAPI dependency injection.
+
+    This function provides a database session that can be used with FastAPI's
+    Depends() for automatic dependency injection in route handlers.
+
+    **Feature: infrastructure-examples-integration-fix**
+    **Validates: Requirements 1.1, 1.3, 1.4**
+
+    Yields:
+        AsyncSession: Database session with automatic transaction management.
+            The session commits on successful completion and rolls back on error.
+
+    Raises:
+        DatabaseError: If database not initialized. Call init_database first.
+
+    Example:
+        >>> from fastapi import Depends
+        >>> from infrastructure.db.session import get_async_session
+        >>>
+        >>> @router.get("/items")
+        >>> async def list_items(session: AsyncSession = Depends(get_async_session)):
+        ...     # Use session for database operations
+        ...     pass
+    """
+    db = get_database_session()  # Raises DatabaseError if not initialized
+    async with db.session() as session:
+        yield session

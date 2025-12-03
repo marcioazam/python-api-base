@@ -10,7 +10,7 @@ import re
 from dataclasses import dataclass
 from typing import Self
 
-from core.base.value_object import BaseValueObject
+from core.base.domain.value_object import BaseValueObject
 
 
 @dataclass(frozen=True, slots=True)

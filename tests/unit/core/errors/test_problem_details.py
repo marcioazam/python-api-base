@@ -7,7 +7,7 @@
 import pytest
 from http import HTTPStatus
 
-from core.errors.problem_details import (
+from core.errors.http.problem_details import (
     ProblemDetail,
     ValidationErrorDetail,
     PROBLEM_JSON_MEDIA_TYPE,

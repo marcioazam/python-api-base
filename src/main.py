@@ -16,6 +16,15 @@ from core.config import get_settings
 from core.shared.logging import configure_logging, get_logger
 from infrastructure.audit import InMemoryAuditStore
 from infrastructure.di import lifecycle
+from infrastructure.di.cqrs_bootstrap import bootstrap_cqrs
+from infrastructure.di.examples_bootstrap import bootstrap_examples
+from infrastructure.db.repositories.examples import (
+    ItemExampleRepository,
+    PedidoExampleRepository,
+)
+from infrastructure.db.session import get_database_session
+from infrastructure.di.app_container import create_container
+from infrastructure.db.session import init_database, close_database
 from infrastructure.observability import LoggingMiddleware
 from interface.middleware.production import (
     AuditConfig,
@@ -23,21 +32,50 @@ from interface.middleware.production import (
     ResilienceConfig,
     setup_production_middleware,
 )
-from interface.middleware.security_headers import SecurityHeadersMiddleware
+from interface.middleware.security import SecurityHeadersMiddleware
+from interface.middleware.request import (
+    RequestIDMiddleware,
+    RequestSizeLimitMiddleware,
+)
+from interface.middleware.logging import RequestLoggerMiddleware
 from interface.v1.health_router import router as health_router, mark_startup_complete
 from interface.openapi import setup_openapi
 from core.errors import setup_exception_handlers
 from infrastructure.redis import RedisClient, RedisConfig
 from infrastructure.minio import MinIOClient, MinIOConfig
+from infrastructure.kafka import KafkaProducer, KafkaConfig
+from infrastructure.prometheus import setup_prometheus
+from infrastructure.ratelimit import (
+    RateLimitMiddleware,
+    InMemoryRateLimiter,
+    RateLimitConfig,
+    RateLimit,
+    IPClientExtractor,
+)
 
 # Core API Routes (permanent - do not remove)
-from interface.v1.auth import auth_router, users_router
+from interface.v1.auth import auth_router
+from interface.v1.users_router import router as users_router
 
 # Example System - Remove for production
 # See docs/example-system-deactivation.md
 from interface.v1.examples import examples_router
 from interface.v1.infrastructure_router import router as infrastructure_router
 from interface.v1.enterprise_examples_router import router as enterprise_router
+
+# API v2 Routes
+# **Feature: interface-modules-workflow-analysis**
+# **Validates: Requirements 1.1, 1.2, 1.3**
+from interface.v2 import examples_v2_router
+
+# GraphQL Support (optional - requires strawberry)
+# **Feature: interface-modules-workflow-analysis**
+# **Validates: Requirements 3.1, 3.2, 3.3**
+try:
+    from interface.graphql import graphql_router, HAS_STRAWBERRY
+except ImportError:
+    graphql_router = None
+    HAS_STRAWBERRY = False
 
 
 @asynccontextmanager
@@ -48,9 +86,44 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     settings = get_settings()
     app.state.settings = settings
+    logger = get_logger("main")
 
     lifecycle.run_startup()
     await lifecycle.run_startup_async()
+
+    # Initialize database
+    logger.info("Initializing database...")
+    init_database(
+        database_url=settings.database.url,
+        pool_size=settings.database.pool_size,
+        max_overflow=settings.database.max_overflow,
+        echo=settings.database.echo,
+    )
+    logger.info("Database initialized")
+
+    # Bootstrap CQRS handlers
+    logger.info("Bootstrapping CQRS handlers...")
+    container = create_container(settings)
+    command_bus = container.command_bus()
+    query_bus = container.query_bus()
+    await bootstrap_cqrs(command_bus=command_bus, query_bus=query_bus)
+    logger.info("CQRS handlers bootstrapped")
+
+    # Bootstrap Example handlers
+    # **Feature: infrastructure-examples-integration-fix**
+    # **Validates: Requirements 3.1, 3.2, 3.3**
+    logger.info("Bootstrapping example handlers...")
+    db = get_database_session()
+    async with db.session() as session:
+        item_repo = ItemExampleRepository(session)
+        pedido_repo = PedidoExampleRepository(session)
+        await bootstrap_examples(
+            command_bus=command_bus,
+            query_bus=query_bus,
+            item_repository=item_repo,
+            pedido_repository=pedido_repo,
+        )
+    logger.info("Example handlers bootstrapped")
 
     # Initialize Redis if enabled
     obs = settings.observability
@@ -79,6 +152,80 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     else:
         app.state.minio = None
 
+    # Initialize Kafka if enabled
+    # **Feature: kafka-workflow-integration**
+    # **Validates: Requirements 1.1, 1.2, 1.3, 1.5**
+    if obs.kafka_enabled:
+        kafka_config = KafkaConfig(
+            bootstrap_servers=obs.kafka_bootstrap_servers,
+            client_id=obs.kafka_client_id,
+            group_id=obs.kafka_group_id,
+            security_protocol=obs.kafka_security_protocol,
+            sasl_mechanism=obs.kafka_sasl_mechanism,
+            sasl_username=obs.kafka_sasl_username,
+            sasl_password=obs.kafka_sasl_password.get_secret_value()
+            if obs.kafka_sasl_password
+            else None,
+        )
+        app.state.kafka_producer = KafkaProducer(kafka_config, topic="default-events")
+        try:
+            await app.state.kafka_producer.start()
+            logger.info("Kafka producer started")
+        except Exception as e:
+            logger.error(f"Kafka connection failed: {e}")
+            app.state.kafka_producer = None
+    else:
+        app.state.kafka_producer = None
+        logger.info("Kafka disabled, skipping initialization")
+
+    # Initialize ScyllaDB if enabled
+    # **Feature: infrastructure-modules-workflow-analysis**
+    # **Validates: Requirements 1.1**
+    if obs.scylladb_enabled:
+        from infrastructure.scylladb import ScyllaDBClient, ScyllaDBConfig
+        scylladb_config = ScyllaDBConfig(
+            hosts=obs.scylladb_hosts,
+            port=obs.scylladb_port,
+            keyspace=obs.scylladb_keyspace,
+            username=obs.scylladb_username,
+            password=obs.scylladb_password.get_secret_value()
+            if obs.scylladb_password
+            else None,
+            protocol_version=obs.scylladb_protocol_version,
+            connect_timeout=obs.scylladb_connect_timeout,
+            request_timeout=obs.scylladb_request_timeout,
+        )
+        app.state.scylladb = ScyllaDBClient(scylladb_config)
+        try:
+            await app.state.scylladb.connect()
+            logger.info("ScyllaDB client connected")
+        except Exception as e:
+            logger.error(f"ScyllaDB connection failed: {e}")
+            app.state.scylladb = None
+    else:
+        app.state.scylladb = None
+        logger.info("ScyllaDB disabled, skipping initialization")
+
+    # Initialize RabbitMQ if enabled
+    # **Feature: infrastructure-modules-workflow-analysis**
+    # **Validates: Requirements 3.4**
+    if obs.rabbitmq_enabled:
+        from infrastructure.tasks import RabbitMQConfig, RabbitMQTaskQueue
+        rabbitmq_config = RabbitMQConfig(
+            host=obs.rabbitmq_host,
+            port=obs.rabbitmq_port,
+            username=obs.rabbitmq_username,
+            password=obs.rabbitmq_password.get_secret_value()
+            if obs.rabbitmq_password
+            else None,
+            virtual_host=obs.rabbitmq_virtual_host,
+        )
+        app.state.rabbitmq = rabbitmq_config  # Store config, lazy connect
+        logger.info("RabbitMQ config stored (lazy connection)")
+    else:
+        app.state.rabbitmq = None
+        logger.info("RabbitMQ disabled, skipping initialization")
+
     # Mark startup complete for Kubernetes probe
     mark_startup_complete()
 
@@ -87,6 +234,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Cleanup
     if app.state.redis:
         await app.state.redis.close()
+
+    # Cleanup Kafka
+    # **Feature: kafka-workflow-integration**
+    # **Validates: Requirements 1.4**
+    if app.state.kafka_producer:
+        await app.state.kafka_producer.stop()
+        logger.info("Kafka producer stopped")
+
+    # Cleanup ScyllaDB
+    # **Feature: infrastructure-modules-workflow-analysis**
+    # **Validates: Requirements 1.1**
+    if hasattr(app.state, 'scylladb') and app.state.scylladb:
+        await app.state.scylladb.close()
+        logger.info("ScyllaDB client closed")
+
+    # Close database
+    logger.info("Closing database...")
+    await close_database()
+    logger.info("Database closed")
 
     await lifecycle.run_shutdown_async()
     lifecycle.run_shutdown()
@@ -126,19 +292,48 @@ def _configure_logging() -> None:
 def _configure_middleware(app: FastAPI) -> None:
     """Configure all middleware for the application.
 
-    Includes:
-    - Logging middleware (correlation ID, request logging)
-    - CORS middleware
-    - Production middleware stack (resilience, multitenancy, audit)
+    **Feature: interface-middleware-routes-analysis**
+    **Validates: Requirements 1.1, 1.2, 1.3, 1.4**
+
+    Middleware stack order (outermost to innermost):
+    1. RequestIDMiddleware - Generate/propagate X-Request-ID
+    2. LoggingMiddleware - Correlation ID and structured logging
+    3. RequestLoggerMiddleware - Request/response logging with PII masking
+    4. CORSMiddleware - Cross-origin resource sharing
+    5. SecurityHeadersMiddleware - Security headers (CSP, HSTS, etc.)
+    6. RequestSizeLimitMiddleware - Limit request body size
+    7. ResilienceMiddleware - Circuit breaker pattern
+    8. MultitenancyMiddleware - Tenant context resolution
+    9. AuditMiddleware - Request audit trail
+    10. RateLimitMiddleware - Rate limiting
     """
     settings = get_settings()
+    logger = get_logger("main")
 
-    # Logging middleware (first - to capture all requests)
+    # 1. RequestIDMiddleware - First middleware to generate/propagate X-Request-ID
+    # **Feature: interface-middleware-routes-analysis**
+    # **Validates: Requirements 1.1**
+    app.add_middleware(RequestIDMiddleware)
+    logger.info("middleware_configured", middleware="RequestIDMiddleware")
+
+    # 2. Logging middleware (correlation ID, request logging)
     app.add_middleware(
         LoggingMiddleware,
         service_name=settings.observability.service_name,
         excluded_paths=["/health/live", "/health/ready", "/metrics", "/docs", "/redoc"],
     )
+    logger.info("middleware_configured", middleware="LoggingMiddleware")
+
+    # 3. RequestLoggerMiddleware - Detailed request/response logging with PII masking
+    # **Feature: interface-middleware-routes-analysis**
+    # **Validates: Requirements 1.2**
+    app.add_middleware(
+        RequestLoggerMiddleware,
+        log_request_body=False,
+        log_response_body=False,
+        excluded_paths=["/health/live", "/health/ready", "/metrics", "/docs", "/redoc", "/openapi.json"],
+    )
+    logger.info("middleware_configured", middleware="RequestLoggerMiddleware")
 
     # CORS middleware
     # Security validation: wildcard origins + credentials = security vulnerability
@@ -160,8 +355,15 @@ def _configure_middleware(app: FastAPI) -> None:
         allow_headers=["*"],
     )
 
-    # Security headers middleware
+    # 5. Security headers middleware
     # Protects against XSS, clickjacking, MIME sniffing attacks
+    #
+    # CSP Note: 'unsafe-inline' and 'unsafe-eval' are required for:
+    # - Swagger UI (/docs): Inline styles and dynamic script evaluation
+    # - ReDoc (/redoc): Inline styles for rendering
+    # Trade-off: Accepted for development/documentation tools only.
+    # Production API endpoints remain protected by strict CSP.
+    # Alternative: Use nonce-based CSP for tighter security (requires code changes).
     app.add_middleware(
         SecurityHeadersMiddleware,
         content_security_policy=(
@@ -185,8 +387,22 @@ def _configure_middleware(app: FastAPI) -> None:
             "payment=(), usb=(), magnetometer=(), gyroscope=()"
         ),
     )
+    logger.info("middleware_configured", middleware="SecurityHeadersMiddleware")
 
-    # Production middleware stack (optional - enable as needed)
+    # 6. RequestSizeLimitMiddleware - Limit request body size (10MB default)
+    # **Feature: interface-middleware-routes-analysis**
+    # **Validates: Requirements 1.4**
+    app.add_middleware(
+        RequestSizeLimitMiddleware,
+        max_size=10 * 1024 * 1024,  # 10MB default
+        route_limits={
+            r"^/api/v1/upload.*": 50 * 1024 * 1024,  # 50MB for uploads
+            r"^/api/v1/import.*": 20 * 1024 * 1024,  # 20MB for imports
+        },
+    )
+    logger.info("middleware_configured", middleware="RequestSizeLimitMiddleware", max_size="10MB")
+
+    # 7-9. Production middleware stack
     # Provides: Resilience, Multitenancy, Feature Flags, Audit Trail
     setup_production_middleware(
         app,
@@ -205,6 +421,74 @@ def _configure_middleware(app: FastAPI) -> None:
             exclude_paths={"/health", "/metrics", "/docs", "/redoc", "/openapi.json"},
         ),
     )
+
+
+def _configure_rate_limiting(app: FastAPI) -> None:
+    """Configure rate limiting middleware.
+
+    **Feature: infrastructure-modules-integration-analysis**
+    **Validates: Requirements 1.3**
+
+    Sets up:
+    - InMemoryRateLimiter for request rate limiting
+    - Per-endpoint limits for different operations
+    """
+    from datetime import timedelta
+
+    logger = get_logger("main")
+
+    # Configure rate limits
+    config = RateLimitConfig(
+        default_limit=RateLimit(requests=100, window=timedelta(minutes=1))
+    )
+    limiter = InMemoryRateLimiter[str](config)
+
+    # Configure per-endpoint limits
+    limiter.configure({
+        "GET:/api/v1/examples/*": RateLimit(requests=100, window=timedelta(minutes=1)),
+        "POST:/api/v1/examples/*": RateLimit(requests=20, window=timedelta(minutes=1)),
+        "PUT:/api/v1/examples/*": RateLimit(requests=20, window=timedelta(minutes=1)),
+        "DELETE:/api/v1/examples/*": RateLimit(requests=10, window=timedelta(minutes=1)),
+    })
+
+    app.add_middleware(
+        RateLimitMiddleware[str],
+        limiter=limiter,
+        extractor=IPClientExtractor(),
+        exclude_paths={"/health", "/health/live", "/health/ready", "/metrics", "/docs", "/redoc", "/openapi.json"},
+    )
+
+    logger.info("rate_limiting_configured", default_limit="100/min")
+
+
+def _configure_prometheus(app: FastAPI) -> None:
+    """Configure Prometheus metrics if enabled.
+
+    **Feature: infrastructure-modules-integration-analysis**
+    **Validates: Requirements 1.1, 1.2**
+
+    Sets up:
+    - PrometheusMiddleware for request metrics collection
+    - /metrics endpoint for Prometheus scraping
+    """
+    settings = get_settings()
+    obs = settings.observability
+    logger = get_logger("main")
+
+    if obs.prometheus_enabled:
+        setup_prometheus(
+            app,
+            endpoint=obs.prometheus_endpoint,
+            include_in_schema=obs.prometheus_include_in_schema,
+            skip_paths=["/health/live", "/health/ready", "/docs", "/redoc"],
+        )
+        logger.info(
+            "prometheus_configured",
+            endpoint=obs.prometheus_endpoint,
+            namespace=obs.prometheus_namespace,
+        )
+    else:
+        logger.info("prometheus_disabled", reason="prometheus_enabled=false")
 
 
 def create_app() -> FastAPI:
@@ -236,6 +520,17 @@ def create_app() -> FastAPI:
     setup_openapi(app)
 
     _configure_middleware(app)
+
+    # Configure Prometheus metrics
+    # **Feature: infrastructure-modules-integration-analysis**
+    # **Validates: Requirements 1.1, 1.2**
+    _configure_prometheus(app)
+
+    # Configure rate limiting
+    # **Feature: infrastructure-modules-integration-analysis**
+    # **Validates: Requirements 1.3**
+    _configure_rate_limiting(app)
+
     app.include_router(health_router)
 
     # Core API Routes (permanent - do not remove)
@@ -251,6 +546,20 @@ def create_app() -> FastAPI:
 
     # Enterprise Examples (Rate Limiter, RBAC, Task Queue, OAuth)
     app.include_router(enterprise_router, prefix="/api/v1")
+
+    # API v2 Routes with versioning support
+    # **Feature: interface-modules-workflow-analysis**
+    # **Validates: Requirements 1.1, 1.2, 1.3**
+    app.include_router(examples_v2_router, prefix="/api")
+
+    # GraphQL endpoint (optional)
+    # **Feature: interface-modules-workflow-analysis**
+    # **Validates: Requirements 3.1, 3.2, 3.3**
+    if HAS_STRAWBERRY and graphql_router is not None:
+        app.include_router(graphql_router, prefix="/api", tags=["GraphQL"])
+        logger.info("graphql_enabled", endpoint="/api/graphql")
+    else:
+        logger.info("graphql_disabled", reason="strawberry not installed")
 
     return app
 

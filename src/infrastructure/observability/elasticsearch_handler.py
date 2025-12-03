@@ -1,64 +1,34 @@
 """Elasticsearch handler for shipping structured logs.
 
-Provides async log shipping to Elasticsearch with:
-- Buffered batch sending
-- Automatic index rotation
-- Connection retry with backoff
-- Fallback to local file on failure
+Main handler interface that composes configuration, buffering, and indexing.
 
 **Feature: observability-infrastructure**
 **Requirement: R1 - Structured Logging Infrastructure**
 **Requirement: R2 - Generic Elasticsearch Client**
+**Refactored: 2025 - Split into modular components for maintainability**
 """
 
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 from collections.abc import Sequence
-from dataclasses import dataclass, field
 from datetime import datetime, UTC
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
+from infrastructure.observability.elasticsearch_config import (
+    ElasticsearchConfig,
+    ECS_INDEX_TEMPLATE,
+)
+from infrastructure.observability.elasticsearch_buffer import (
+    LogBuffer,
+    FallbackWriter,
+    BulkIndexer,
+)
+
 if TYPE_CHECKING:
     from elasticsearch import AsyncElasticsearch
-
-
-@dataclass
-class ElasticsearchConfig:
-    """Configuration for Elasticsearch connection.
-
-    Attributes:
-        hosts: List of Elasticsearch hosts
-        index_prefix: Prefix for index names (e.g., "logs-api")
-        batch_size: Number of logs to batch before sending
-        flush_interval_seconds: Max seconds between flushes
-        username: Optional username for authentication
-        password: Optional password for authentication
-        api_key: Optional API key for authentication
-        use_ssl: Whether to use SSL/TLS
-        verify_certs: Whether to verify SSL certificates
-        ca_certs: Path to CA certificates
-        timeout: Connection timeout in seconds
-        max_retries: Maximum retry attempts
-        retry_on_timeout: Whether to retry on timeout
-    """
-
-    hosts: list[str] = field(default_factory=lambda: ["http://localhost:9200"])
-    index_prefix: str = "logs-python-api-base"
-    batch_size: int = 100
-    flush_interval_seconds: float = 5.0
-    username: str | None = None
-    password: str | None = None
-    api_key: str | tuple[str, str] | None = None
-    use_ssl: bool = False
-    verify_certs: bool = True
-    ca_certs: str | None = None
-    timeout: int = 30
-    max_retries: int = 3
-    retry_on_timeout: bool = True
 
 
 @runtime_checkable
@@ -111,13 +81,16 @@ class ElasticsearchHandler:
             fallback_path: Path for fallback file when ES is unavailable
         """
         self._config = config
-        self._fallback_path = (
-            Path(fallback_path) if fallback_path else Path("logs/fallback.log")
+        self._buffer = LogBuffer(
+            batch_size=config.batch_size,
+            flush_interval_seconds=config.flush_interval_seconds,
         )
-        self._buffer: list[dict[str, Any]] = []
+        self._fallback = FallbackWriter(
+            fallback_path or Path("logs/fallback.log")
+        )
+        self._indexer = BulkIndexer(config.index_prefix)
         self._client: AsyncElasticsearch | None = None
         self._flush_task: asyncio.Task[None] | None = None
-        self._closed = False
         self._logger = logging.getLogger(__name__)
         self._consecutive_failures = 0
         self._max_consecutive_failures = 5
@@ -156,11 +129,6 @@ class ElasticsearchHandler:
 
         return self._client
 
-    def _get_index_name(self) -> str:
-        """Get current index name with date suffix."""
-        date_suffix = datetime.now(UTC).strftime("%Y.%m.%d")
-        return f"{self._config.index_prefix}-{date_suffix}"
-
     async def emit(self, event: dict[str, Any]) -> None:
         """Add log event to buffer.
 
@@ -174,17 +142,14 @@ class ElasticsearchHandler:
             ...     "user_id": "123",
             ... })
         """
-        if self._closed:
-            return
-
         # Add timestamp if not present
         if "@timestamp" not in event and "timestamp" not in event:
             event["@timestamp"] = datetime.now(UTC).isoformat()
 
-        self._buffer.append(event)
+        should_flush = self._buffer.add(event)
 
         # Flush if buffer is full
-        if len(self._buffer) >= self._config.batch_size:
+        if should_flush:
             await self.flush()
 
         # Start periodic flush task if not running
@@ -193,9 +158,9 @@ class ElasticsearchHandler:
 
     async def _periodic_flush(self) -> None:
         """Periodically flush buffer."""
-        while not self._closed and self._buffer:
+        while self._buffer.has_events():
             await asyncio.sleep(self._config.flush_interval_seconds)
-            if self._buffer:
+            if self._buffer.has_events():
                 await self.flush()
 
     async def flush(self) -> None:
@@ -204,15 +169,13 @@ class ElasticsearchHandler:
         Uses bulk API for efficient indexing. Falls back to local file
         if Elasticsearch is unavailable.
         """
-        if not self._buffer:
+        events = self._buffer.take_all()
+        if not events:
             return
 
-        # Take buffer snapshot and clear
-        events = self._buffer.copy()
-        self._buffer.clear()
-
         try:
-            await self._bulk_index(events)
+            client = await self._get_client()
+            await self._indexer.bulk_index(client, events)
             self._consecutive_failures = 0
         except Exception as e:
             self._consecutive_failures += 1
@@ -222,53 +185,16 @@ class ElasticsearchHandler:
             )
 
             # Fallback to local file
-            await self._write_fallback(events)
+            await self._fallback.write(events)
 
             # Re-buffer events if we haven't hit max failures
             if self._consecutive_failures < self._max_consecutive_failures:
-                self._buffer.extend(events)
-
-    async def _bulk_index(self, events: list[dict[str, Any]]) -> None:
-        """Bulk index events to Elasticsearch."""
-        if not events:
-            return
-
-        client = await self._get_client()
-        index_name = self._get_index_name()
-
-        # Build bulk request body
-        operations: list[dict[str, Any]] = []
-        for event in events:
-            operations.append({"index": {"_index": index_name}})
-            operations.append(event)
-
-        # Execute bulk request
-        response = await client.bulk(operations=operations, refresh=False)
-
-        # Check for errors
-        if response.get("errors"):
-            error_count = sum(
-                1
-                for item in response.get("items", [])
-                if "error" in item.get("index", {})
-            )
-            self._logger.warning(f"Bulk index had {error_count} errors")
-
-    async def _write_fallback(self, events: list[dict[str, Any]]) -> None:
-        """Write events to fallback file."""
-        try:
-            self._fallback_path.parent.mkdir(parents=True, exist_ok=True)
-
-            with self._fallback_path.open("a", encoding="utf-8") as f:
                 for event in events:
-                    f.write(json.dumps(event) + "\n")
-
-        except Exception as e:
-            self._logger.error(f"Failed to write fallback log: {e}")
+                    self._buffer.add(event)
 
     async def close(self) -> None:
         """Close handler and flush remaining events."""
-        self._closed = True
+        self._buffer.close()
 
         # Cancel periodic flush task
         if self._flush_task and not self._flush_task.done():
@@ -382,43 +308,6 @@ async def create_elasticsearch_handler(
         **kwargs,
     )
     return ElasticsearchHandler(config)
-
-
-# Index template for ECS-compatible logs
-ECS_INDEX_TEMPLATE = {
-    "index_patterns": ["logs-*"],
-    "template": {
-        "settings": {
-            "number_of_shards": 1,
-            "number_of_replicas": 1,
-            "index.lifecycle.name": "logs-policy",
-            "index.lifecycle.rollover_alias": "logs",
-        },
-        "mappings": {
-            "properties": {
-                "@timestamp": {"type": "date"},
-                "message": {"type": "text"},
-                "log.level": {"type": "keyword"},
-                "log.logger": {"type": "keyword"},
-                "service.name": {"type": "keyword"},
-                "service.version": {"type": "keyword"},
-                "service.environment": {"type": "keyword"},
-                "trace.id": {"type": "keyword"},
-                "correlation_id": {"type": "keyword"},
-                "request_id": {"type": "keyword"},
-                "span_id": {"type": "keyword"},
-                "http.method": {"type": "keyword"},
-                "http.status_code": {"type": "integer"},
-                "http.url": {"type": "keyword"},
-                "http.path": {"type": "keyword"},
-                "user.id": {"type": "keyword"},
-                "error.message": {"type": "text"},
-                "error.type": {"type": "keyword"},
-                "error.stack_trace": {"type": "text"},
-            }
-        },
-    },
-}
 
 
 async def setup_elasticsearch_index_template(

@@ -9,8 +9,8 @@ from hypothesis import given, settings, assume
 from hypothesis import strategies as st
 
 try:
-    from my_app.shared.utils.password import hash_password, verify_password
-    from my_app.infrastructure.security.password_hashers import (
+    from core.shared.utils.password import hash_password, verify_password
+    from infrastructure.security.password_hashers import (
         PasswordValidator,
         PasswordPolicy,
     )

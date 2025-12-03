@@ -13,10 +13,10 @@ import uuid
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_app.infrastructure.db.event_sourcing.aggregate import Aggregate
-from my_app.infrastructure.db.event_sourcing.events import SourcedEvent
-from my_app.infrastructure.db.event_sourcing.store import InMemoryEventStore
-from my_app.infrastructure.db.event_sourcing.exceptions import ConcurrencyError
+from infrastructure.db.event_sourcing.aggregate import Aggregate
+from infrastructure.db.event_sourcing.events import SourcedEvent
+from infrastructure.db.event_sourcing.store import InMemoryEventStore
+from infrastructure.db.event_sourcing.exceptions import ConcurrencyError
 
 
 # Test event types

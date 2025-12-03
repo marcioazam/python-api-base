@@ -15,7 +15,7 @@ from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError as PydanticValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from core.errors.problem_details import (
+from core.errors.http.problem_details import (
     ProblemDetail,
     ValidationErrorDetail,
     PROBLEM_JSON_MEDIA_TYPE,

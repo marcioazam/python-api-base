@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from core.base.domain_event import DomainEvent
+from core.base.events.domain_event import DomainEvent
 from domain.users.events import (
     UserRegisteredEvent,
     UserDeactivatedEvent,

@@ -11,12 +11,12 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 try:
-    from my_app.core.base.domain_event import DomainEvent
-    from my_app.core.base.command import BaseCommand
-    from my_app.core.base.query import BaseQuery
-    from my_app.application.users.dto import UserDTO, CreateUserDTO
-    from my_app.domain.users.events import UserRegisteredEvent, UserDeactivatedEvent
-    from my_app.shared.utils.serialization import serialize, deserialize
+    from core.base.domain_event import DomainEvent
+    from core.base.command import BaseCommand
+    from core.base.query import BaseQuery
+    from application.users.dto import UserDTO, CreateUserDTO
+    from domain.users.events import UserRegisteredEvent, UserDeactivatedEvent
+    from core.shared.utils.serialization import serialize, deserialize
 except ImportError:
     pytest.skip("my_app modules not available", allow_module_level=True)
 

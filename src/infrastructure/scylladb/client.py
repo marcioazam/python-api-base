@@ -11,6 +11,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING, Any, Self
 
+from infrastructure.errors import DatabaseError
 from infrastructure.scylladb.config import ScyllaDBConfig
 
 if TYPE_CHECKING:
@@ -112,10 +113,10 @@ class ScyllaDBClient:
         """Get the raw session.
 
         Raises:
-            RuntimeError: If not connected
+            DatabaseError: If not connected
         """
         if not self._session:
-            raise RuntimeError("Not connected")
+            raise DatabaseError("ScyllaDB not connected")
         return self._session
 
     async def execute(
@@ -135,7 +136,7 @@ class ScyllaDBClient:
             List of result rows
         """
         if not self._session:
-            raise RuntimeError("Not connected")
+            raise DatabaseError("ScyllaDB not connected")
 
         loop = asyncio.get_event_loop()
 
@@ -166,7 +167,7 @@ class ScyllaDBClient:
             ResponseFuture that can be awaited
         """
         if not self._session:
-            raise RuntimeError("Not connected")
+            raise DatabaseError("ScyllaDB not connected")
 
         future = self._session.execute_async(query, parameters)
 
@@ -186,7 +187,7 @@ class ScyllaDBClient:
             PreparedStatement
         """
         if not self._session:
-            raise RuntimeError("Not connected")
+            raise DatabaseError("ScyllaDB not connected")
 
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
@@ -207,7 +208,7 @@ class ScyllaDBClient:
             batch_type: LOGGED, UNLOGGED, or COUNTER
         """
         if not self._session:
-            raise RuntimeError("Not connected")
+            raise DatabaseError("ScyllaDB not connected")
 
         from cassandra.query import BatchStatement, BatchType
 

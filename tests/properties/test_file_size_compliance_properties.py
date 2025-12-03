@@ -143,7 +143,7 @@ class TestBackwardCompatibilityAfterRefactoring:
 
     def test_event_sourcing_imports(self) -> None:
         """Property: Event sourcing imports work after refactoring."""
-        from my_app.infrastructure.db.event_sourcing import (
+        from infrastructure.db.event_sourcing import (
             Aggregate,
             ConcurrencyError,
             EventSourcedRepository,
@@ -167,7 +167,7 @@ class TestBackwardCompatibilityAfterRefactoring:
 
     def test_saga_imports(self) -> None:
         """Property: Saga imports work after refactoring."""
-        from my_app.infrastructure.db.saga import (
+        from infrastructure.db.saga import (
             Saga,
             SagaBuilder,
             SagaContext,
@@ -191,7 +191,7 @@ class TestBackwardCompatibilityAfterRefactoring:
 
     def test_oauth2_imports(self) -> None:
         """Property: OAuth2 imports work after refactoring."""
-        from my_app.infrastructure.security.oauth2 import (
+        from infrastructure.security.oauth2 import (
             BaseOAuthProvider,
             GitHubOAuthProvider,
             GoogleOAuthProvider,

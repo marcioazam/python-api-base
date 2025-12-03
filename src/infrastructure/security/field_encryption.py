@@ -16,7 +16,7 @@ from typing import Any, Protocol
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-from core.errors.exceptions import (
+from core.errors.shared.exceptions import (
     AuthenticationError,
     DecryptionError,
     EncryptionError,

@@ -9,7 +9,7 @@ from typing import Self
 
 from pydantic import Field
 
-from core.base.aggregate_root import AggregateRoot
+from core.base.domain.aggregate_root import AggregateRoot
 from domain.users.value_objects import Email
 from domain.users.events import (
     UserRegisteredEvent,

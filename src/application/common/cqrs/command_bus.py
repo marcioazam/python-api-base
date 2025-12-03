@@ -15,7 +15,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 from collections.abc import Callable, Awaitable
 
-from core.base.result import Ok, Result
+from core.base.patterns.result import Ok, Result
 from .exceptions import HandlerNotFoundError
 
 logger = logging.getLogger(__name__)

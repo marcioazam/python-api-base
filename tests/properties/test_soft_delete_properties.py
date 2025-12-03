@@ -8,7 +8,7 @@ import pytest
 from hypothesis import given, strategies as st, settings
 from dataclasses import dataclass
 
-from my_app.infrastructure.db.soft_delete import (
+from infrastructure.db.soft_delete import (
     SoftDeleteService,
     SoftDeleteConfig,
     InMemorySoftDeleteBackend,

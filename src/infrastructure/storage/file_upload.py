@@ -11,7 +11,7 @@ from typing import Any, Protocol, runtime_checkable
 
 from pydantic import BaseModel
 
-from core.base.result import Err, Ok, Result
+from core.base.patterns.result import Err, Ok, Result
 
 
 @dataclass(frozen=True, slots=True)

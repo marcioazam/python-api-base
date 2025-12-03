@@ -6,7 +6,7 @@
 
 import logging
 
-from core.base.result import Err, Result
+from core.base.patterns.result import Err, Result
 
 from .models import (
     Notification,

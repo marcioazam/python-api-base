@@ -103,7 +103,7 @@ class TestDataclassMemoryOptimization:
         
         ErrorContext SHALL use slots=True for memory optimization.
         """
-        from my_app.core.exceptions import ErrorContext
+        from core.exceptions import ErrorContext
         
         # Check that __slots__ is defined (slots=True in dataclass)
         assert hasattr(ErrorContext, "__slots__"), (
@@ -125,7 +125,7 @@ class TestDataclassMemoryOptimization:
         
         ErrorContext with slots SHALL use less memory than without slots.
         """
-        from my_app.core.exceptions import ErrorContext
+        from core.exceptions import ErrorContext
         
         # Create instance and verify no __dict__ (slots optimization)
         context = ErrorContext()
@@ -183,7 +183,7 @@ class TestResultPatternCompliance:
         
         For any Ok value, map SHALL apply the function to the value.
         """
-        from my_app.shared.result import Ok
+        from core.shared.result import Ok
         
         ok = Ok(value)
         mapped = ok.map(lambda x: x * 2)
@@ -199,7 +199,7 @@ class TestResultPatternCompliance:
         
         For any Err value, map_err SHALL apply the function to the error.
         """
-        from my_app.shared.result import Err
+        from core.shared.result import Err
         
         err = Err(error)
         mapped = err.map_err(lambda e: f"Error: {e}")
@@ -215,7 +215,7 @@ class TestResultPatternCompliance:
         
         For any Ok value, unwrap_or SHALL return the value, not the default.
         """
-        from my_app.shared.result import Ok
+        from core.shared.result import Ok
         
         ok = Ok(value)
         result = ok.unwrap_or(default)
@@ -231,7 +231,7 @@ class TestResultPatternCompliance:
         
         For any Err value, unwrap_or SHALL return the default.
         """
-        from my_app.shared.result import Err
+        from core.shared.result import Err
         
         err = Err(error)
         result = err.unwrap_or(default)
@@ -261,7 +261,7 @@ class TestExceptionSerializationConsistency:
         
         For any AppException, to_dict() SHALL return consistent keys.
         """
-        from my_app.core.exceptions import AppException
+        from core.exceptions import AppException
         
         exc = AppException(
             message=message,

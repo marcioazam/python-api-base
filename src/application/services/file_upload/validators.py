@@ -27,7 +27,7 @@ import hashlib
 import os
 from typing import BinaryIO, Final
 
-from core.base.result import Err, Ok, Result
+from core.base.patterns.result import Err, Ok, Result
 
 from .models import FileValidationConfig, UploadError
 

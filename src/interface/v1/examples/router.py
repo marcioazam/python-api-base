@@ -2,23 +2,34 @@
 
 Demonstrates:
 - FastAPI router setup
-- Dependency injection
+- Dependency injection with real repositories
 - Request/Response handling
 - Error handling
 - OpenAPI documentation
+- Multi-tenancy support
 - Rate limiting
-- Caching headers
-- Multi-tenancy
+- RBAC protection (optional)
 
 **Feature: example-system-demo**
+**Feature: infrastructure-examples-integration-fix**
+**Feature: infrastructure-modules-integration-analysis**
+**Feature: infrastructure-modules-workflow-analysis**
+**Validates: Requirements 2.1, 2.2, 2.3, 2.4, 1.3**
 """
 
+from datetime import timedelta
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Header
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Header, Request
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from infrastructure.ratelimit import RateLimit, rate_limit, InMemoryRateLimiter, RateLimitConfig
+from infrastructure.security.rbac import Permission, RBACUser, get_rbac_service
 
 from application.common.base.dto import ApiResponse, PaginatedResponse
-from application.examples.dtos import (
+from infrastructure.kafka import create_event_publisher, EventPublisher
+from application.examples import (
+    # DTOs
     ItemExampleCreate,
     ItemExampleUpdate,
     ItemExampleResponse,
@@ -26,110 +37,82 @@ from application.examples.dtos import (
     PedidoExampleResponse,
     AddItemRequest,
     CancelPedidoRequest,
-)
-from application.examples.use_cases import (
+    # Use Cases
     ItemExampleUseCase,
     PedidoExampleUseCase,
+    # Errors
     NotFoundError,
     ValidationError,
+)
+from infrastructure.db.session import get_async_session
+from infrastructure.db.repositories.examples import (
+    ItemExampleRepository,
+    PedidoExampleRepository,
 )
 
 router = APIRouter(prefix="/examples", tags=["Examples"])
 
 
-# === Dependency Injection ===
+# === Dependency Injection with Real Repositories ===
 
 
-async def get_item_use_case() -> ItemExampleUseCase:
-    """Dependency to get ItemExample use case.
+async def get_item_repository(
+    session: AsyncSession = Depends(get_async_session),
+) -> ItemExampleRepository:
+    """Get ItemExampleRepository with injected database session.
 
-    In production, this would resolve from DI container with:
-    - Database session
-    - Event bus
-    - Cache provider
+    **Feature: infrastructure-examples-integration-fix**
+    **Validates: Requirements 2.1, 2.2**
     """
-    # Placeholder - in real usage, inject from container
-    from infrastructure.db.session import get_async_session
-    from infrastructure.db.repositories.examples import ItemExampleRepository
-
-    async with get_async_session() as session:
-        repo = ItemExampleRepository(session)
-        yield ItemExampleUseCase(repository=repo)
+    return ItemExampleRepository(session)
 
 
-async def get_pedido_use_case() -> PedidoExampleUseCase:
-    """Dependency to get PedidoExample use case."""
-    from infrastructure.db.session import get_async_session
-    from infrastructure.db.repositories.examples import (
-        ItemExampleRepository,
-        PedidoExampleRepository,
-    )
+async def get_pedido_repository(
+    session: AsyncSession = Depends(get_async_session),
+) -> PedidoExampleRepository:
+    """Get PedidoExampleRepository with injected database session.
 
-    async with get_async_session() as session:
-        item_repo = ItemExampleRepository(session)
-        pedido_repo = PedidoExampleRepository(session)
-        yield PedidoExampleUseCase(
-            pedido_repo=pedido_repo,
-            item_repo=item_repo,
-        )
+    **Feature: infrastructure-examples-integration-fix**
+    **Validates: Requirements 2.1, 2.2**
+    """
+    return PedidoExampleRepository(session)
 
 
-# Mock dependencies for example (replace with real DI in production)
-class MockItemRepository:
-    _items: dict[str, Any] = {}
+def get_event_publisher(request: Request) -> EventPublisher:
+    """Get EventPublisher based on Kafka availability.
 
-    async def get(self, item_id: str) -> Any:
-        return self._items.get(item_id)
-
-    async def get_by_sku(self, sku: str) -> Any:
-        for item in self._items.values():
-            if item.sku == sku:
-                return item
-        return None
-
-    async def create(self, entity: Any) -> Any:
-        self._items[entity.id] = entity
-        return entity
-
-    async def update(self, entity: Any) -> Any:
-        self._items[entity.id] = entity
-        return entity
-
-    async def get_all(self, **kwargs) -> list:
-        return list(self._items.values())
+    **Feature: kafka-workflow-integration**
+    **Validates: Requirements 3.4**
+    """
+    kafka_producer = getattr(request.app.state, "kafka_producer", None)
+    return create_event_publisher(kafka_producer)
 
 
-class MockPedidoRepository:
-    _pedidos: dict[str, Any] = {}
+async def get_item_use_case(
+    repo: ItemExampleRepository = Depends(get_item_repository),
+    event_publisher: EventPublisher = Depends(get_event_publisher),
+) -> ItemExampleUseCase:
+    """Get ItemExampleUseCase with real repository and event publisher.
 
-    async def get(self, pedido_id: str) -> Any:
-        return self._pedidos.get(pedido_id)
-
-    async def create(self, entity: Any) -> Any:
-        self._pedidos[entity.id] = entity
-        return entity
-
-    async def update(self, entity: Any) -> Any:
-        self._pedidos[entity.id] = entity
-        return entity
-
-    async def get_all(self, **kwargs) -> list:
-        return list(self._pedidos.values())
+    **Feature: infrastructure-examples-integration-fix**
+    **Feature: kafka-workflow-integration**
+    **Validates: Requirements 2.1, 2.2, 2.3, 3.1**
+    """
+    return ItemExampleUseCase(repository=repo, kafka_publisher=event_publisher)
 
 
-# Singleton mock repos
-_item_repo = MockItemRepository()
-_pedido_repo = MockPedidoRepository()
+async def get_pedido_use_case(
+    item_repo: ItemExampleRepository = Depends(get_item_repository),
+    pedido_repo: PedidoExampleRepository = Depends(get_pedido_repository),
+) -> PedidoExampleUseCase:
+    """Get PedidoExampleUseCase with real repositories.
 
-
-def get_mock_item_use_case() -> ItemExampleUseCase:
-    return ItemExampleUseCase(repository=_item_repo)
-
-
-def get_mock_pedido_use_case() -> PedidoExampleUseCase:
+    **Feature: infrastructure-examples-integration-fix**
+    **Validates: Requirements 2.1, 2.2, 2.3**
+    """
     return PedidoExampleUseCase(
-        pedido_repo=_pedido_repo,
-        item_repo=_item_repo,
+        pedido_repo=pedido_repo,
+        item_repo=item_repo,
     )
 
 
@@ -145,7 +128,81 @@ def handle_result_error(error: Any) -> HTTPException:
     return HTTPException(status_code=500, detail=str(error))
 
 
+# === RBAC Dependencies ===
+# **Feature: infrastructure-modules-workflow-analysis**
+# **Validates: Requirements 2.1**
+
+
+def get_current_user_optional(
+    x_user_id: str = Header(default="anonymous", alias="X-User-Id"),
+    x_user_roles: str = Header(default="viewer", alias="X-User-Roles"),
+) -> RBACUser:
+    """Get current user from headers (optional authentication).
+
+    For demonstration purposes, user info comes from headers.
+    In production, use JWT tokens or OAuth2.
+
+    **Feature: infrastructure-modules-workflow-analysis**
+    **Validates: Requirements 2.1**
+    """
+    roles = [r.strip() for r in x_user_roles.split(",") if r.strip()]
+    return RBACUser(id=x_user_id, roles=roles)
+
+
+def require_write_permission(
+    user: RBACUser = Depends(get_current_user_optional),
+) -> RBACUser:
+    """Require WRITE permission for modifying resources.
+
+    **Feature: infrastructure-modules-workflow-analysis**
+    **Validates: Requirements 2.1**
+    """
+    rbac = get_rbac_service()
+    if not rbac.check_permission(user, Permission.WRITE):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Permission '{Permission.WRITE.value}' required. User roles: {user.roles}",
+        )
+    return user
+
+
+def require_delete_permission(
+    user: RBACUser = Depends(get_current_user_optional),
+) -> RBACUser:
+    """Require DELETE permission for deleting resources.
+
+    **Feature: infrastructure-modules-workflow-analysis**
+    **Validates: Requirements 2.1**
+    """
+    rbac = get_rbac_service()
+    if not rbac.check_permission(user, Permission.DELETE):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Permission '{Permission.DELETE.value}' required. User roles: {user.roles}",
+        )
+    return user
+
+
 # === ItemExample Routes ===
+
+
+# Rate limit configurations
+# **Feature: infrastructure-modules-integration-analysis**
+# **Validates: Requirements 1.3**
+READ_RATE_LIMIT = RateLimit(requests=100, window=timedelta(minutes=1))
+WRITE_RATE_LIMIT = RateLimit(requests=20, window=timedelta(minutes=1))
+
+# Global rate limiter instance
+_rate_limiter: InMemoryRateLimiter[str] | None = None
+
+
+def get_rate_limiter() -> InMemoryRateLimiter[str]:
+    """Get or create global rate limiter for examples."""
+    global _rate_limiter
+    if _rate_limiter is None:
+        config = RateLimitConfig(default_limit=READ_RATE_LIMIT)
+        _rate_limiter = InMemoryRateLimiter[str](config)
+    return _rate_limiter
 
 
 @router.get(
@@ -159,7 +216,7 @@ async def list_items(
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     category: str | None = Query(None, description="Filter by category"),
     status: str | None = Query(None, description="Filter by status"),
-    use_case: ItemExampleUseCase = Depends(get_mock_item_use_case),
+    use_case: ItemExampleUseCase = Depends(get_item_use_case),
 ) -> PaginatedResponse[ItemExampleResponse]:
     result = await use_case.list(
         page=page,
@@ -175,7 +232,7 @@ async def list_items(
         items=items,
         total=len(items),
         page=page,
-        page_size=page_size,
+        size=page_size,
     )
 
 
@@ -184,14 +241,19 @@ async def list_items(
     response_model=ApiResponse[ItemExampleResponse],
     status_code=status.HTTP_201_CREATED,
     summary="Create item",
-    description="Create a new ItemExample entity.",
+    description="Create a new ItemExample entity. Requires WRITE permission.",
 )
 async def create_item(
     data: ItemExampleCreate,
-    x_user_id: str = Header(default="system", alias="X-User-Id"),
-    use_case: ItemExampleUseCase = Depends(get_mock_item_use_case),
+    user: RBACUser = Depends(require_write_permission),
+    use_case: ItemExampleUseCase = Depends(get_item_use_case),
 ) -> ApiResponse[ItemExampleResponse]:
-    result = await use_case.create(data, created_by=x_user_id)
+    """Create item with RBAC protection.
+
+    **Feature: infrastructure-modules-workflow-analysis**
+    **Validates: Requirements 2.1**
+    """
+    result = await use_case.create(data, created_by=user.id)
     if result.is_err():
         raise handle_result_error(result.unwrap_err())
     return ApiResponse(data=result.unwrap(), status_code=201)
@@ -204,7 +266,7 @@ async def create_item(
 )
 async def get_item(
     item_id: str,
-    use_case: ItemExampleUseCase = Depends(get_mock_item_use_case),
+    use_case: ItemExampleUseCase = Depends(get_item_use_case),
 ) -> ApiResponse[ItemExampleResponse]:
     result = await use_case.get(item_id)
     if result.is_err():
@@ -216,14 +278,20 @@ async def get_item(
     "/items/{item_id}",
     response_model=ApiResponse[ItemExampleResponse],
     summary="Update item",
+    description="Update an existing item. Requires WRITE permission.",
 )
 async def update_item(
     item_id: str,
     data: ItemExampleUpdate,
-    x_user_id: str = Header(default="system", alias="X-User-Id"),
-    use_case: ItemExampleUseCase = Depends(get_mock_item_use_case),
+    user: RBACUser = Depends(require_write_permission),
+    use_case: ItemExampleUseCase = Depends(get_item_use_case),
 ) -> ApiResponse[ItemExampleResponse]:
-    result = await use_case.update(item_id, data, updated_by=x_user_id)
+    """Update item with RBAC protection.
+
+    **Feature: infrastructure-modules-workflow-analysis**
+    **Validates: Requirements 2.1**
+    """
+    result = await use_case.update(item_id, data, updated_by=user.id)
     if result.is_err():
         raise handle_result_error(result.unwrap_err())
     return ApiResponse(data=result.unwrap())
@@ -233,13 +301,19 @@ async def update_item(
     "/items/{item_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete item",
+    description="Delete an item. Requires DELETE permission.",
 )
 async def delete_item(
     item_id: str,
-    x_user_id: str = Header(default="system", alias="X-User-Id"),
-    use_case: ItemExampleUseCase = Depends(get_mock_item_use_case),
+    user: RBACUser = Depends(require_delete_permission),
+    use_case: ItemExampleUseCase = Depends(get_item_use_case),
 ) -> None:
-    result = await use_case.delete(item_id, deleted_by=x_user_id)
+    """Delete item with RBAC protection.
+
+    **Feature: infrastructure-modules-workflow-analysis**
+    **Validates: Requirements 2.1**
+    """
+    result = await use_case.delete(item_id, deleted_by=user.id)
     if result.is_err():
         raise handle_result_error(result.unwrap_err())
 
@@ -258,7 +332,7 @@ async def list_pedidos(
     customer_id: str | None = Query(None),
     status: str | None = Query(None),
     x_tenant_id: str | None = Header(default=None, alias="X-Tenant-Id"),
-    use_case: PedidoExampleUseCase = Depends(get_mock_pedido_use_case),
+    use_case: PedidoExampleUseCase = Depends(get_pedido_use_case),
 ) -> PaginatedResponse[PedidoExampleResponse]:
     result = await use_case.list(
         page=page,
@@ -275,7 +349,7 @@ async def list_pedidos(
         items=pedidos,
         total=len(pedidos),
         page=page,
-        page_size=page_size,
+        size=page_size,
     )
 
 
@@ -284,17 +358,23 @@ async def list_pedidos(
     response_model=ApiResponse[PedidoExampleResponse],
     status_code=status.HTTP_201_CREATED,
     summary="Create order",
+    description="Create a new order. Requires WRITE permission.",
 )
 async def create_pedido(
     data: PedidoExampleCreate,
-    x_user_id: str = Header(default="system", alias="X-User-Id"),
+    user: RBACUser = Depends(require_write_permission),
     x_tenant_id: str | None = Header(default=None, alias="X-Tenant-Id"),
-    use_case: PedidoExampleUseCase = Depends(get_mock_pedido_use_case),
+    use_case: PedidoExampleUseCase = Depends(get_pedido_use_case),
 ) -> ApiResponse[PedidoExampleResponse]:
+    """Create order with RBAC protection.
+
+    **Feature: infrastructure-modules-workflow-analysis**
+    **Validates: Requirements 2.1**
+    """
     result = await use_case.create(
         data,
         tenant_id=x_tenant_id,
-        created_by=x_user_id,
+        created_by=user.id,
     )
     if result.is_err():
         raise handle_result_error(result.unwrap_err())
@@ -308,7 +388,7 @@ async def create_pedido(
 )
 async def get_pedido(
     pedido_id: str,
-    use_case: PedidoExampleUseCase = Depends(get_mock_pedido_use_case),
+    use_case: PedidoExampleUseCase = Depends(get_pedido_use_case),
 ) -> ApiResponse[PedidoExampleResponse]:
     result = await use_case.get(pedido_id)
     if result.is_err():
@@ -324,7 +404,7 @@ async def get_pedido(
 async def add_item_to_pedido(
     pedido_id: str,
     data: AddItemRequest,
-    use_case: PedidoExampleUseCase = Depends(get_mock_pedido_use_case),
+    use_case: PedidoExampleUseCase = Depends(get_pedido_use_case),
 ) -> ApiResponse[PedidoExampleResponse]:
     result = await use_case.add_item(pedido_id, data)
     if result.is_err():
@@ -340,7 +420,7 @@ async def add_item_to_pedido(
 async def confirm_pedido(
     pedido_id: str,
     x_user_id: str = Header(default="system", alias="X-User-Id"),
-    use_case: PedidoExampleUseCase = Depends(get_mock_pedido_use_case),
+    use_case: PedidoExampleUseCase = Depends(get_pedido_use_case),
 ) -> ApiResponse[PedidoExampleResponse]:
     result = await use_case.confirm(pedido_id, confirmed_by=x_user_id)
     if result.is_err():
@@ -357,7 +437,7 @@ async def cancel_pedido(
     pedido_id: str,
     data: CancelPedidoRequest,
     x_user_id: str = Header(default="system", alias="X-User-Id"),
-    use_case: PedidoExampleUseCase = Depends(get_mock_pedido_use_case),
+    use_case: PedidoExampleUseCase = Depends(get_pedido_use_case),
 ) -> ApiResponse[PedidoExampleResponse]:
     result = await use_case.cancel(
         pedido_id,

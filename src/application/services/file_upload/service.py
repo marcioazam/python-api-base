@@ -10,7 +10,7 @@ from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from typing import Any
 
-from core.base.result import Err, Ok, Result
+from core.base.patterns.result import Err, Ok, Result
 
 from .models import (
     FileMetadata,

@@ -6,7 +6,7 @@
 
 import pytest
 
-from infrastructure.exceptions import (
+from infrastructure.errors import (
     AuditLogError,
     CacheError,
     ConfigurationError,

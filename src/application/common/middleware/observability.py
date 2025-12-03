@@ -3,9 +3,10 @@
 Provides:
 - LoggingMiddleware: Structured logging with correlation IDs
 - IdempotencyMiddleware: Prevents duplicate command execution
+- MetricsMiddleware: Command execution metrics and performance tracking
 
 **Feature: enterprise-features-2025**
-**Validates: Requirements 12.1, 12.2, 12.3**
+**Validates: Requirements 12.1, 12.2, 12.3, 12.4**
 """
 
 import logging
@@ -361,3 +362,191 @@ class IdempotencyMiddleware:
         )
 
         return result
+
+
+# =============================================================================
+# Metrics Middleware
+# =============================================================================
+
+
+class MetricsCollector(Protocol):
+    """Protocol for metrics collection implementations."""
+
+    def record_command_duration(
+        self, command_type: str, duration_ms: float, success: bool
+    ) -> None:
+        """Record command execution duration."""
+        ...
+
+    def increment_command_count(self, command_type: str, success: bool) -> None:
+        """Increment command execution counter."""
+        ...
+
+    def record_slow_command(self, command_type: str, duration_ms: float) -> None:
+        """Record slow command execution."""
+        ...
+
+
+class InMemoryMetricsCollector:
+    """In-memory metrics collector for development/testing."""
+
+    def __init__(self) -> None:
+        self._durations: dict[str, list[float]] = {}
+        self._counts: dict[str, dict[str, int]] = {}
+        self._slow_commands: list[tuple[str, float, datetime]] = []
+
+    def record_command_duration(
+        self, command_type: str, duration_ms: float, success: bool
+    ) -> None:
+        """Record command execution duration."""
+        if command_type not in self._durations:
+            self._durations[command_type] = []
+        self._durations[command_type].append(duration_ms)
+
+    def increment_command_count(self, command_type: str, success: bool) -> None:
+        """Increment command execution counter."""
+        if command_type not in self._counts:
+            self._counts[command_type] = {"success": 0, "failure": 0}
+
+        if success:
+            self._counts[command_type]["success"] += 1
+        else:
+            self._counts[command_type]["failure"] += 1
+
+    def record_slow_command(self, command_type: str, duration_ms: float) -> None:
+        """Record slow command execution."""
+        self._slow_commands.append((command_type, duration_ms, datetime.now(UTC)))
+
+    def get_statistics(self, command_type: str | None = None) -> dict[str, Any]:
+        """Get statistics for command type or all commands."""
+        if command_type:
+            durations = self._durations.get(command_type, [])
+            counts = self._counts.get(command_type, {"success": 0, "failure": 0})
+
+            return {
+                "command_type": command_type,
+                "total_executions": sum(counts.values()),
+                "success_count": counts["success"],
+                "failure_count": counts["failure"],
+                "success_rate": (
+                    counts["success"] / sum(counts.values())
+                    if sum(counts.values()) > 0
+                    else 0
+                ),
+                "avg_duration_ms": sum(durations) / len(durations) if durations else 0,
+                "min_duration_ms": min(durations) if durations else 0,
+                "max_duration_ms": max(durations) if durations else 0,
+            }
+
+        return {
+            "commands": {
+                cmd: self.get_statistics(cmd) for cmd in self._counts.keys()
+            },
+            "total_commands": sum(
+                sum(c.values()) for c in self._counts.values()
+            ),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class MetricsConfig:
+    """Configuration for metrics middleware."""
+
+    enabled: bool = True
+    track_duration: bool = True
+    track_success_rate: bool = True
+    detect_slow_commands: bool = True
+    slow_threshold_ms: float = 1000.0  # Commands slower than 1s are "slow"
+
+
+class MetricsMiddleware:
+    """Middleware for collecting command execution metrics.
+
+    Tracks:
+    - Command execution duration
+    - Success/failure rates
+    - Slow command detection
+
+    Example:
+        >>> collector = InMemoryMetricsCollector()
+        >>> metrics = MetricsMiddleware(collector, MetricsConfig(slow_threshold_ms=500))
+        >>> bus.add_middleware(metrics)
+
+        >>> # Get statistics
+        >>> stats = collector.get_statistics("CreateUserCommand")
+    """
+
+    def __init__(
+        self,
+        collector: MetricsCollector,
+        config: MetricsConfig | None = None,
+    ) -> None:
+        """Initialize metrics middleware.
+
+        Args:
+            collector: Metrics collector implementation.
+            config: Metrics configuration.
+        """
+        self._collector = collector
+        self._config = config or MetricsConfig()
+
+    async def __call__(
+        self,
+        command: Any,
+        next_handler: Callable[[Any], Awaitable[Any]],
+    ) -> Any:
+        """Execute command with metrics collection.
+
+        Args:
+            command: The command to execute.
+            next_handler: The next handler in the chain.
+
+        Returns:
+            Result from handler.
+        """
+        if not self._config.enabled:
+            return await next_handler(command)
+
+        command_type = type(command).__name__
+        start_time = time.perf_counter()
+        success = False
+        error: Exception | None = None
+
+        try:
+            result = await next_handler(command)
+            success = True
+            return result
+
+        except Exception as e:
+            error = e
+            raise
+
+        finally:
+            duration_ms = (time.perf_counter() - start_time) * 1000
+
+            # Track duration
+            if self._config.track_duration:
+                self._collector.record_command_duration(
+                    command_type, duration_ms, success
+                )
+
+            # Track success rate
+            if self._config.track_success_rate:
+                self._collector.increment_command_count(command_type, success)
+
+            # Detect slow commands
+            if (
+                self._config.detect_slow_commands
+                and duration_ms > self._config.slow_threshold_ms
+            ):
+                self._collector.record_slow_command(command_type, duration_ms)
+                logger.warning(
+                    f"Slow command detected: {command_type} took {duration_ms:.2f}ms",
+                    extra={
+                        "command_type": command_type,
+                        "duration_ms": duration_ms,
+                        "threshold_ms": self._config.slow_threshold_ms,
+                        "operation": "SLOW_COMMAND_DETECTED",
+                        "success": success,
+                    },
+                )

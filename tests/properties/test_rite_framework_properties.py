@@ -68,7 +68,7 @@ KNOWN_MULTI_CLASS_EXCEPTIONS: set[str] = {
     "snapshot_testing.py", "soft_delete.py", "specification.py",
     "strangler_fig.py", "streaming.py", "tiered_rate_limiter.py",
     "timeout.py", "timezone.py", "token_revocation.py", "versioning.py",
-    "waf.py", "websocket.py", "service.py", "router.py", "routes.py",
+    "waf.py", "service.py", "router.py", "routes.py",
 }
 
 

@@ -9,8 +9,8 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 try:
-    from my_app.infrastructure.cache.decorators import cached, get_default_cache
-    from my_app.infrastructure.cache.providers import InMemoryCacheProvider
+    from infrastructure.cache.decorators import cached, get_default_cache
+    from infrastructure.cache.providers import InMemoryCacheProvider
 except ImportError:
     pytest.skip("my_app modules not available", allow_module_level=True)
 

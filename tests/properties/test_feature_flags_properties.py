@@ -7,13 +7,13 @@
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from my_app.application.feature_flags import (
+from application.services.feature_flags import (
     EvaluationContext,
     FeatureFlagService,
     FlagConfig,
     FlagStatus,
-    create_flag,
 )
+from application.services.feature_flags.service import create_flag
 
 
 class TestPercentageRolloutConsistency:
