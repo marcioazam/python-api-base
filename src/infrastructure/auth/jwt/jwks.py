@@ -10,204 +10,20 @@ Implements:
 - Algorithm enforcement
 """
 
-import base64
-import hashlib
 import logging
-from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import Any
 
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ec, rsa
+from .jwks_models import (
+    JWK,
+    JWKSResponse,
+    KeyEntry,
+    generate_kid_from_public_key,
+    create_jwk_from_rsa_public_key,
+    create_jwk_from_ec_public_key,
+    extract_public_key_from_private,
+)
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True, slots=True)
-class JWK:
-    """JSON Web Key representation.
-
-    **Feature: api-best-practices-review-2025**
-    **Validates: Requirements 20.2**
-    """
-
-    kty: str  # Key type (RSA, EC)
-    kid: str  # Key ID
-    use: str  # Key use (sig)
-    alg: str  # Algorithm (RS256, ES256)
-    n: str | None = None  # RSA modulus (base64url)
-    e: str | None = None  # RSA exponent (base64url)
-    crv: str | None = None  # EC curve (P-256)
-    x: str | None = None  # EC x coordinate (base64url)
-    y: str | None = None  # EC y coordinate (base64url)
-
-    def to_dict(self) -> dict[str, Any]:
-        """Convert JWK to dictionary for JSON serialization."""
-        result: dict[str, Any] = {
-            "kty": self.kty,
-            "kid": self.kid,
-            "use": self.use,
-            "alg": self.alg,
-        }
-        if self.kty == "RSA":
-            result["n"] = self.n
-            result["e"] = self.e
-        elif self.kty == "EC":
-            result["crv"] = self.crv
-            result["x"] = self.x
-            result["y"] = self.y
-        return result
-
-
-@dataclass(frozen=True, slots=True)
-class JWKSResponse:
-    """JWKS response containing multiple keys.
-
-    **Feature: api-best-practices-review-2025**
-    **Validates: Requirements 20.2, 20.3**
-    """
-
-    keys: tuple[JWK, ...]
-
-    def to_dict(self) -> dict[str, Any]:
-        """Convert JWKS to dictionary for JSON response."""
-        return {"keys": [key.to_dict() for key in self.keys]}
-
-
-@dataclass
-class KeyEntry:
-    """Internal key entry with metadata for rotation."""
-
-    kid: str
-    public_key_pem: str
-    algorithm: str
-    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
-    revoked_at: datetime | None = None
-    expires_at: datetime | None = None
-
-
-def _base64url_encode(data: bytes) -> str:
-    """Encode bytes to base64url without padding."""
-    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
-
-
-def _int_to_base64url(num: int) -> str:
-    """Convert integer to base64url encoding."""
-    byte_length = (num.bit_length() + 7) // 8
-    return _base64url_encode(num.to_bytes(byte_length, byteorder="big"))
-
-
-def generate_kid_from_public_key(public_key_pem: str) -> str:
-    """Generate a deterministic key ID from public key.
-
-    Uses SHA-256 hash of the public key DER encoding, truncated to 16 chars.
-
-    **Feature: api-best-practices-review-2025**
-    **Validates: Requirements 20.1**
-
-    Args:
-        public_key_pem: Public key in PEM format.
-
-    Returns:
-        Key ID string (16 hex characters).
-    """
-    # Hash the PEM content for deterministic kid
-    key_hash = hashlib.sha256(public_key_pem.encode()).digest()
-    return key_hash[:8].hex()
-
-
-def create_jwk_from_rsa_public_key(public_key_pem: str, kid: str) -> JWK:
-    """Create JWK from RSA public key PEM.
-
-    **Feature: api-best-practices-review-2025**
-    **Validates: Requirements 20.2**
-
-    Args:
-        public_key_pem: RSA public key in PEM format.
-        kid: Key ID to use.
-
-    Returns:
-        JWK representation of the public key.
-    """
-    from cryptography.hazmat.primitives.serialization import load_pem_public_key
-
-    # Load and parse the public key
-    public_key = load_pem_public_key(public_key_pem.encode())
-
-    if not isinstance(public_key, rsa.RSAPublicKey):
-        raise ValueError("Expected RSA public key")
-
-    numbers = public_key.public_numbers()
-
-    return JWK(
-        kty="RSA",
-        kid=kid,
-        use="sig",
-        alg="RS256",
-        n=_int_to_base64url(numbers.n),
-        e=_int_to_base64url(numbers.e),
-    )
-
-
-def create_jwk_from_ec_public_key(public_key_pem: str, kid: str) -> JWK:
-    """Create JWK from EC public key PEM.
-
-    **Feature: api-best-practices-review-2025**
-    **Validates: Requirements 20.2**
-
-    Args:
-        public_key_pem: EC public key in PEM format.
-        kid: Key ID to use.
-
-    Returns:
-        JWK representation of the public key.
-    """
-    from cryptography.hazmat.primitives.serialization import load_pem_public_key
-
-    public_key = load_pem_public_key(public_key_pem.encode())
-
-    if not isinstance(public_key, ec.EllipticCurvePublicKey):
-        raise ValueError("Expected EC public key")
-
-    numbers = public_key.public_numbers()
-
-    # P-256 uses 32 byte coordinates
-    x_bytes = numbers.x.to_bytes(32, byteorder="big")
-    y_bytes = numbers.y.to_bytes(32, byteorder="big")
-
-    return JWK(
-        kty="EC",
-        kid=kid,
-        use="sig",
-        alg="ES256",
-        crv="P-256",
-        x=_base64url_encode(x_bytes),
-        y=_base64url_encode(y_bytes),
-    )
-
-
-def extract_public_key_from_private(private_key_pem: str) -> str:
-    """Extract public key PEM from private key PEM.
-
-    Args:
-        private_key_pem: Private key in PEM format.
-
-    Returns:
-        Public key in PEM format.
-    """
-    from cryptography.hazmat.primitives.serialization import (
-        Encoding,
-        PublicFormat,
-        load_pem_private_key,
-    )
-
-    private_key = load_pem_private_key(private_key_pem.encode(), password=None)
-    public_key = private_key.public_key()
-
-    return public_key.public_bytes(
-        encoding=Encoding.PEM,
-        format=PublicFormat.SubjectPublicKeyInfo,
-    ).decode()
 
 
 class JWKSService:
@@ -322,10 +138,9 @@ class JWKSService:
         Returns:
             True if key was found and revoked.
         """
-        for entry in self._keys:
+        for idx, entry in enumerate(self._keys):
             if entry.kid == kid:
                 # Create new entry with revocation time
-                idx = self._keys.index(entry)
                 self._keys[idx] = KeyEntry(
                     kid=entry.kid,
                     public_key_pem=entry.public_key_pem,

@@ -14,71 +14,14 @@ import asyncio
 import json
 import logging
 import random
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
 from typing import Any, TypeVar
 from collections.abc import Awaitable, Callable
 
+from .cache_models import JitterConfig, TTLPattern, CacheStats
+
 logger = logging.getLogger(__name__)
 
-T = TypeVar("T")
-
-
-@dataclass
-class JitterConfig:
-    """Configuration for TTL jitter.
-
-    **Feature: api-best-practices-review-2025**
-    **Validates: Requirements 22.1**
-    """
-
-    # Jitter range as percentage of base TTL (e.g., 0.05 to 0.15 for 5-15%)
-    min_jitter_percent: float = 0.05
-    max_jitter_percent: float = 0.15
-
-    # Lock timeout for stampede prevention
-    lock_timeout_seconds: int = 5
-
-    # Early recomputation probability window (seconds before expiry)
-    early_recompute_window: int = 30
-
-    # Early recomputation probability (0.0 to 1.0)
-    early_recompute_probability: float = 0.1
-
-
-@dataclass
-class TTLPattern:
-    """TTL configuration for a key pattern.
-
-    **Feature: api-best-practices-review-2025**
-    **Validates: Requirements 22.5**
-    """
-
-    pattern: str
-    ttl_seconds: int
-    enable_jitter: bool = True
-    enable_early_recompute: bool = False
-
-
-@dataclass
-class CacheStats:
-    """Statistics for cache operations.
-
-    **Feature: api-best-practices-review-2025**
-    **Validates: Requirements 22.6**
-    """
-
-    hits: int = 0
-    misses: int = 0
-    stampede_prevented: int = 0
-    early_recomputes: int = 0
-    jittered_sets: int = 0
-
-    @property
-    def hit_ratio(self) -> float:
-        """Calculate hit ratio."""
-        total = self.hits + self.misses
-        return self.hits / total if total > 0 else 0.0
+CacheValueT = TypeVar("CacheValueT")
 
 
 class RedisCacheWithJitter[T]:
@@ -348,8 +291,13 @@ class RedisCacheWithJitter[T]:
         if cached is not None:
             # Check for probabilistic early recomputation
             if await self._should_early_recompute(key):
-                # Trigger background recomputation
-                asyncio.create_task(self._background_recompute(key, compute, ttl))
+                # Trigger background recomputation with error handling
+                task = asyncio.create_task(
+                    self._background_recompute(key, compute, ttl),
+                    name=f"cache_recompute:{key}",
+                )
+                # Prevent unhandled exception warnings
+                task.add_done_callback(self._handle_task_exception)
                 self._stats.early_recomputes += 1
             return cached
 
@@ -487,6 +435,20 @@ class RedisCacheWithJitter[T]:
         except Exception as e:
             logger.warning(f"Redis clear_pattern failed: {e}")
             return 0
+
+    def _handle_task_exception(self, task: asyncio.Task[None]) -> None:
+        """Handle exceptions from background tasks.
+        
+        Prevents 'Task exception was never retrieved' warnings.
+        """
+        if task.cancelled():
+            return
+        exception = task.exception()
+        if exception is not None:
+            logger.warning(
+                f"Background task {task.get_name()} failed: {exception}",
+                exc_info=exception,
+            )
 
     def get_stats(self) -> CacheStats:
         """Get cache statistics.

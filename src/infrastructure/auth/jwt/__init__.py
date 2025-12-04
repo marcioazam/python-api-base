@@ -8,12 +8,17 @@
 
 from .errors import TokenExpiredError, TokenInvalidError, TokenRevokedError
 from .jwks import (
-    JWK,
-    JWKSResponse,
     JWKSService,
-    generate_kid_from_public_key,
     get_jwks_service,
     initialize_jwks_service,
+)
+from .jwks_models import (
+    JWK,
+    JWKSResponse,
+    KeyEntry,
+    generate_kid_from_public_key,
+    create_jwk_from_rsa_public_key,
+    create_jwk_from_ec_public_key,
 )
 from .models import TokenPair, TokenPayload
 from .protocols import KidNotFoundError
@@ -28,13 +33,17 @@ __all__ = [
     "RS256Provider",
     "ES256Provider",
     "HS256Provider",
-    # JWKS
-    "JWK",
-    "JWKSResponse",
+    # JWKS Service
     "JWKSService",
-    "generate_kid_from_public_key",
     "get_jwks_service",
     "initialize_jwks_service",
+    # JWKS Models
+    "JWK",
+    "JWKSResponse",
+    "KeyEntry",
+    "generate_kid_from_public_key",
+    "create_jwk_from_rsa_public_key",
+    "create_jwk_from_ec_public_key",
     # Time
     "SystemTimeSource",
     "TimeSource",
