@@ -1,9 +1,15 @@
 """Reusable services for application layer.
 
-**Feature: application-layer-code-review-2025**
+Application services.
+
+Organized into subpackages by responsibility:
+- cache/: Cache service implementations
+- events/: Event service implementations
+
+**Feature: architecture-restructuring-2025**
 """
 
-from application.common.services.cache_service import CacheService
-from application.common.services.kafka_event_service import KafkaEventService
+from application.common.services.cache import CacheService
+from application.common.services.events import KafkaEventService
 
 __all__ = ["CacheService", "KafkaEventService"]

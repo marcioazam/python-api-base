@@ -6,7 +6,7 @@ Re-exports all validation classes for backward compatibility.
 **Refactored: Split into separate files for one-class-per-file compliance**
 """
 
-from application.common.base.exceptions import ValidationError
+from application.common.errors import ValidationError
 from application.common.middleware.validation.base import CompositeValidator, Validator
 from application.common.middleware.validation.middleware import ValidationMiddleware
 from application.common.middleware.validation.validators import (

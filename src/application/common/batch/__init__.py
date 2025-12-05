@@ -5,11 +5,17 @@ and error handling for high-performance mass operations.
 
 Uses PEP 695 type parameter syntax (Python 3.12+).
 
+**Architecture:**
+- config/: Configuration types, enums, and result models
+- interfaces/: Abstract batch repository interface and chunking utilities
+- builders/: Fluent builder pattern for batch operation configuration
+- repositories/: Concrete in-memory batch repository implementation
+
 **Feature: enterprise-features-2025**
-**Refactored: Split into interfaces.py + repository.py for SRP compliance**
+**Refactored: Organized into subpackages by responsibility (2025)**
 """
 
-from application.common.batch.builder import BatchOperationBuilder
+from application.common.batch.builders import BatchOperationBuilder
 from application.common.batch.config import (
     BatchConfig,
     BatchErrorStrategy,
@@ -25,7 +31,7 @@ from application.common.batch.interfaces import (
     chunk_sequence,
     iter_chunks,
 )
-from application.common.batch.repository import BatchRepository
+from application.common.batch.repositories import BatchRepository
 
 __all__ = [
     "BatchConfig",

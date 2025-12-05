@@ -1,9 +1,12 @@
 """User queries.
 
+Organized into subpackages by responsibility:
+- read/: Read queries (Get, List, Count)
+
 **Feature: architecture-restructuring-2025**
 """
 
-from application.users.queries.get_user import (
+from application.users.queries.read import (
     CountUsersHandler,
     CountUsersQuery,
     GetUserByEmailHandler,

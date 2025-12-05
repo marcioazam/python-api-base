@@ -1,5 +1,12 @@
 """Middleware components for command/query pipelines.
 
+Organized into subpackages by responsibility:
+- cache/: Query caching and cache invalidation
+- resilience/: Retry, circuit breaker, and resilience patterns
+- observability/: Logging, metrics, and idempotency
+- operations/: Transaction management
+- validation/: Command validation
+
 Provides cross-cutting concerns:
 - Transaction: Unit of work management
 - Validation: Command validation
@@ -8,56 +15,37 @@ Provides cross-cutting concerns:
 - Caching: Query result caching
 
 **Architecture: Middleware Pattern**
+**Feature: architecture-restructuring-2025**
 """
 
-from application.common.middleware.cache_invalidation import (
-    CacheInvalidationMiddleware,
+from application.common.middleware.cache import (
     CacheInvalidationStrategy,
     CompositeCacheInvalidationStrategy,
+    InMemoryQueryCache,
     InvalidationRule,
     ItemCacheInvalidationStrategy,
+    QueryCache,
     UserCacheInvalidationStrategy,
-    create_entity_specific_pattern,
-    create_query_type_pattern,
 )
-from application.common.middleware.circuit_breaker import (
+from application.common.middleware.observability import (
+    InMemoryMetricsCollector,
+    LoggingMiddleware,
+    MetricsMiddleware,
+)
+from application.common.middleware.operations import (
+    IdempotencyCache,
+    IdempotencyMiddleware,
+    InMemoryIdempotencyCache,
+    TransactionMiddleware,
+)
+from application.common.middleware.resilience import (
     CircuitBreakerConfig,
     CircuitBreakerMiddleware,
     CircuitBreakerOpenError,
     CircuitState,
-)
-from application.common.middleware.observability import (
-    IdempotencyCache,
-    IdempotencyConfig,
-    IdempotencyMiddleware,
-    InMemoryIdempotencyCache,
-    InMemoryMetricsCollector,
-    LoggingConfig,
-    LoggingMiddleware,
-    MetricsCollector,
-    MetricsConfig,
-    MetricsMiddleware,
-    generate_request_id,
-    get_request_id,
-    set_request_id,
-)
-from application.common.middleware.query_cache import (
-    InMemoryQueryCache,
-    QueryCache,
-    QueryCacheConfig,
-    QueryCacheMiddleware,
-)
-from application.common.middleware.resilience import ResilienceMiddleware
-from application.common.middleware.retry import (
+    ResilienceMiddleware,
     RetryConfig,
-    RetryExhaustedError,
     RetryMiddleware,
-)
-from application.common.middleware.transaction import (
-    DEFAULT_TRANSACTION_CONFIG,
-    Middleware,
-    TransactionConfig,
-    TransactionMiddleware,
 )
 from application.common.middleware.validation import (
     CompositeValidator,
@@ -69,53 +57,36 @@ from application.common.middleware.validation import (
 )
 
 __all__ = [
-    "DEFAULT_TRANSACTION_CONFIG",
-    "CacheInvalidationMiddleware",
-    # Cache Invalidation
+    # Cache
     "CacheInvalidationStrategy",
+    "CompositeCacheInvalidationStrategy",
+    "InMemoryQueryCache",
+    "InvalidationRule",
+    "ItemCacheInvalidationStrategy",
+    "QueryCache",
+    "UserCacheInvalidationStrategy",
+    # Resilience
     "CircuitBreakerConfig",
     "CircuitBreakerMiddleware",
     "CircuitBreakerOpenError",
     "CircuitState",
-    "CompositeCacheInvalidationStrategy",
-    "CompositeValidator",
-    "IdempotencyCache",
-    "IdempotencyConfig",
-    "IdempotencyMiddleware",
-    "InMemoryIdempotencyCache",
-    "InMemoryMetricsCollector",
-    "InMemoryQueryCache",
-    "InvalidationRule",
-    "ItemCacheInvalidationStrategy",
-    "LoggingConfig",
-    # Observability
-    "LoggingMiddleware",
-    "MetricsCollector",
-    "MetricsConfig",
-    "MetricsMiddleware",
-    # Transaction
-    "Middleware",
-    "QueryCache",
-    "QueryCacheConfig",
-    # Query Caching
-    "QueryCacheMiddleware",
-    "RangeValidator",
-    "RequiredFieldValidator",
     "ResilienceMiddleware",
     "RetryConfig",
-    "RetryExhaustedError",
-    # Resilience
     "RetryMiddleware",
-    "StringLengthValidator",
-    "TransactionConfig",
+    # Observability
+    "InMemoryMetricsCollector",
+    "LoggingMiddleware",
+    "MetricsMiddleware",
+    # Operations
+    "IdempotencyCache",
+    "IdempotencyMiddleware",
+    "InMemoryIdempotencyCache",
     "TransactionMiddleware",
-    "UserCacheInvalidationStrategy",
     # Validation
+    "CompositeValidator",
+    "RangeValidator",
+    "RequiredFieldValidator",
+    "StringLengthValidator",
     "ValidationMiddleware",
     "Validator",
-    "create_entity_specific_pattern",
-    "create_query_type_pattern",
-    "generate_request_id",
-    "get_request_id",
-    "set_request_id",
 ]

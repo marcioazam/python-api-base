@@ -29,8 +29,10 @@ from infrastructure.db.query_builder.conditions import (
 )
 from infrastructure.db.query_builder.field_accessor import FieldAccessor, field_
 from infrastructure.db.query_builder.in_memory import InMemoryQueryBuilder
+from infrastructure.db.query_builder.query_builder import build_query
 
 __all__ = [
+    "build_query",
     "ComparisonOperator",
     "ConditionGroup",
     "FieldAccessor",

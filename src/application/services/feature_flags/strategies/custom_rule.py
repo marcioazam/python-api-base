@@ -9,7 +9,7 @@ from collections.abc import Callable
 
 from application.services.feature_flags.config import FlagConfig
 from application.services.feature_flags.models import EvaluationContext
-from application.services.feature_flags.strategies.base import (
+from application.services.feature_flags.core.base import (
     EvaluationStrategy,
     FlagEvaluationResult,
 )
@@ -81,3 +81,5 @@ class CustomRuleStrategy(EvaluationStrategy):
             )
 
         return FlagEvaluationResult.no_match()
+
+

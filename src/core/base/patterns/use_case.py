@@ -12,7 +12,7 @@ from typing import Any, Literal, Protocol, overload, runtime_checkable
 
 from pydantic import BaseModel
 
-from application.common.base.dto import PaginatedResponse
+from application.common.dto import PaginatedResponse
 from core.errors.base.domain_errors import EntityNotFoundError
 from core.protocols import UnitOfWork
 

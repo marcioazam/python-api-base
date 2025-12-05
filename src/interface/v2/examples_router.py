@@ -11,7 +11,7 @@ from typing import Any
 from fastapi import Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.common.base.dto import ApiResponse, PaginatedResponse
+from application.common.dto import ApiResponse, PaginatedResponse
 from application.examples import (
     ItemExampleCreate,
     ItemExampleResponse,

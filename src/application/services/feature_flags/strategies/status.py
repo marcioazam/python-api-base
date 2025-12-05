@@ -5,9 +5,9 @@
 """
 
 from application.services.feature_flags.config import FlagConfig
-from application.services.feature_flags.enums import FlagStatus
+from application.services.feature_flags.core import FlagStatus
 from application.services.feature_flags.models import EvaluationContext
-from application.services.feature_flags.strategies.base import (
+from application.services.feature_flags.core.base import (
     EvaluationStrategy,
     FlagEvaluationResult,
 )
@@ -61,3 +61,5 @@ class EnabledStrategy(EvaluationStrategy):
                 reason="Flag enabled",
             )
         return FlagEvaluationResult.no_match()
+
+

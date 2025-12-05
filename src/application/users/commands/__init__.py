@@ -1,11 +1,19 @@
 """User commands.
 
+Organized into subpackages by responsibility:
+- mutations/: Create, Update, Delete commands
+
 **Feature: architecture-restructuring-2025**
 """
 
-from application.users.commands.create_user import CreateUserCommand, CreateUserHandler
-from application.users.commands.delete_user import DeleteUserCommand, DeleteUserHandler
-from application.users.commands.update_user import UpdateUserCommand, UpdateUserHandler
+from application.users.commands.mutations import (
+    CreateUserCommand,
+    CreateUserHandler,
+    DeleteUserCommand,
+    DeleteUserHandler,
+    UpdateUserCommand,
+    UpdateUserHandler,
+)
 
 __all__ = [
     "CreateUserCommand",

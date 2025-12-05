@@ -1,5 +1,12 @@
 """Feature flags service for controlled feature rollouts.
 
+Organized into subpackages by responsibility:
+- core/: Base types and enumerations
+- config/: Configuration settings
+- models/: Data models and DTOs
+- service/: Main service and strategy registry
+- strategies/: Strategy implementations
+
 Provides feature flag management with percentage-based rollouts,
 user targeting, and custom evaluation rules using Strategy pattern.
 
@@ -8,7 +15,7 @@ user targeting, and custom evaluation rules using Strategy pattern.
 """
 
 from application.services.feature_flags.config import FlagConfig
-from application.services.feature_flags.enums import FlagStatus, RolloutStrategy
+from application.services.feature_flags.core import FlagStatus, RolloutStrategy
 from application.services.feature_flags.models import EvaluationContext
 from application.services.feature_flags.service import FeatureFlagService
 from application.services.feature_flags.strategies import (

@@ -6,7 +6,7 @@ Re-exports all strategy classes for backward compatibility.
 **Refactored: Split into separate files for one-class-per-file compliance**
 """
 
-from application.services.feature_flags.strategies.base import (
+from application.services.feature_flags.core.base import (
     EvaluationStrategy,
     FlagEvaluationResult,
 )
@@ -43,3 +43,4 @@ __all__ = [
     "StrategyChain",
     "create_default_strategy_chain",
 ]
+

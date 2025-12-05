@@ -8,7 +8,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from application.common.base.exceptions import ValidationError
+from application.common.errors import ValidationError
 from application.common.middleware.validation.base import Validator
 from core.base.patterns.result import Err, Result
 

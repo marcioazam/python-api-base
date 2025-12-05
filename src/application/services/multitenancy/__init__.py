@@ -1,12 +1,12 @@
 """Multi-tenancy support with automatic tenant filtering.
 
+Organized into subpackages by responsibility:
+- models/: Context management (TenantContext, get/set_current_tenant)
+- repository/: TenantRepository with automatic filtering
+- middleware/: ASGI middleware for tenant extraction
+
 This module provides generic multi-tenant repository and middleware
 for automatic tenant isolation in data access.
-
-Structure:
-- models.py: Context management (TenantContext, get/set_current_tenant)
-- repository.py: TenantRepository with automatic filtering
-- middleware.py: ASGI middleware for tenant extraction
 
 **Feature: enterprise-features-2025**
 **Validates: Requirements 7.1, 7.2, 7.3**

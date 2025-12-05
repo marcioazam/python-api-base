@@ -1,5 +1,11 @@
 """Dependency Injection module.
 
+Organized into subpackages by responsibility:
+- container/: Container and Scope classes
+- resolution/: Resolver and exceptions
+- lifecycle/: Lifetime and Registration
+- observability/: Metrics tracking
+
 This module provides a type-safe dependency injection container with:
 - Auto-wiring of constructor dependencies
 - Lifetime management (TRANSIENT, SINGLETON, SCOPED)
@@ -18,14 +24,14 @@ Example:
 """
 
 from core.di.container import Container, Scope
-from core.di.exceptions import (
+from core.di.resolution import (
     CircularDependencyError,
     DependencyResolutionError,
     InvalidFactoryError,
     ServiceNotRegisteredError,
 )
 from core.di.lifecycle import Lifetime, Registration
-from core.di.metrics import ContainerHooks, ContainerStats, MetricsTracker
+from core.di.observability import ContainerHooks, ContainerStats, MetricsTracker
 
 __all__ = [
     "CircularDependencyError",

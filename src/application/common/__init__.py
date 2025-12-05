@@ -1,7 +1,7 @@
 """Shared application infrastructure.
 
 Provides common components for all bounded contexts:
-- Base: DTOs, Mappers, UseCases, Exceptions
+- DTOs/Errors/Mappers/UseCases: Application base primitives
 - CQRS: Command/Query/Event buses and handlers
 - Middleware: Transaction, validation, resilience, observability
 - Batch: Batch processing utilities
@@ -10,25 +10,18 @@ Provides common components for all bounded contexts:
 **Architecture: Vertical Slices - Shared Infrastructure**
 """
 
-# Base classes
-from application.common.base import (
-    # DTOs
-    ApiResponse,
-    # Exceptions (from base)
+# Base classes (directly from specialized subpackages)
+from application.common.dto import ApiResponse, PaginatedResponse, ProblemDetail
+from application.common.errors import (
     ApplicationError as BaseApplicationError,
-    # UseCase
-    BaseUseCase,
     ConflictError as BaseConflictError,
     ForbiddenError as BaseForbiddenError,
-    # Mapper
-    IMapper,
-    Mapper,
     NotFoundError as BaseNotFoundError,
-    PaginatedResponse,
-    ProblemDetail,
     UnauthorizedError as BaseUnauthorizedError,
     ValidationError as BaseValidationError,
 )
+from application.common.mappers import IMapper, Mapper
+from application.common.use_cases import BaseUseCase
 
 # CQRS
 from application.common.cqrs import (
@@ -60,13 +53,12 @@ from application.common.middleware import (
     CircuitBreakerConfig,
     CircuitBreakerMiddleware,
     CompositeValidator,
-    IdempotencyConfig,
+    IdempotencyCache,
     IdempotencyMiddleware,
-    LoggingConfig,
-    # Observability
     LoggingMiddleware,
+    # Observability
+    MetricsMiddleware,
     # Transaction
-    Middleware,
     ResilienceMiddleware,
     RetryConfig,
     # Resilience
@@ -105,13 +97,12 @@ __all__ = [
     "HandlerNotFoundError",
     # Mapper
     "IMapper",
-    "IdempotencyConfig",
+    "IdempotencyCache",
     "IdempotencyMiddleware",
-    "LoggingConfig",
     "LoggingMiddleware",
     "Mapper",
+    "MetricsMiddleware",
     # Middleware
-    "Middleware",
     "MiddlewareFunc",
     "NotFoundError",
     "PaginatedResponse",

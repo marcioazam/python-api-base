@@ -1,5 +1,10 @@
 """File upload service with S3 support and PEP 695 generics.
 
+Organized into subpackages by responsibility:
+- models/: Data models and DTOs
+- validators/: Validation logic
+- service/: Main upload service
+
 **Feature: enterprise-features-2025, Task 6.1: Create file upload service package**
 **Validates: Requirements 6.8, 6.9**
 """

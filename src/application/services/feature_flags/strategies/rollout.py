@@ -7,9 +7,9 @@
 import hashlib
 
 from application.services.feature_flags.config import FlagConfig
-from application.services.feature_flags.enums import FlagStatus
+from application.services.feature_flags.core import FlagStatus
 from application.services.feature_flags.models import EvaluationContext
-from application.services.feature_flags.strategies.base import (
+from application.services.feature_flags.core.base import (
     EvaluationStrategy,
     FlagEvaluationResult,
 )
@@ -79,3 +79,5 @@ class PercentageRolloutStrategy(EvaluationStrategy):
         bucket = hash_value % 100
 
         return bucket < percentage
+
+

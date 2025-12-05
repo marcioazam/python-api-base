@@ -1,67 +1,60 @@
 """Application layer for PedidoExample.
 
+Organized into subpackages by responsibility:
+- commands/: Pedido commands
+- queries/: Pedido queries
+- handlers/: Command/Query handlers
+- use_cases/: Business logic
+- dtos/: Data transfer objects
+- mappers/: Entity ↔ DTO mapping
+
 **Feature: application-common-integration**
 """
 
 from application.examples.pedido.commands import (
-    AddItemToPedidoCommand,
-    CancelPedidoCommand,
-    ConfirmPedidoCommand,
     CreatePedidoCommand,
+    DeletePedidoCommand,
+    UpdatePedidoCommand,
 )
 from application.examples.pedido.dtos import (
-    AddItemRequest,
-    CancelPedidoRequest,
-    ConfirmPedidoRequest,
-    PedidoExampleCreate,
-    PedidoExampleResponse,
-    PedidoExampleUpdate,
-    PedidoItemResponse,
-    UpdateStatusRequest,
+    PedidoCreate,
+    PedidoResponse,
+    PedidoUpdate,
 )
 from application.examples.pedido.handlers import (
-    AddItemToPedidoCommandHandler,
-    CancelPedidoCommandHandler,
-    ConfirmPedidoCommandHandler,
-    CreatePedidoCommandHandler,
-    GetPedidoQueryHandler,
-    ListPedidosQueryHandler,
+    CreatePedidoHandler,
+    DeletePedidoHandler,
+    GetPedidoByIdHandler,
+    ListPedidosHandler,
+    UpdatePedidoHandler,
 )
-from application.examples.pedido.mapper import PedidoExampleMapper, PedidoItemMapper
+from application.examples.pedido.mappers import PedidoMapper
 from application.examples.pedido.queries import (
-    GetPedidoQuery,
+    GetPedidoByIdQuery,
     ListPedidosQuery,
 )
-from application.examples.pedido.use_case import PedidoExampleUseCase
+from application.examples.pedido.use_cases import PedidoUseCase
 
 __all__ = [
-    "AddItemRequest",
-    "AddItemToPedidoCommand",
-    "AddItemToPedidoCommandHandler",
-    "CancelPedidoCommand",
-    "CancelPedidoCommandHandler",
-    "CancelPedidoRequest",
-    "ConfirmPedidoCommand",
-    "ConfirmPedidoCommandHandler",
-    "ConfirmPedidoRequest",
     # Commands
     "CreatePedidoCommand",
-    # Handlers
-    "CreatePedidoCommandHandler",
+    "UpdatePedidoCommand",
+    "DeletePedidoCommand",
     # Queries
-    "GetPedidoQuery",
-    "GetPedidoQueryHandler",
+    "GetPedidoByIdQuery",
     "ListPedidosQuery",
-    "ListPedidosQueryHandler",
+    # Handlers
+    "CreatePedidoHandler",
+    "UpdatePedidoHandler",
+    "DeletePedidoHandler",
+    "GetPedidoByIdHandler",
+    "ListPedidosHandler",
     # DTOs
-    "PedidoExampleCreate",
-    # Mappers
-    "PedidoExampleMapper",
-    "PedidoExampleResponse",
-    "PedidoExampleUpdate",
-    # Use Case (legacy)
-    "PedidoExampleUseCase",
-    "PedidoItemMapper",
-    "PedidoItemResponse",
-    "UpdateStatusRequest",
+    "PedidoCreate",
+    "PedidoUpdate",
+    "PedidoResponse",
+    # Mapper
+    "PedidoMapper",
+    # Use Case
+    "PedidoUseCase",
 ]

@@ -11,7 +11,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Header, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 
-from application.common.base.dto import ApiResponse
+from application.common.dto import ApiResponse
 from core.config import (
     ACCESS_TOKEN_EXPIRE_SECONDS,
     MAX_DISPLAY_NAME_LENGTH,

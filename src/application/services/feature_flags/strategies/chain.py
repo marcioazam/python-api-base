@@ -9,7 +9,7 @@ from typing import Any
 
 from application.services.feature_flags.config import FlagConfig
 from application.services.feature_flags.models import EvaluationContext
-from application.services.feature_flags.strategies.base import EvaluationStrategy
+from application.services.feature_flags.core.base import EvaluationStrategy
 from application.services.feature_flags.strategies.custom_rule import CustomRuleStrategy
 from application.services.feature_flags.strategies.fallback import DefaultValueStrategy
 from application.services.feature_flags.strategies.rollout import PercentageRolloutStrategy
@@ -135,3 +135,4 @@ def create_default_strategy_chain(seed: int = 0) -> StrategyChain:
             DefaultValueStrategy(),  # Priority 100 (fallback)
         ]
     )
+

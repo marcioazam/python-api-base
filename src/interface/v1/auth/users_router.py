@@ -15,7 +15,7 @@ from uuid import uuid4
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from application.common.base.dto import ApiResponse, PaginatedResponse
+from application.common.dto import ApiResponse, PaginatedResponse
 from interface.v1.auth.router import _user_roles, _users
 
 warnings.warn(

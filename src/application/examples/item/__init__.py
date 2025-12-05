@@ -1,8 +1,23 @@
 """Application layer for ItemExample.
 
+Organized into subpackages by responsibility:
+- commands/: Item commands
+- queries/: Item queries
+- handlers/: Command/Query handlers
+- use_cases/: Business logic
+- dtos/: Data transfer objects
+- mappers/: Entity ↔ DTO mapping
+- batch/: Batch operations
+- export/: Export functionality
+
 **Feature: application-common-integration**
 """
 
+from application.examples.item.batch import (
+    BatchCreateRequest,
+    BatchUpdateRequest,
+    ItemExampleBatchService,
+)
 from application.examples.item.commands import (
     CreateItemCommand,
     DeleteItemCommand,
@@ -10,45 +25,62 @@ from application.examples.item.commands import (
 )
 from application.examples.item.dtos import (
     ItemExampleCreate,
-    ItemExampleListResponse,
     ItemExampleResponse,
     ItemExampleUpdate,
 )
-from application.examples.item.handlers import (
-    CreateItemCommandHandler,
-    DeleteItemCommandHandler,
-    GetItemQueryHandler,
-    ListItemsQueryHandler,
-    UpdateItemCommandHandler,
+from application.examples.item.export import (
+    ExportFormat,
+    ExportMetadata,
+    ExportResult,
+    ImportResult,
+    ItemExampleExportService,
+    ItemExampleImportService,
 )
-from application.examples.item.mapper import ItemExampleMapper
+from application.examples.item.handlers import (
+    CreateItemHandler,
+    DeleteItemHandler,
+    GetItemByIdHandler,
+    ListItemsHandler,
+    UpdateItemHandler,
+)
+from application.examples.item.mappers import ItemExampleMapper
 from application.examples.item.queries import (
-    GetItemQuery,
+    GetItemByIdQuery,
     ListItemsQuery,
 )
-from application.examples.item.use_case import ItemExampleUseCase
+from application.examples.item.use_cases import ItemExampleUseCase
 
 __all__ = [
     # Commands
     "CreateItemCommand",
-    # Handlers
-    "CreateItemCommandHandler",
+    "UpdateItemCommand",
     "DeleteItemCommand",
-    "DeleteItemCommandHandler",
     # Queries
-    "GetItemQuery",
-    "GetItemQueryHandler",
+    "GetItemByIdQuery",
+    "ListItemsQuery",
+    # Handlers
+    "CreateItemHandler",
+    "UpdateItemHandler",
+    "DeleteItemHandler",
+    "GetItemByIdHandler",
+    "ListItemsHandler",
     # DTOs
     "ItemExampleCreate",
-    "ItemExampleListResponse",
+    "ItemExampleUpdate",
+    "ItemExampleResponse",
     # Mapper
     "ItemExampleMapper",
-    "ItemExampleResponse",
-    "ItemExampleUpdate",
-    # Use Case (legacy)
+    # Batch
+    "BatchCreateRequest",
+    "BatchUpdateRequest",
+    "ItemExampleBatchService",
+    # Export
+    "ExportFormat",
+    "ExportMetadata",
+    "ExportResult",
+    "ImportResult",
+    "ItemExampleExportService",
+    "ItemExampleImportService",
+    # Use Case
     "ItemExampleUseCase",
-    "ListItemsQuery",
-    "ListItemsQueryHandler",
-    "UpdateItemCommand",
-    "UpdateItemCommandHandler",
 ]

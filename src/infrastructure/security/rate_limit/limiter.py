@@ -13,7 +13,7 @@ from slowapi.util import get_remote_address
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from application.common.base.dto import ProblemDetail
+from application.common.dto import ProblemDetail
 from core.config import get_settings
 from infrastructure.security.rate_limit.sliding_window import (
     RateLimitResult,

@@ -15,7 +15,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
-from application.common.base.dto import (
+from application.common.dto import (
     ApiResponse,
     BulkDeleteRequest,
     BulkDeleteResponse,

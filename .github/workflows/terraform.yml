@@ -137,7 +137,7 @@ jobs:
           category: "trivy-terraform"
 
       - name: Run Checkov
-        uses: bridgecrewio/checkov-action@648d6e5e0d7e7c0e0e0e0e0e0e0e0e0e0e0e0e0e # v12
+        uses: bridgecrewio/checkov-action@15bcac28c2ace3c5b6ef4812547c0e5cae9b5799 # v12.2.2
         with:
           directory: ${{ env.WORKING_DIR }}
           framework: terraform

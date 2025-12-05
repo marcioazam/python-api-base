@@ -11,25 +11,24 @@ Provides CQRS handlers for User aggregate:
 """
 
 from application.users.commands import CreateUserCommand, CreateUserHandler
-from application.users.commands.dtos import (
+from application.users.dtos import (
     ChangeEmailDTO,
     ChangePasswordDTO,
     CreateUserDTO,
     UpdateUserDTO,
+    UserActivityReadDTO,
     UserDTO,
     UserListDTO,
+    UserListReadDTO,
+    UserReadDTO,
+    UserSearchResultDTO,
 )
-from application.users.commands.mapper import UserMapper
+from application.users.mappers import UserMapper
 from application.users.queries import (
     GetUserByEmailHandler,
     GetUserByEmailQuery,
     GetUserByIdHandler,
     GetUserByIdQuery,
-)
-from application.users.read_model import (
-    UserListReadDTO,
-    UserReadDTO,
-    UserSearchResultDTO,
 )
 from application.users.read_model.projections import (
     UserProjectionHandler,
@@ -52,13 +51,14 @@ __all__ = [
     # Write Model DTOs
     "UserDTO",
     "UserListDTO",
+    # Read Model DTOs
+    "UserReadDTO",
     "UserListReadDTO",
+    "UserSearchResultDTO",
+    "UserActivityReadDTO",
     # Mappers
     "UserMapper",
     # Projections
     "UserProjectionHandler",
-    # Read Model DTOs
-    "UserReadDTO",
     "UserReadModelProjector",
-    "UserSearchResultDTO",
 ]

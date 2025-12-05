@@ -1,5 +1,9 @@
 """Shared components for Example system.
 
+Organized into subpackages:
+- dtos/: Shared data transfer objects
+- errors/: Shared error types
+
 **Feature: example-system-demo**
 """
 
@@ -11,7 +15,9 @@ from application.examples.shared.errors import (
 )
 
 __all__ = [
+    # DTOs
     "MoneyDTO",
+    # Errors
     "NotFoundError",
     "UseCaseError",
     "ValidationError",

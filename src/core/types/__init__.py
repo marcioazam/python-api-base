@@ -1,5 +1,11 @@
 """Core type definitions using PEP 593 Annotated types and PEP 695 type aliases.
 
+Organized into subpackages by category:
+- identity/: ID types (ULID, UUID, UUID7, EntityId)
+- data/: JSON, numeric, and string types
+- patterns/: Result pattern and callback types
+- domain/: Repository and security types
+
 **Feature: core-types-split-2025**
 
 Provides reusable type aliases with built-in validation constraints.
@@ -7,10 +13,10 @@ Refactored from monolithic types.py into focused modules.
 """
 
 # ID Types
-from core.types.id_types import ULID, UUID
+from core.types.identity import ULID, UUID, UUID7
 
 # JSON Type Aliases
-from core.types.json_types import (
+from core.types.data import (
     FilterDict,
     Headers,
     JSONArray,
@@ -19,21 +25,32 @@ from core.types.json_types import (
     JSONValue,
     QueryParams,
     SortOrder,
-)
-
-# Numeric Types
-from core.types.numeric_types import (
+    # Numeric Types
     NonNegativeFloat,
     NonNegativeInt,
     PageNumber,
     PageSize,
     Percentage,
+    PercentageRange,
     PositiveFloat,
     PositiveInt,
+    # String Types
+    Email,
+    HttpUrl,
+    ISODateStr,
+    LongStr,
+    MediumStr,
+    NonEmptyStr,
+    PhoneNumber,
+    ShortStr,
+    Slug,
+    TrimmedStr,
+    URLPath,
+    VersionStr,
 )
 
 # Repository/UseCase Type Aliases
-from core.types.repository_types import (
+from core.types.domain import (
     ApiResult,
     CRUDRepository,
     ErrorResult,
@@ -42,10 +59,14 @@ from core.types.repository_types import (
     ReadOnlyUseCase,
     StandardUseCase,
     WriteOnlyRepository,
+    # Security Types
+    JWTToken,
+    Password,
+    SecurePassword,
 )
 
 # Result Pattern and Callback Type Aliases
-from core.types.result_types import (
+from core.types.patterns import (
     AsyncCallback,
     CompositeSpec,
     EntityId,
@@ -60,28 +81,11 @@ from core.types.result_types import (
     VoidResult,
 )
 
-# Security Types
-from core.types.security_types import JWTToken, Password, SecurePassword
-
-# String Types
-from core.types.string_types import (
-    Email,
-    HttpUrl,
-    ISODateStr,
-    LongStr,
-    MediumStr,
-    NonEmptyStr,
-    PhoneNumber,
-    ShortStr,
-    Slug,
-    TrimmedStr,
-    VersionStr,
-)
-
 __all__ = [
     # ID Types
     "ULID",
     "UUID",
+    "UUID7",
     # Response Type Aliases
     "ApiResult",
     # Callback Type Aliases
@@ -123,6 +127,7 @@ __all__ = [
     "PaginatedResult",
     "Password",
     "Percentage",
+    "PercentageRange",
     "PhoneNumber",
     "PositiveFloat",
     "PositiveInt",
@@ -139,6 +144,7 @@ __all__ = [
     "SyncCallback",
     "Timestamp",
     "TrimmedStr",
+    "URLPath",
     "VersionStr",
     "VoidResult",
     "WriteOnlyRepository",
