@@ -48,7 +48,7 @@ jobs:
             --debug > /tmp/helm-template-output.yaml
 
       - name: Upload template output
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: helm-template-output
           path: /tmp/helm-template-output.yaml
@@ -203,7 +203,7 @@ jobs:
             --version $(git describe --tags --abbrev=0 || echo "0.1.0")
 
       - name: Upload Helm Chart
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: helm-chart
           path: /tmp/charts/*.tgz
