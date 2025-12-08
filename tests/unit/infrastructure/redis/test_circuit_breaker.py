@@ -1,10 +1,11 @@
-"""Unit tests for circuit breaker.
+"""Tests for Redis circuit breaker module.
 
-**Feature: enterprise-infrastructure-2025**
-**Requirement: R1.5 - Circuit breaker pattern**
+Tests for CircuitBreaker, CircuitState, and CircuitOpenError.
 """
 
 import asyncio
+import time
+from unittest.mock import patch
 
 import pytest
 
@@ -15,124 +16,189 @@ from infrastructure.redis.circuit_breaker import (
 )
 
 
+class TestCircuitState:
+    """Tests for CircuitState enum."""
+
+    def test_closed_value(self) -> None:
+        """CLOSED should have correct value."""
+        assert CircuitState.CLOSED.value == "closed"
+
+    def test_open_value(self) -> None:
+        """OPEN should have correct value."""
+        assert CircuitState.OPEN.value == "open"
+
+    def test_half_open_value(self) -> None:
+        """HALF_OPEN should have correct value."""
+        assert CircuitState.HALF_OPEN.value == "half_open"
+
+
 class TestCircuitBreaker:
-    """Tests for CircuitBreaker."""
+    """Tests for CircuitBreaker class."""
 
-    @pytest.fixture
-    def breaker(self) -> CircuitBreaker:
-        """Create circuit breaker for testing."""
-        return CircuitBreaker(
-            failure_threshold=3,
-            reset_timeout=1.0,
-            half_open_max_calls=1,
+    def test_default_failure_threshold(self) -> None:
+        """Default failure threshold should be 5."""
+        cb = CircuitBreaker()
+        assert cb.failure_threshold == 5
+
+    def test_default_reset_timeout(self) -> None:
+        """Default reset timeout should be 30 seconds."""
+        cb = CircuitBreaker()
+        assert cb.reset_timeout == 30.0
+
+    def test_default_half_open_max_calls(self) -> None:
+        """Default half_open_max_calls should be 1."""
+        cb = CircuitBreaker()
+        assert cb.half_open_max_calls == 1
+
+    def test_custom_parameters(self) -> None:
+        """Should accept custom parameters."""
+        cb = CircuitBreaker(
+            failure_threshold=10,
+            reset_timeout=60.0,
+            half_open_max_calls=3,
         )
+        assert cb.failure_threshold == 10
+        assert cb.reset_timeout == 60.0
+        assert cb.half_open_max_calls == 3
+
+    def test_initial_state_is_closed(self) -> None:
+        """Initial state should be CLOSED."""
+        cb = CircuitBreaker()
+        assert cb.state == CircuitState.CLOSED
+
+    def test_is_closed_property(self) -> None:
+        """is_closed should return True when closed."""
+        cb = CircuitBreaker()
+        assert cb.is_closed is True
+
+    def test_is_open_property_when_closed(self) -> None:
+        """is_open should return False when closed."""
+        cb = CircuitBreaker()
+        assert cb.is_open is False
 
     @pytest.mark.asyncio
-    async def test_initial_state_closed(self, breaker: CircuitBreaker) -> None:
-        """Test initial state is closed."""
-        assert breaker.state == CircuitState.CLOSED
-        assert breaker.is_closed
-        assert not breaker.is_open
+    async def test_can_execute_when_closed(self) -> None:
+        """can_execute should return True when closed."""
+        cb = CircuitBreaker()
+        assert await cb.can_execute() is True
 
     @pytest.mark.asyncio
-    async def test_can_execute_when_closed(self, breaker: CircuitBreaker) -> None:
-        """Test can execute when closed."""
-        assert await breaker.can_execute()
+    async def test_record_success_resets_failure_count(self) -> None:
+        """record_success should reset failure count."""
+        cb = CircuitBreaker()
+        cb._failure_count = 3
+        await cb.record_success()
+        assert cb._failure_count == 0
 
     @pytest.mark.asyncio
-    async def test_opens_after_threshold(self, breaker: CircuitBreaker) -> None:
-        """Test circuit opens after failure threshold."""
-        # Record failures up to threshold
+    async def test_record_failure_increments_count(self) -> None:
+        """record_failure should increment failure count."""
+        cb = CircuitBreaker()
+        await cb.record_failure()
+        assert cb._failure_count == 1
+
+    @pytest.mark.asyncio
+    async def test_opens_after_threshold(self) -> None:
+        """Circuit should open after failure threshold."""
+        cb = CircuitBreaker(failure_threshold=3)
         for _ in range(3):
-            await breaker.record_failure()
-
-        assert breaker.state == CircuitState.OPEN
-        assert not await breaker.can_execute()
+            await cb.record_failure()
+        assert cb.state == CircuitState.OPEN
 
     @pytest.mark.asyncio
-    async def test_success_resets_count(self, breaker: CircuitBreaker) -> None:
-        """Test success resets failure count."""
-        await breaker.record_failure()
-        await breaker.record_failure()
-        await breaker.record_success()
-
-        # Should be able to fail again without opening
-        await breaker.record_failure()
-        await breaker.record_failure()
-
-        assert breaker.state == CircuitState.CLOSED
+    async def test_can_execute_returns_false_when_open(self) -> None:
+        """can_execute should return False when open."""
+        cb = CircuitBreaker(failure_threshold=1)
+        await cb.record_failure()
+        assert cb.state == CircuitState.OPEN
+        assert await cb.can_execute() is False
 
     @pytest.mark.asyncio
-    async def test_half_open_after_timeout(self, breaker: CircuitBreaker) -> None:
-        """Test transitions to half-open after timeout."""
-        # Open the circuit
-        for _ in range(3):
-            await breaker.record_failure()
+    async def test_transitions_to_half_open_after_timeout(self) -> None:
+        """Circuit should transition to HALF_OPEN after timeout."""
+        cb = CircuitBreaker(failure_threshold=1, reset_timeout=0.1)
+        await cb.record_failure()
+        assert cb.state == CircuitState.OPEN
 
-        assert breaker.state == CircuitState.OPEN
-
-        # Wait for timeout
-        await asyncio.sleep(1.1)
-
-        # Should transition to half-open
-        assert await breaker.can_execute()
-        assert breaker.state == CircuitState.HALF_OPEN
+        await asyncio.sleep(0.15)
+        assert await cb.can_execute() is True
+        assert cb.state == CircuitState.HALF_OPEN
 
     @pytest.mark.asyncio
-    async def test_closes_after_half_open_success(
-        self, breaker: CircuitBreaker
-    ) -> None:
-        """Test closes after successful half-open call."""
-        # Open then wait for half-open
-        for _ in range(3):
-            await breaker.record_failure()
+    async def test_half_open_state_after_timeout(self) -> None:
+        """Circuit should transition to HALF_OPEN after timeout."""
+        cb = CircuitBreaker(failure_threshold=1, reset_timeout=0.01, half_open_max_calls=1)
+        await cb.record_failure()
+        assert cb.state == CircuitState.OPEN
 
-        await asyncio.sleep(1.1)
-        await breaker.can_execute()  # Transitions to half-open
-
-        await breaker.record_success()
-
-        assert breaker.state == CircuitState.CLOSED
+        await asyncio.sleep(0.02)
+        # Calling can_execute transitions to HALF_OPEN
+        result = await cb.can_execute()
+        assert result is True
+        assert cb.state == CircuitState.HALF_OPEN
 
     @pytest.mark.asyncio
-    async def test_reopens_after_half_open_failure(
-        self, breaker: CircuitBreaker
-    ) -> None:
-        """Test reopens after half-open failure."""
-        # Open then wait for half-open
-        for _ in range(3):
-            await breaker.record_failure()
+    async def test_closes_after_success_in_half_open(self) -> None:
+        """Circuit should close after success in HALF_OPEN."""
+        cb = CircuitBreaker(failure_threshold=1, reset_timeout=0.01)
+        await cb.record_failure()
+        await asyncio.sleep(0.02)
+        await cb.can_execute()  # Transition to HALF_OPEN
 
-        await asyncio.sleep(1.1)
-        await breaker.can_execute()  # Transitions to half-open
-
-        await breaker.record_failure()
-
-        assert breaker.state == CircuitState.OPEN
+        await cb.record_success()
+        assert cb.state == CircuitState.CLOSED
 
     @pytest.mark.asyncio
-    async def test_manual_reset(self, breaker: CircuitBreaker) -> None:
-        """Test manual reset."""
-        # Open the circuit
-        for _ in range(3):
-            await breaker.record_failure()
+    async def test_reopens_after_failure_in_half_open(self) -> None:
+        """Circuit should reopen after failure in HALF_OPEN."""
+        cb = CircuitBreaker(failure_threshold=1, reset_timeout=0.01)
+        await cb.record_failure()
+        await asyncio.sleep(0.02)
+        await cb.can_execute()  # Transition to HALF_OPEN
 
-        assert breaker.state == CircuitState.OPEN
+        await cb.record_failure()
+        assert cb.state == CircuitState.OPEN
 
-        await breaker.reset()
+    @pytest.mark.asyncio
+    async def test_reset_closes_circuit(self) -> None:
+        """reset should close circuit and clear state."""
+        cb = CircuitBreaker(failure_threshold=1)
+        await cb.record_failure()
+        assert cb.state == CircuitState.OPEN
 
-        assert breaker.state == CircuitState.CLOSED
+        await cb.reset()
+        assert cb.state == CircuitState.CLOSED
+        assert cb._failure_count == 0
+        assert cb._half_open_calls == 0
+
+    @pytest.mark.asyncio
+    async def test_record_failure_with_error(self) -> None:
+        """record_failure should accept error parameter."""
+        cb = CircuitBreaker(failure_threshold=1)
+        error = ValueError("test error")
+        await cb.record_failure(error)
+        assert cb.state == CircuitState.OPEN
 
 
 class TestCircuitOpenError:
-    """Tests for CircuitOpenError."""
+    """Tests for CircuitOpenError exception."""
 
     def test_default_message(self) -> None:
-        """Test default error message."""
+        """Should have default message."""
         error = CircuitOpenError()
-        assert "open" in str(error).lower()
+        assert str(error) == "Circuit breaker is open"
 
     def test_custom_message(self) -> None:
-        """Test custom error message."""
-        error = CircuitOpenError("Redis circuit open")
-        assert "Redis" in str(error)
+        """Should accept custom message."""
+        error = CircuitOpenError("Custom message")
+        assert str(error) == "Custom message"
+
+    def test_is_exception(self) -> None:
+        """Should be an Exception."""
+        error = CircuitOpenError()
+        assert isinstance(error, Exception)
+
+    def test_can_be_raised(self) -> None:
+        """Should be raisable."""
+        with pytest.raises(CircuitOpenError):
+            raise CircuitOpenError()

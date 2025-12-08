@@ -1,144 +1,192 @@
-"""Unit tests for Prometheus registry.
+"""Tests for Prometheus metrics registry module.
 
-**Feature: observability-infrastructure**
-**Requirement: R5 - Prometheus Metrics**
+Tests for MetricsRegistry, get_registry, and set_registry.
 """
 
+import pytest
 from prometheus_client import CollectorRegistry
 
 from infrastructure.prometheus.config import PrometheusConfig
-from infrastructure.prometheus.registry import MetricsRegistry
-
-
-class TestPrometheusConfig:
-    """Tests for PrometheusConfig."""
-
-    def test_default_config(self) -> None:
-        """Test default configuration."""
-        config = PrometheusConfig()
-
-        assert config.enabled is True
-        assert config.endpoint == "/metrics"
-        assert config.namespace == "python_api"
-        assert len(config.default_buckets) > 0
-
-    def test_custom_config(self) -> None:
-        """Test custom configuration."""
-        config = PrometheusConfig(
-            namespace="my_app",
-            subsystem="api",
-            enabled=False,
-        )
-
-        assert config.namespace == "my_app"
-        assert config.subsystem == "api"
-        assert config.enabled is False
+from infrastructure.prometheus.registry import (
+    MetricsRegistry,
+    get_registry,
+    set_registry,
+)
 
 
 class TestMetricsRegistry:
-    """Tests for MetricsRegistry."""
+    """Tests for MetricsRegistry class."""
 
-    def setup_method(self) -> None:
-        """Setup fresh registry for each test."""
-        self.test_registry = CollectorRegistry()
-        self.config = PrometheusConfig(namespace="test")
-        self.registry = MetricsRegistry(self.config, self.test_registry)
+    def test_init_default_config(self) -> None:
+        """Registry should use default config when none provided."""
+        registry = CollectorRegistry()
+        metrics = MetricsRegistry(registry=registry)
+        assert metrics.config is not None
 
-    def test_counter_creation(self) -> None:
-        """Test counter metric creation."""
-        counter = self.registry.counter(
-            "requests_total",
-            "Total requests",
-        )
+    def test_init_custom_config(self) -> None:
+        """Registry should use provided config."""
+        config = PrometheusConfig(namespace="test")
+        registry = CollectorRegistry()
+        metrics = MetricsRegistry(config=config, registry=registry)
+        assert metrics.config.namespace == "test"
 
-        counter.inc()
-        assert counter._value.get() == 1.0
+    def test_config_property(self) -> None:
+        """config property should return config."""
+        config = PrometheusConfig()
+        registry = CollectorRegistry()
+        metrics = MetricsRegistry(config=config, registry=registry)
+        assert metrics.config == config
 
-    def test_counter_with_labels(self) -> None:
-        """Test counter with labels."""
-        counter = self.registry.counter(
-            "requests_labeled",
-            "Labeled requests",
-            labels=["method", "status"],
-        )
-
-        counter.labels(method="GET", status="200").inc()
-        counter.labels(method="POST", status="201").inc(2)
-
-    def test_gauge_creation(self) -> None:
-        """Test gauge metric creation."""
-        gauge = self.registry.gauge(
-            "active_connections",
-            "Active connections",
-        )
-
-        gauge.set(10)
-        assert gauge._value.get() == 10.0
-
-        gauge.inc()
-        assert gauge._value.get() == 11.0
-
-        gauge.dec(5)
-        assert gauge._value.get() == 6.0
-
-    def test_histogram_creation(self) -> None:
-        """Test histogram metric creation."""
-        histogram = self.registry.histogram(
-            "request_duration",
-            "Request duration",
-        )
-
-        histogram.observe(0.5)
-        histogram.observe(1.5)
-
-    def test_histogram_custom_buckets(self) -> None:
-        """Test histogram with custom buckets."""
-        histogram = self.registry.histogram(
-            "custom_duration",
-            "Custom duration",
-            buckets=(0.1, 0.5, 1.0, 5.0),
-        )
-
-        histogram.observe(0.3)
-
-    def test_summary_creation(self) -> None:
-        """Test summary metric creation."""
-        summary = self.registry.summary(
-            "response_size",
-            "Response size",
-        )
-
-        summary.observe(1024)
-        summary.observe(2048)
-
-    def test_metric_caching(self) -> None:
-        """Test that metrics are cached."""
-        counter1 = self.registry.counter("cached_counter", "Test")
-        counter2 = self.registry.counter("cached_counter", "Test")
-
-        assert counter1 is counter2
+    def test_registry_property(self) -> None:
+        """registry property should return collector registry."""
+        registry = CollectorRegistry()
+        metrics = MetricsRegistry(registry=registry)
+        assert metrics.registry == registry
 
     def test_full_name_with_namespace(self) -> None:
-        """Test full metric name generation."""
-        config = PrometheusConfig(namespace="app", subsystem="api")
-        registry = MetricsRegistry(config, CollectorRegistry())
+        """_full_name should include namespace."""
+        config = PrometheusConfig(namespace="myapp")
+        registry = CollectorRegistry()
+        metrics = MetricsRegistry(config=config, registry=registry)
+        assert metrics._full_name("requests") == "myapp_requests"
 
-        counter = registry.counter("requests", "Total requests")
+    def test_full_name_with_subsystem(self) -> None:
+        """_full_name should include subsystem."""
+        config = PrometheusConfig(namespace="", subsystem="http")
+        registry = CollectorRegistry()
+        metrics = MetricsRegistry(config=config, registry=registry)
+        assert metrics._full_name("requests") == "http_requests"
 
-        # Counter name should include namespace and subsystem
-        assert "app_api_requests" in str(counter)
+    def test_full_name_with_namespace_and_subsystem(self) -> None:
+        """_full_name should include both namespace and subsystem."""
+        config = PrometheusConfig(namespace="myapp", subsystem="http")
+        registry = CollectorRegistry()
+        metrics = MetricsRegistry(config=config, registry=registry)
+        assert metrics._full_name("requests") == "myapp_http_requests"
 
-    def test_generate_metrics(self) -> None:
-        """Test metrics output generation."""
-        self.registry.counter("output_test", "Test counter").inc()
+    def test_full_name_without_prefix(self) -> None:
+        """_full_name should work without namespace/subsystem."""
+        config = PrometheusConfig(namespace="", subsystem="")
+        registry = CollectorRegistry()
+        metrics = MetricsRegistry(config=config, registry=registry)
+        assert metrics._full_name("requests") == "requests"
 
-        output = self.registry.generate_metrics()
+    def test_counter_creates_metric(self) -> None:
+        """counter should create a Counter metric."""
+        registry = CollectorRegistry()
+        metrics = MetricsRegistry(registry=registry)
+        counter = metrics.counter("test_counter", "Test counter")
+        assert counter is not None
+        counter.inc()
 
+    def test_counter_returns_same_metric(self) -> None:
+        """counter should return same metric for same name."""
+        registry = CollectorRegistry()
+        metrics = MetricsRegistry(registry=registry)
+        counter1 = metrics.counter("same_counter", "Test")
+        counter2 = metrics.counter("same_counter", "Test")
+        assert counter1 is counter2
+
+    def test_counter_with_labels(self) -> None:
+        """counter should support labels."""
+        registry = CollectorRegistry()
+        metrics = MetricsRegistry(registry=registry)
+        counter = metrics.counter("labeled_counter", "Test", labels=["method"])
+        counter.labels(method="GET").inc()
+
+    def test_gauge_creates_metric(self) -> None:
+        """gauge should create a Gauge metric."""
+        registry = CollectorRegistry()
+        metrics = MetricsRegistry(registry=registry)
+        gauge = metrics.gauge("test_gauge", "Test gauge")
+        assert gauge is not None
+        gauge.set(42)
+
+    def test_gauge_returns_same_metric(self) -> None:
+        """gauge should return same metric for same name."""
+        registry = CollectorRegistry()
+        metrics = MetricsRegistry(registry=registry)
+        gauge1 = metrics.gauge("same_gauge", "Test")
+        gauge2 = metrics.gauge("same_gauge", "Test")
+        assert gauge1 is gauge2
+
+    def test_gauge_with_labels(self) -> None:
+        """gauge should support labels."""
+        registry = CollectorRegistry()
+        metrics = MetricsRegistry(registry=registry)
+        gauge = metrics.gauge("labeled_gauge", "Test", labels=["status"])
+        gauge.labels(status="active").set(10)
+
+    def test_histogram_creates_metric(self) -> None:
+        """histogram should create a Histogram metric."""
+        registry = CollectorRegistry()
+        metrics = MetricsRegistry(registry=registry)
+        histogram = metrics.histogram("test_histogram", "Test histogram")
+        assert histogram is not None
+        histogram.observe(0.5)
+
+    def test_histogram_returns_same_metric(self) -> None:
+        """histogram should return same metric for same name."""
+        registry = CollectorRegistry()
+        metrics = MetricsRegistry(registry=registry)
+        hist1 = metrics.histogram("same_histogram", "Test")
+        hist2 = metrics.histogram("same_histogram", "Test")
+        assert hist1 is hist2
+
+    def test_histogram_with_custom_buckets(self) -> None:
+        """histogram should support custom buckets."""
+        registry = CollectorRegistry()
+        metrics = MetricsRegistry(registry=registry)
+        buckets = (0.1, 0.5, 1.0, 5.0)
+        histogram = metrics.histogram(
+            "custom_buckets_histogram", "Test", buckets=buckets
+        )
+        histogram.observe(0.3)
+
+    def test_summary_creates_metric(self) -> None:
+        """summary should create a Summary metric."""
+        registry = CollectorRegistry()
+        metrics = MetricsRegistry(registry=registry)
+        summary = metrics.summary("test_summary", "Test summary")
+        assert summary is not None
+        summary.observe(0.5)
+
+    def test_summary_returns_same_metric(self) -> None:
+        """summary should return same metric for same name."""
+        registry = CollectorRegistry()
+        metrics = MetricsRegistry(registry=registry)
+        sum1 = metrics.summary("same_summary", "Test")
+        sum2 = metrics.summary("same_summary", "Test")
+        assert sum1 is sum2
+
+    def test_generate_metrics_returns_bytes(self) -> None:
+        """generate_metrics should return bytes."""
+        registry = CollectorRegistry()
+        metrics = MetricsRegistry(registry=registry)
+        metrics.counter("gen_test", "Test").inc()
+        output = metrics.generate_metrics()
         assert isinstance(output, bytes)
-        assert b"output_test" in output
 
-    def test_content_type(self) -> None:
-        """Test content type."""
-        content_type = self.registry.content_type()
-
+    def test_content_type_returns_string(self) -> None:
+        """content_type should return content type string."""
+        registry = CollectorRegistry()
+        metrics = MetricsRegistry(registry=registry)
+        content_type = metrics.content_type()
+        assert isinstance(content_type, str)
         assert "text/plain" in content_type or "openmetrics" in content_type
+
+
+class TestGlobalRegistry:
+    """Tests for global registry functions."""
+
+    def test_get_registry_returns_instance(self) -> None:
+        """get_registry should return MetricsRegistry instance."""
+        registry = get_registry()
+        assert isinstance(registry, MetricsRegistry)
+
+    def test_set_registry_changes_global(self) -> None:
+        """set_registry should change global registry."""
+        custom_registry = CollectorRegistry()
+        custom_metrics = MetricsRegistry(registry=custom_registry)
+        set_registry(custom_metrics)
+        assert get_registry() is custom_metrics

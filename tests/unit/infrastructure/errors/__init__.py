@@ -1,1 +1,1 @@
-"""Unit tests for infrastructure errors module."""
+"""Tests for infrastructure errors module."""
