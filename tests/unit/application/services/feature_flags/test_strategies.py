@@ -267,3 +267,347 @@ class TestEvaluationContext:
 
         assert context.attributes["country"] == "BR"
         assert context.attributes["plan"] == "premium"
+
+
+class TestPercentageRolloutStrategy:
+    """Tests for PercentageRolloutStrategy."""
+
+    @pytest.fixture
+    def strategy(self) -> "PercentageRolloutStrategy":
+        """Create strategy instance."""
+        from application.services.feature_flags.strategies.rollout import (
+            PercentageRolloutStrategy,
+        )
+        return PercentageRolloutStrategy(seed=42)
+
+    @pytest.fixture
+    def context(self) -> EvaluationContext:
+        """Create evaluation context."""
+        return EvaluationContext(user_id="user-123")
+
+    def test_priority(self, strategy: "PercentageRolloutStrategy") -> None:
+        """Test strategy priority."""
+        assert strategy.priority == 20
+
+    def test_evaluate_100_percent_rollout(
+        self, strategy: "PercentageRolloutStrategy", context: EvaluationContext
+    ) -> None:
+        """Test 100% rollout always matches."""
+        flag = FlagConfig(
+            key="test-flag",
+            status=FlagStatus.PERCENTAGE,
+            percentage=100.0,
+            enabled_value=True,
+        )
+
+        result = strategy.evaluate(flag, context)
+
+        assert result.matched is True
+        assert result.value is True
+
+    def test_evaluate_0_percent_rollout(
+        self, strategy: "PercentageRolloutStrategy", context: EvaluationContext
+    ) -> None:
+        """Test 0% rollout never matches."""
+        flag = FlagConfig(
+            key="test-flag",
+            status=FlagStatus.PERCENTAGE,
+            percentage=0.0,
+            enabled_value=True,
+        )
+
+        result = strategy.evaluate(flag, context)
+
+        assert result.matched is False
+
+    def test_evaluate_non_percentage_flag(
+        self, strategy: "PercentageRolloutStrategy", context: EvaluationContext
+    ) -> None:
+        """Test non-percentage flag returns no match."""
+        flag = FlagConfig(
+            key="test-flag",
+            status=FlagStatus.ENABLED,
+            percentage=50.0,
+            enabled_value=True,
+        )
+
+        result = strategy.evaluate(flag, context)
+
+        assert result.matched is False
+
+    def test_consistent_hashing(
+        self, strategy: "PercentageRolloutStrategy"
+    ) -> None:
+        """Test same user always gets same result."""
+        flag = FlagConfig(
+            key="test-flag",
+            status=FlagStatus.PERCENTAGE,
+            percentage=50.0,
+            enabled_value=True,
+        )
+        context = EvaluationContext(user_id="consistent-user")
+
+        results = [strategy.evaluate(flag, context) for _ in range(10)]
+
+        # All results should be the same
+        assert all(r.matched == results[0].matched for r in results)
+
+
+class TestUserTargetingStrategy:
+    """Tests for UserTargetingStrategy."""
+
+    @pytest.fixture
+    def strategy(self) -> "UserTargetingStrategy":
+        """Create strategy instance."""
+        from application.services.feature_flags.strategies.targeting import (
+            UserTargetingStrategy,
+        )
+        return UserTargetingStrategy()
+
+    def test_priority(self, strategy: "UserTargetingStrategy") -> None:
+        """Test strategy priority."""
+        assert strategy.priority == 10
+
+    def test_evaluate_user_in_list(self, strategy: "UserTargetingStrategy") -> None:
+        """Test user in targeting list matches."""
+        flag = FlagConfig(
+            key="test-flag",
+            status=FlagStatus.PERCENTAGE,
+            user_ids=["user-1", "user-2", "user-3"],
+            enabled_value=True,
+        )
+        context = EvaluationContext(user_id="user-2")
+
+        result = strategy.evaluate(flag, context)
+
+        assert result.matched is True
+        assert result.value is True
+
+    def test_evaluate_user_not_in_list(self, strategy: "UserTargetingStrategy") -> None:
+        """Test user not in targeting list doesn't match."""
+        flag = FlagConfig(
+            key="test-flag",
+            status=FlagStatus.PERCENTAGE,
+            user_ids=["user-1", "user-2"],
+            enabled_value=True,
+        )
+        context = EvaluationContext(user_id="user-999")
+
+        result = strategy.evaluate(flag, context)
+
+        assert result.matched is False
+
+
+class TestGroupTargetingStrategy:
+    """Tests for GroupTargetingStrategy."""
+
+    @pytest.fixture
+    def strategy(self) -> "GroupTargetingStrategy":
+        """Create strategy instance."""
+        from application.services.feature_flags.strategies.targeting import (
+            GroupTargetingStrategy,
+        )
+        return GroupTargetingStrategy()
+
+    def test_priority(self, strategy: "GroupTargetingStrategy") -> None:
+        """Test strategy priority."""
+        assert strategy.priority == 11
+
+    def test_evaluate_group_match(self, strategy: "GroupTargetingStrategy") -> None:
+        """Test group targeting matches."""
+        flag = FlagConfig(
+            key="test-flag",
+            status=FlagStatus.PERCENTAGE,
+            groups=["beta-testers", "admins"],
+            enabled_value=True,
+        )
+        context = EvaluationContext(user_id="user-1", groups=["beta-testers"])
+
+        result = strategy.evaluate(flag, context)
+
+        assert result.matched is True
+
+    def test_evaluate_no_group_match(self, strategy: "GroupTargetingStrategy") -> None:
+        """Test no group match returns no match."""
+        flag = FlagConfig(
+            key="test-flag",
+            status=FlagStatus.PERCENTAGE,
+            groups=["admins"],
+            enabled_value=True,
+        )
+        context = EvaluationContext(user_id="user-1", groups=["users"])
+
+        result = strategy.evaluate(flag, context)
+
+        assert result.matched is False
+
+
+class TestStrategyChain:
+    """Tests for StrategyChain and create_default_strategy_chain."""
+
+    def test_create_default_chain(self) -> None:
+        """Test creating default strategy chain."""
+        from application.services.feature_flags.strategies.chain import (
+            create_default_strategy_chain,
+        )
+        
+        chain = create_default_strategy_chain()
+        
+        assert len(chain.get_strategies()) == 7
+
+    def test_evaluate_disabled_flag(self) -> None:
+        """Test disabled flag returns default value."""
+        from application.services.feature_flags.strategies.chain import (
+            create_default_strategy_chain,
+        )
+        
+        chain = create_default_strategy_chain()
+        flag = FlagConfig(
+            key="test-flag",
+            status=FlagStatus.DISABLED,
+            default_value=False,
+            enabled_value=True,
+        )
+        context = EvaluationContext(user_id="user-1")
+
+        value, reason = chain.evaluate(flag, context)
+
+        assert value is False
+        assert "disabled" in reason.lower()
+
+    def test_evaluate_enabled_flag(self) -> None:
+        """Test enabled flag returns enabled value."""
+        from application.services.feature_flags.strategies.chain import (
+            create_default_strategy_chain,
+        )
+        
+        chain = create_default_strategy_chain()
+        flag = FlagConfig(
+            key="test-flag",
+            status=FlagStatus.ENABLED,
+            default_value=False,
+            enabled_value=True,
+        )
+        context = EvaluationContext(user_id="user-1")
+
+        value, reason = chain.evaluate(flag, context)
+
+        assert value is True
+        assert "enabled" in reason.lower()
+
+    def test_add_strategy(self) -> None:
+        """Test adding custom strategy."""
+        from application.services.feature_flags.strategies.chain import StrategyChain
+        from application.services.feature_flags.strategies.fallback import (
+            DefaultValueStrategy,
+        )
+        
+        chain = StrategyChain()
+        initial_count = len(chain._strategies)
+        chain.add_strategy(DefaultValueStrategy())
+        
+        assert len(chain._strategies) == initial_count + 1
+
+    def test_remove_strategy(self) -> None:
+        """Test removing strategy by type."""
+        from application.services.feature_flags.strategies.chain import (
+            create_default_strategy_chain,
+        )
+        from application.services.feature_flags.strategies.status import (
+            DisabledStrategy,
+        )
+        
+        chain = create_default_strategy_chain()
+        initial_count = len(chain.get_strategies())
+        
+        removed = chain.remove_strategy(DisabledStrategy)
+        
+        assert removed is True
+        assert len(chain.get_strategies()) == initial_count - 1
+
+
+class TestCustomRuleStrategy:
+    """Tests for CustomRuleStrategy."""
+
+    @pytest.fixture
+    def strategy(self) -> "CustomRuleStrategy":
+        """Create strategy instance."""
+        from application.services.feature_flags.strategies.custom_rule import (
+            CustomRuleStrategy,
+        )
+        return CustomRuleStrategy()
+
+    @pytest.fixture
+    def flag(self) -> FlagConfig:
+        """Create test flag."""
+        return FlagConfig(
+            key="custom-flag",
+            status=FlagStatus.PERCENTAGE,
+            enabled_value=True,
+        )
+
+    @pytest.fixture
+    def context(self) -> EvaluationContext:
+        """Create evaluation context."""
+        return EvaluationContext(user_id="user-123", attributes={"plan": "premium"})
+
+    def test_priority(self, strategy: "CustomRuleStrategy") -> None:
+        """Test strategy priority."""
+        assert strategy.priority == 5
+
+    def test_evaluate_no_rule_registered(
+        self, strategy: "CustomRuleStrategy", flag: FlagConfig, context: EvaluationContext
+    ) -> None:
+        """Test no match when no rule registered."""
+        result = strategy.evaluate(flag, context)
+        assert result.matched is False
+
+    def test_evaluate_rule_returns_true(
+        self, strategy: "CustomRuleStrategy", flag: FlagConfig, context: EvaluationContext
+    ) -> None:
+        """Test match when rule returns True."""
+        strategy.register_rule("custom-flag", lambda ctx: ctx.attributes.get("plan") == "premium")
+
+        result = strategy.evaluate(flag, context)
+
+        assert result.matched is True
+        assert result.value is True
+        assert "Custom rule" in result.reason
+
+    def test_evaluate_rule_returns_false(
+        self, strategy: "CustomRuleStrategy", flag: FlagConfig, context: EvaluationContext
+    ) -> None:
+        """Test no match when rule returns False."""
+        strategy.register_rule("custom-flag", lambda ctx: ctx.attributes.get("plan") == "free")
+
+        result = strategy.evaluate(flag, context)
+
+        assert result.matched is False
+
+    def test_evaluate_rule_raises_exception(
+        self, strategy: "CustomRuleStrategy", flag: FlagConfig, context: EvaluationContext
+    ) -> None:
+        """Test no match when rule raises exception."""
+        def failing_rule(ctx: EvaluationContext) -> bool:
+            raise ValueError("Rule error")
+
+        strategy.register_rule("custom-flag", failing_rule)
+
+        result = strategy.evaluate(flag, context)
+
+        assert result.matched is False
+
+    def test_unregister_rule(
+        self, strategy: "CustomRuleStrategy", flag: FlagConfig, context: EvaluationContext
+    ) -> None:
+        """Test unregistering a rule."""
+        strategy.register_rule("custom-flag", lambda ctx: True)
+        strategy.unregister_rule("custom-flag")
+
+        result = strategy.evaluate(flag, context)
+
+        assert result.matched is False
+
+    def test_unregister_nonexistent_rule(self, strategy: "CustomRuleStrategy") -> None:
+        """Test unregistering nonexistent rule doesn't raise."""
+        strategy.unregister_rule("nonexistent-flag")  # Should not raise

@@ -8,6 +8,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from datetime import UTC, datetime
+from decimal import Decimal
+
 from application.common.batch.config import BatchConfig, BatchErrorStrategy
 from application.examples.item.batch.batch import (
     BatchCreateRequest,
@@ -15,7 +18,31 @@ from application.examples.item.batch.batch import (
     ItemExampleBatchService,
     _apply_batch_update_fields,
 )
-from domain.examples.item.entity import ItemExample, Money
+from domain.examples.item.entity import ItemExample, ItemExampleStatus, Money
+
+
+def create_mock_item_entity(
+    item_id: str = "item-123",
+    name: str = "Test Item",
+) -> MagicMock:
+    """Create a fully configured mock ItemExample entity."""
+    entity = MagicMock(spec=ItemExample)
+    entity.id = item_id
+    entity.name = name
+    entity.description = "Test description"
+    entity.sku = "SKU-001"
+    entity.price = Money(Decimal("99.99"), "BRL")
+    entity.quantity = 10
+    entity.status = ItemExampleStatus.ACTIVE
+    entity.category = "Electronics"
+    entity.tags = ["tag1", "tag2"]
+    entity.is_available = True
+    entity.total_value = Money(Decimal("999.90"), "BRL")
+    entity.created_at = datetime(2024, 1, 1, tzinfo=UTC)
+    entity.updated_at = datetime(2024, 1, 2, tzinfo=UTC)
+    entity.created_by = "user-1"
+    entity.updated_by = "user-2"
+    return entity
 
 
 class TestBatchCreateRequest:
@@ -93,6 +120,10 @@ class TestApplyBatchUpdateFields:
     def mock_entity(self) -> MagicMock:
         """Create mock ItemExample entity."""
         entity = MagicMock(spec=ItemExample)
+        entity.name = "Original Name"
+        entity.description = "Original Description"
+        entity.quantity = 10
+        entity.category = "Original Category"
         entity.price = Money(100, "BRL")
         return entity
 
@@ -176,7 +207,7 @@ class TestItemExampleBatchService:
         self, service: ItemExampleBatchService, mock_repository: AsyncMock
     ) -> None:
         """Should create items successfully."""
-        mock_entity = MagicMock(spec=ItemExample)
+        mock_entity = create_mock_item_entity()
         mock_repository.create.return_value = mock_entity
 
         items = [
@@ -196,7 +227,7 @@ class TestItemExampleBatchService:
         self, service: ItemExampleBatchService, mock_repository: AsyncMock
     ) -> None:
         """Should call progress callback."""
-        mock_entity = MagicMock(spec=ItemExample)
+        mock_entity = create_mock_item_entity()
         mock_repository.create.return_value = mock_entity
         progress_calls: list[tuple[int, int]] = []
 
@@ -217,7 +248,7 @@ class TestItemExampleBatchService:
         self, service: ItemExampleBatchService, mock_repository: AsyncMock
     ) -> None:
         """Should continue on error with CONTINUE strategy."""
-        mock_entity = MagicMock(spec=ItemExample)
+        mock_entity = create_mock_item_entity()
         mock_repository.create.side_effect = [
             Exception("First failed"),
             mock_entity,
@@ -254,8 +285,7 @@ class TestItemExampleBatchService:
         self, service: ItemExampleBatchService, mock_repository: AsyncMock
     ) -> None:
         """Should update items successfully."""
-        mock_entity = MagicMock(spec=ItemExample)
-        mock_entity.price = Money(100, "BRL")
+        mock_entity = create_mock_item_entity()
         mock_repository.get.return_value = mock_entity
         mock_repository.update.return_value = mock_entity
 

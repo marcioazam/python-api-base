@@ -4,6 +4,7 @@
 **Validates: Requirements 3.1, 3.2, 3.3, 3.4, 3.5, 3.6**
 """
 
+from decimal import Decimal
 from typing import Any, Protocol
 
 from application.common.dto import PaginatedResponse
@@ -83,7 +84,7 @@ class CreatePedidoCommandHandler(
                 item_name=item.name,
                 quantity=item_data.get("quantity", 1),
                 unit_price=item.price,
-                discount=item_data.get("discount", 0),
+                discount=Decimal(str(item_data.get("discount", 0))),
             )
 
         saved = await self._pedido_repo.create(pedido)

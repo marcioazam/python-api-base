@@ -142,7 +142,7 @@ class FileUploadService[TMetadata]:
         # Validate file
         validation = validate_file(filename, content, content_type, self._config)
         if validation.is_err():
-            return Err(validation.unwrap_err())
+            return Err(validation.error)
 
         checksum = validation.unwrap()
 

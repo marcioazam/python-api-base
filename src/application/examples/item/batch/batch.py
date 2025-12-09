@@ -139,6 +139,8 @@ class ItemExampleBatchService:
             succeeded=succeeded,
             failed=failed,
             total_processed=total,
+            total_succeeded=len(succeeded),
+            total_failed=len(failed),
         )
 
     async def batch_update(
@@ -183,6 +185,8 @@ class ItemExampleBatchService:
             succeeded=succeeded,
             failed=failed,
             total_processed=total,
+            total_succeeded=len(succeeded),
+            total_failed=len(failed),
         )
 
     async def batch_delete(
@@ -233,4 +237,6 @@ class ItemExampleBatchService:
             succeeded=succeeded,
             failed=failed,
             total_processed=total,
+            total_succeeded=len(succeeded),
+            total_failed=len(failed),
         )

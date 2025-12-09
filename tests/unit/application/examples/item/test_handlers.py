@@ -332,3 +332,207 @@ class TestListItemsQueryHandler:
         response = result.unwrap()
         assert response.total == 3
         assert len(response.items) == 3
+
+
+from unittest.mock import AsyncMock
+
+
+class TestCreateItemCommandHandlerWithEventBus:
+    """Tests for CreateItemCommandHandler with event bus."""
+
+    @pytest.fixture
+    def repository(self) -> MockItemRepository:
+        """Create mock repository."""
+        return MockItemRepository()
+
+    @pytest.fixture
+    def event_bus(self) -> AsyncMock:
+        """Create mock event bus."""
+        return AsyncMock()
+
+    @pytest.fixture
+    def handler(
+        self, repository: MockItemRepository, event_bus: AsyncMock
+    ) -> CreateItemCommandHandler:
+        """Create handler with event bus."""
+        return CreateItemCommandHandler(repository=repository, event_bus=event_bus)
+
+    @pytest.mark.asyncio
+    async def test_publishes_events_on_create(
+        self, handler: CreateItemCommandHandler, event_bus: AsyncMock
+    ) -> None:
+        """Should publish events after creation."""
+        command = CreateItemCommand(
+            name="Event Test",
+            sku="EVT-001",
+            price_amount=Decimal("50.00"),
+        )
+
+        result = await handler.handle(command)
+
+        assert result.is_ok()
+        event_bus.publish.assert_called()
+
+
+class TestUpdateItemCommandHandlerWithEventBus:
+    """Tests for UpdateItemCommandHandler with event bus."""
+
+    @pytest.fixture
+    def repository(self) -> MockItemRepository:
+        """Create mock repository."""
+        return MockItemRepository()
+
+    @pytest.fixture
+    def event_bus(self) -> AsyncMock:
+        """Create mock event bus."""
+        return AsyncMock()
+
+    @pytest.fixture
+    def handler(
+        self, repository: MockItemRepository, event_bus: AsyncMock
+    ) -> UpdateItemCommandHandler:
+        """Create handler with event bus."""
+        return UpdateItemCommandHandler(repository=repository, event_bus=event_bus)
+
+    @pytest.fixture
+    def existing_item(self, repository: MockItemRepository) -> ItemExample:
+        """Create existing item."""
+        item = ItemExample.create(
+            name="Original",
+            sku="UPD-EVT-001",
+            price=Money(Decimal("50.00")),
+            description="Original",
+            quantity=5,
+            category="test",
+        )
+        repository.add_item(item)
+        return item
+
+    @pytest.mark.asyncio
+    async def test_update_all_fields(
+        self,
+        handler: UpdateItemCommandHandler,
+        existing_item: ItemExample,
+    ) -> None:
+        """Should update all fields."""
+        command = UpdateItemCommand(
+            item_id=existing_item.id,
+            name="Updated",
+            description="Updated desc",
+            price_amount=Decimal("100.00"),
+            price_currency="USD",
+            quantity=20,
+            category="updated-cat",
+            tags=["new", "tags"],
+            metadata={"key": "value"},
+        )
+
+        result = await handler.handle(command)
+
+        assert result.is_ok()
+        response = result.unwrap()
+        assert response.name == "Updated"
+
+
+class TestDeleteItemCommandHandlerWithEventBus:
+    """Tests for DeleteItemCommandHandler with event bus."""
+
+    @pytest.fixture
+    def repository(self) -> MockItemRepository:
+        """Create mock repository."""
+        return MockItemRepository()
+
+    @pytest.fixture
+    def event_bus(self) -> AsyncMock:
+        """Create mock event bus."""
+        return AsyncMock()
+
+    @pytest.fixture
+    def handler(
+        self, repository: MockItemRepository, event_bus: AsyncMock
+    ) -> DeleteItemCommandHandler:
+        """Create handler with event bus."""
+        return DeleteItemCommandHandler(repository=repository, event_bus=event_bus)
+
+    @pytest.fixture
+    def existing_item(self, repository: MockItemRepository) -> ItemExample:
+        """Create existing item."""
+        item = ItemExample.create(
+            name="To Delete",
+            sku="DEL-EVT-001",
+            price=Money(Decimal("25.00")),
+            description="Item to delete",
+        )
+        repository.add_item(item)
+        return item
+
+    @pytest.mark.asyncio
+    async def test_publishes_events_on_delete(
+        self,
+        handler: DeleteItemCommandHandler,
+        existing_item: ItemExample,
+        event_bus: AsyncMock,
+    ) -> None:
+        """Should publish events after deletion."""
+        command = DeleteItemCommand(
+            item_id=existing_item.id,
+            deleted_by="test_user",
+        )
+
+        result = await handler.handle(command)
+
+        assert result.is_ok()
+        event_bus.publish.assert_called()
+
+
+class TestListItemsQueryHandlerWithFilters:
+    """Tests for ListItemsQueryHandler with filters."""
+
+    @pytest.fixture
+    def repository(self) -> MockItemRepository:
+        """Create mock repository."""
+        return MockItemRepository()
+
+    @pytest.fixture
+    def handler(self, repository: MockItemRepository) -> ListItemsQueryHandler:
+        """Create handler."""
+        return ListItemsQueryHandler(repository=repository)
+
+    @pytest.mark.asyncio
+    async def test_list_with_category_filter(
+        self, handler: ListItemsQueryHandler, repository: MockItemRepository
+    ) -> None:
+        """Should filter by category."""
+        item = ItemExample.create(
+            name="Filtered Item",
+            sku="FLT-001",
+            price=Money(Decimal("10.00")),
+            description="Test",
+            category="electronics",
+        )
+        repository.add_item(item)
+
+        query = ListItemsQuery(page=1, size=10, category="electronics")
+
+        result = await handler.handle(query)
+
+        assert result.is_ok()
+
+    @pytest.mark.asyncio
+    async def test_list_with_status_filter(
+        self, handler: ListItemsQueryHandler, repository: MockItemRepository
+    ) -> None:
+        """Should filter by status."""
+        item = ItemExample.create(
+            name="Status Item",
+            sku="STS-001",
+            price=Money(Decimal("10.00")),
+            description="Test",
+        )
+        repository.add_item(item)
+
+        query = ListItemsQuery(page=1, size=10, status="active")
+
+        result = await handler.handle(query)
+
+        assert result.is_ok()

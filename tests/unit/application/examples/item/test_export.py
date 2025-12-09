@@ -19,7 +19,7 @@ from application.examples.item.export.export import (
     ItemExampleExportService,
     ItemExampleImportService,
 )
-from domain.examples.item.entity import ItemExample, Money
+from domain.examples.item.entity import ItemExample, ItemExampleStatus, Money
 
 
 class TestExportFormat:
@@ -130,10 +130,11 @@ class TestItemExampleExportService:
         item.sku = "SKU-001"
         item.price = Money(Decimal("99.99"), "BRL")
         item.quantity = 10
-        item.status = "active"
+        item.status = ItemExampleStatus.ACTIVE
         item.category = "Electronics"
         item.tags = ["tag1", "tag2"]
         item.is_available = True
+        item.total_value = Money(Decimal("999.90"), "BRL")
         item.created_at = datetime(2024, 1, 1, tzinfo=UTC)
         item.updated_at = datetime(2024, 1, 2, tzinfo=UTC)
         item.created_by = "user-1"
