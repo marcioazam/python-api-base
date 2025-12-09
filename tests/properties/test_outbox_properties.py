@@ -1,262 +1,231 @@
 """Property-based tests for Outbox Pattern.
 
-**Feature: api-architecture-analysis, Property 7: Outbox pattern**
-**Validates: Requirements 9.5**
+**Feature: python-api-base-2025-validation**
+**Property 28: Outbox Transactional Atomicity**
+**Validates: Requirements 33.1, 33.2**
 """
 
-import pytest
-
-pytest.skip("Module not implemented", allow_module_level=True)
-
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
+from uuid import uuid4
 
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from core.shared.outbox import (
-    InMemoryOutboxRepository,
-    MockEventPublisher,
-    OutboxEntry,
-    OutboxService,
-    OutboxStatus,
+from infrastructure.messaging.outbox.outbox_message import (
+    OutboxMessage,
+    OutboxMessageStatus,
+    create_outbox_message,
 )
-
-identifier_strategy = st.text(
-    alphabet=st.sampled_from("abcdefghijklmnopqrstuvwxyz_"),
-    min_size=1,
-    max_size=20,
-)
+from infrastructure.messaging.outbox.outbox_repository import OutboxRepository
 
 
-class TestOutboxEntry:
-    """Tests for OutboxEntry."""
+# =============================================================================
+# Property 28: Outbox Transactional Atomicity
+# **Feature: python-api-base-2025-validation, Property 28: Outbox Transactional Atomicity**
+# **Validates: Requirements 33.1, 33.2**
+# =============================================================================
+
+
+class TestOutboxTransactionalAtomicity:
+    """Property tests for outbox transactional atomicity.
+
+    **Feature: python-api-base-2025-validation, Property 28: Outbox Transactional Atomicity**
+    **Validates: Requirements 33.1, 33.2**
+    """
 
     @given(
-        aggregate_type=identifier_strategy,
-        aggregate_id=identifier_strategy,
-        event_type=identifier_strategy,
+        aggregate_type=st.text(min_size=1, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N"))),
+        aggregate_id=st.text(min_size=1, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N"))),
+        event_type=st.text(min_size=1, max_size=50, alphabet=st.characters(whitelist_categories=("L", "N"))),
     )
-    @settings(max_examples=50)
-    def test_create_generates_id(
+    @settings(max_examples=100)
+    def test_outbox_message_creation_preserves_data(
         self, aggregate_type: str, aggregate_id: str, event_type: str
-    ):
-        """create should generate a unique ID."""
-        entry = OutboxEntry.create(
+    ) -> None:
+        """
+        **Feature: python-api-base-2025-validation, Property 28: Outbox Transactional Atomicity**
+        **Validates: Requirements 33.1, 33.2**
+
+        *For any* outbox message created, all fields SHALL be preserved.
+        """
+        message = create_outbox_message(
             aggregate_type=aggregate_type,
             aggregate_id=aggregate_id,
             event_type=event_type,
             payload={"test": "data"},
         )
-        assert entry.id is not None
-        assert len(entry.id) > 0
 
-    @given(
-        aggregate_type=identifier_strategy,
-        aggregate_id=identifier_strategy,
-        event_type=identifier_strategy,
-    )
+        assert message.aggregate_type == aggregate_type
+        assert message.aggregate_id == aggregate_id
+        assert message.event_type == event_type
+        assert message.payload == {"test": "data"}
+        assert message.status == OutboxMessageStatus.PENDING
+        assert message.idempotency_key is not None
+
+    @pytest.mark.asyncio
+    @given(st.integers(min_value=1, max_value=20))
     @settings(max_examples=50)
-    def test_create_sets_pending_status(
-        self, aggregate_type: str, aggregate_id: str, event_type: str
-    ):
-        """create should set status to PENDING."""
-        entry = OutboxEntry.create(
-            aggregate_type=aggregate_type,
-            aggregate_id=aggregate_id,
-            event_type=event_type,
+    async def test_repository_save_and_retrieve(self, count: int) -> None:
+        """
+        **Feature: python-api-base-2025-validation, Property 28: Outbox Transactional Atomicity**
+        **Validates: Requirements 33.1, 33.2**
+
+        *For any* N messages saved to repository, all N SHALL be retrievable.
+        """
+        repo = OutboxRepository()
+
+        messages = [
+            create_outbox_message(
+                aggregate_type="Test",
+                aggregate_id=str(i),
+                event_type="TestEvent",
+                payload={"index": i},
+            )
+            for i in range(count)
+        ]
+
+        for msg in messages:
+            await repo.save(msg)
+
+        pending = await repo.get_pending(limit=count + 10)
+        assert len(pending) == count
+
+    @pytest.mark.asyncio
+    async def test_idempotency_key_prevents_duplicates(self) -> None:
+        """
+        **Feature: python-api-base-2025-validation, Property 28: Outbox Transactional Atomicity**
+        **Validates: Requirements 33.2**
+
+        Idempotency key SHALL prevent duplicate processing.
+        """
+        repo = OutboxRepository()
+        idempotency_key = f"test-key-{uuid4()}"
+
+        message = OutboxMessage(
+            aggregate_type="Test",
+            aggregate_id="1",
+            event_type="TestEvent",
+            payload={},
+            idempotency_key=idempotency_key,
+        )
+
+        await repo.save(message)
+        await repo.mark_processed(message.id)
+
+        # Check duplicate detection
+        is_dup = await repo.is_duplicate(idempotency_key)
+        assert is_dup is True
+
+        # New key should not be duplicate
+        is_new_dup = await repo.is_duplicate(f"new-key-{uuid4()}")
+        assert is_new_dup is False
+
+    @pytest.mark.asyncio
+    async def test_mark_processed_updates_status(self) -> None:
+        """
+        **Feature: python-api-base-2025-validation, Property 28: Outbox Transactional Atomicity**
+        **Validates: Requirements 33.1**
+
+        After mark_processed, message status SHALL be PUBLISHED.
+        """
+        repo = OutboxRepository()
+
+        message = create_outbox_message(
+            aggregate_type="Test",
+            aggregate_id="1",
+            event_type="TestEvent",
             payload={},
         )
-        assert entry.status == OutboxStatus.PENDING
 
-    def test_mark_processing(self):
-        """mark_processing should set status to PROCESSING."""
-        entry = OutboxEntry.create("Type", "123", "Event", {})
-        entry.mark_processing()
-        assert entry.status == OutboxStatus.PROCESSING
+        await repo.save(message)
+        await repo.mark_processed(message.id)
 
-    def test_mark_published(self):
-        """mark_published should set status and processed_at."""
-        entry = OutboxEntry.create("Type", "123", "Event", {})
-        entry.mark_published()
-        assert entry.status == OutboxStatus.PUBLISHED
-        assert entry.processed_at is not None
-
-    def test_mark_failed_increments_retry(self):
-        """mark_failed should increment retry count."""
-        entry = OutboxEntry.create("Type", "123", "Event", {})
-        entry.mark_failed("Error")
-        assert entry.retry_count == 1
-        assert entry.error_message == "Error"
-
-    def test_mark_failed_sets_failed_after_max_retries(self):
-        """mark_failed should set FAILED after max retries."""
-        entry = OutboxEntry.create("Type", "123", "Event", {})
-        entry.max_retries = 2
-        entry.mark_failed("Error 1")
-        assert entry.status == OutboxStatus.PENDING
-        entry.mark_failed("Error 2")
-        assert entry.status == OutboxStatus.FAILED
-
-    def test_can_retry(self):
-        """can_retry should return True if under max retries."""
-        entry = OutboxEntry.create("Type", "123", "Event", {})
-        entry.max_retries = 3
-        assert entry.can_retry is True
-        entry.retry_count = 3
-        assert entry.can_retry is False
-
-    def test_to_dict(self):
-        """to_dict should contain all fields."""
-        entry = OutboxEntry.create("Type", "123", "Event", {"key": "value"})
-        d = entry.to_dict()
-        assert d["aggregate_type"] == "Type"
-        assert d["aggregate_id"] == "123"
-        assert d["event_type"] == "Event"
-        assert d["payload"] == {"key": "value"}
-
-
-class TestInMemoryOutboxRepository:
-    """Tests for InMemoryOutboxRepository."""
+        retrieved = await repo.get_by_id(message.id)
+        assert retrieved is not None
+        assert retrieved.status == OutboxMessageStatus.PUBLISHED
+        assert retrieved.processed_at is not None
 
     @pytest.mark.asyncio
-    async def test_save_and_get_pending(self):
-        """save should store entry retrievable by get_pending."""
-        repo = InMemoryOutboxRepository()
-        entry = OutboxEntry.create("Type", "123", "Event", {})
-        await repo.save(entry)
-        pending = await repo.get_pending()
-        assert len(pending) == 1
-        assert pending[0].id == entry.id
+    async def test_mark_failed_increments_retry_count(self) -> None:
+        """
+        **Feature: python-api-base-2025-validation, Property 28: Outbox Transactional Atomicity**
+        **Validates: Requirements 33.1**
+
+        After mark_failed, retry_count SHALL increment.
+        """
+        repo = OutboxRepository()
+
+        message = create_outbox_message(
+            aggregate_type="Test",
+            aggregate_id="1",
+            event_type="TestEvent",
+            payload={},
+        )
+
+        await repo.save(message)
+        initial_retry = message.retry_count
+
+        await repo.mark_failed(message.id, "Test error")
+
+        retrieved = await repo.get_by_id(message.id)
+        assert retrieved is not None
+        assert retrieved.retry_count == initial_retry + 1
+        assert retrieved.last_error == "Test error"
 
     @pytest.mark.asyncio
-    async def test_get_pending_excludes_non_pending(self):
-        """get_pending should exclude non-pending entries."""
-        repo = InMemoryOutboxRepository()
-        entry1 = OutboxEntry.create("Type", "1", "Event", {})
-        entry2 = OutboxEntry.create("Type", "2", "Event", {})
-        entry2.mark_published()
-        await repo.save(entry1)
-        await repo.save(entry2)
-        pending = await repo.get_pending()
-        assert len(pending) == 1
-        assert pending[0].id == entry1.id
+    async def test_max_retries_moves_to_dead_letter(self) -> None:
+        """
+        **Feature: python-api-base-2025-validation, Property 28: Outbox Transactional Atomicity**
+        **Validates: Requirements 33.1**
 
-    @pytest.mark.asyncio
-    async def test_get_pending_respects_limit(self):
-        """get_pending should respect limit."""
-        repo = InMemoryOutboxRepository()
-        for i in range(5):
-            await repo.save(OutboxEntry.create("Type", str(i), "Event", {}))
-        pending = await repo.get_pending(limit=3)
-        assert len(pending) == 3
+        After max_retries failures, message SHALL move to DEAD_LETTER.
+        """
+        repo = OutboxRepository()
 
-    @pytest.mark.asyncio
-    async def test_update_modifies_entry(self):
-        """update should modify existing entry."""
-        repo = InMemoryOutboxRepository()
-        entry = OutboxEntry.create("Type", "123", "Event", {})
-        await repo.save(entry)
-        entry.mark_published()
-        await repo.update(entry)
-        pending = await repo.get_pending()
-        assert len(pending) == 0
+        message = OutboxMessage(
+            aggregate_type="Test",
+            aggregate_id="1",
+            event_type="TestEvent",
+            payload={},
+            max_retries=3,
+        )
 
-    @pytest.mark.asyncio
-    async def test_delete_published(self):
-        """delete_published should remove old published entries."""
-        repo = InMemoryOutboxRepository()
-        entry = OutboxEntry.create("Type", "123", "Event", {})
-        entry.mark_published()
-        entry.processed_at = datetime.utcnow() - timedelta(days=2)
-        await repo.save(entry)
-        deleted = await repo.delete_published(datetime.utcnow() - timedelta(days=1))
-        assert deleted == 1
-        assert repo.count() == 0
+        await repo.save(message)
 
-    def test_count_by_status(self):
-        """count_by_status should return correct count."""
-        repo = InMemoryOutboxRepository()
-        repo._entries["1"] = OutboxEntry.create("Type", "1", "Event", {})
-        entry2 = OutboxEntry.create("Type", "2", "Event", {})
-        entry2.mark_published()
-        repo._entries["2"] = entry2
-        assert repo.count_by_status(OutboxStatus.PENDING) == 1
-        assert repo.count_by_status(OutboxStatus.PUBLISHED) == 1
+        # Fail max_retries times
+        for i in range(3):
+            await repo.mark_failed(message.id, f"Error {i + 1}")
 
+        retrieved = await repo.get_by_id(message.id)
+        assert retrieved is not None
+        assert retrieved.status == OutboxMessageStatus.DEAD_LETTER
 
-class TestOutboxService:
-    """Tests for OutboxService."""
+    @given(
+        payload=st.dictionaries(
+            st.text(min_size=1, max_size=20, alphabet=st.characters(whitelist_categories=("L",))),
+            st.one_of(st.integers(), st.text(max_size=50), st.booleans()),
+            max_size=10,
+        )
+    )
+    @settings(max_examples=50)
+    def test_to_event_dict_preserves_payload(self, payload: dict) -> None:
+        """
+        **Feature: python-api-base-2025-validation, Property 28: Outbox Transactional Atomicity**
+        **Validates: Requirements 33.1**
 
-    @pytest.mark.asyncio
-    async def test_add_event(self):
-        """add_event should create and save entry."""
-        repo = InMemoryOutboxRepository()
-        publisher = MockEventPublisher()
-        service = OutboxService(repo, publisher)
-        entry = await service.add_event("Order", "123", "OrderCreated", {"total": 100})
-        assert entry.aggregate_type == "Order"
-        assert entry.event_type == "OrderCreated"
-        assert repo.count() == 1
+        *For any* payload, to_event_dict SHALL preserve the payload data.
+        """
+        message = OutboxMessage(
+            aggregate_type="Test",
+            aggregate_id="1",
+            event_type="TestEvent",
+            payload=payload,
+        )
 
-    @pytest.mark.asyncio
-    async def test_process_pending_success(self):
-        """process_pending should publish and mark entries."""
-        repo = InMemoryOutboxRepository()
-        publisher = MockEventPublisher()
-        service = OutboxService(repo, publisher)
-        await service.add_event("Order", "123", "OrderCreated", {"total": 100})
-        success, failed = await service.process_pending()
-        assert success == 1
-        assert failed == 0
-        assert len(publisher.published_events) == 1
+        event_dict = message.to_event_dict()
 
-    @pytest.mark.asyncio
-    async def test_process_pending_failure(self):
-        """process_pending should handle failures."""
-        repo = InMemoryOutboxRepository()
-        publisher = MockEventPublisher(should_fail=True)
-        service = OutboxService(repo, publisher)
-        await service.add_event("Order", "123", "OrderCreated", {"total": 100})
-        success, failed = await service.process_pending()
-        assert success == 0
-        assert failed == 1
+        assert event_dict["payload"] == payload
+        assert event_dict["type"] == "TestEvent"
+        assert event_dict["aggregate_type"] == "Test"
+        assert event_dict["aggregate_id"] == "1"
 
-    @pytest.mark.asyncio
-    async def test_cleanup(self):
-        """cleanup should remove old published entries."""
-        repo = InMemoryOutboxRepository()
-        publisher = MockEventPublisher()
-        service = OutboxService(repo, publisher)
-        entry = await service.add_event("Order", "123", "OrderCreated", {})
-        entry.mark_published()
-        entry.processed_at = datetime.utcnow() - timedelta(days=10)
-        await repo.update(entry)
-        deleted = await service.cleanup(datetime.utcnow() - timedelta(days=7))
-        assert deleted == 1
-
-
-class TestMockEventPublisher:
-    """Tests for MockEventPublisher."""
-
-    @pytest.mark.asyncio
-    async def test_publish_success(self):
-        """publish should return True and store event."""
-        publisher = MockEventPublisher()
-        result = await publisher.publish("TestEvent", {"key": "value"})
-        assert result is True
-        assert len(publisher.published_events) == 1
-
-    @pytest.mark.asyncio
-    async def test_publish_failure(self):
-        """publish should return False when configured to fail."""
-        publisher = MockEventPublisher(should_fail=True)
-        result = await publisher.publish("TestEvent", {"key": "value"})
-        assert result is False
-        assert len(publisher.published_events) == 0
-
-    def test_clear(self):
-        """clear should remove all published events."""
-        publisher = MockEventPublisher()
-        publisher._published.append(("Event", {}))
-        publisher.clear()
-        assert len(publisher.published_events) == 0

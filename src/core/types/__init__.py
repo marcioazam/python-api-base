@@ -5,8 +5,10 @@ Organized into subpackages by category:
 - data/: JSON, numeric, and string types
 - patterns/: Result pattern and callback types
 - domain/: Repository and security types
+- aliases: PEP 695 type aliases (AsyncResult, Handler, Validator, Filter)
 
 **Feature: core-types-split-2025**
+**Feature: python-api-base-2025-validation**
 
 Provides reusable type aliases with built-in validation constraints.
 Refactored from monolithic types.py into focused modules.
@@ -81,6 +83,26 @@ from core.types.patterns import (
     VoidResult,
 )
 
+# PEP 695 Type Aliases (Python 3.12+)
+from core.types.aliases import (
+    AsyncFilter,
+    AsyncHandler,
+    AsyncMapper,
+    AsyncResult,
+    AsyncValidator,
+    Callback,
+    Factory,
+    Filter,
+    Handler,
+    Mapper,
+    Predicate,
+    SyncHandler,
+    Validator,
+    ValidatorWithError,
+    AsyncCallback as AsyncCallbackAlias,
+    AsyncFactory,
+)
+
 __all__ = [
     # ID Types
     "ULID",
@@ -90,6 +112,7 @@ __all__ = [
     "ApiResult",
     # Callback Type Aliases
     "AsyncCallback",
+    "AsyncCallbackAlias",
     # Repository/UseCase Type Aliases
     "CRUDRepository",
     # Other
@@ -148,4 +171,20 @@ __all__ = [
     "VersionStr",
     "VoidResult",
     "WriteOnlyRepository",
+    # PEP 695 Type Aliases (Python 3.12+)
+    "AsyncFilter",
+    "AsyncHandler",
+    "AsyncMapper",
+    "AsyncResult",
+    "AsyncValidator",
+    "Callback",
+    "Factory",
+    "AsyncFactory",
+    "Filter",
+    "Handler",
+    "Mapper",
+    "Predicate",
+    "SyncHandler",
+    "Validator",
+    "ValidatorWithError",
 ]
